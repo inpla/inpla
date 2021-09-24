@@ -1,0 +1,18 @@
+// Bubble sort
+
+// Rules
+bsort(ret) >< [] => ret~[];
+bsort(ret) >< x:xs => bsort(ret)~cnt, bubble(cnt, x)~xs;
+bsort(ret) >< M(x) => ret~x;
+
+bubble(ret, int x) >< [] => ret~M([x]);
+bubble(ret, int x) >< M(w) => ret~M(x:w);
+bubble(ret, int x) >< (int y):ys
+| x<y => ret~(x:cnt), bubble(cnt, y)~ys
+| _   => ret~(y:cnt), bubble(cnt, x)~ys;
+
+
+// Nets
+bsort(r)~[3,6,1,9,2];
+r;
+

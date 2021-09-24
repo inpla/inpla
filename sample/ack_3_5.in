@@ -1,0 +1,32 @@
+// Ackermann Function
+//
+// fun ack(0,n) = n+1
+//   | ack(m,0) = ack(m-1,1)        
+//   | ack(m,n) = ack(m-1,ack(m,n-1));
+
+// The below rule is wrong because there is no gurantee that
+// the 'cnt' is an integer agent when ack(r)~(m-1,cnt) is evaluated.
+//
+// ack(r) >< (int m, int n)
+// | m==0 => r~(n+1)
+// | n==0 => ack(r) ~ (m-1,1)
+// | _ => ack(cnt)~(m,n-1), ack(r)~(m-1,cnt);
+
+
+ack(ret, n) >< (int m)
+| m==0 => inc(ret)~n
+| _ => ackn(ret, m)~n;
+
+ackn(ret, int m) >< (int n)
+| n==0 => ack(ret,1) ~ (m-1)
+| _ => ack(cnt,n-1)~m, ack(ret,cnt)~(m-1);
+
+inc(ret)><(int n) => ret~(n+1);
+
+
+ackMain(ret)><(int m, int n) => ack(ret,n)~m;
+
+ackMain(ret)~(3,5);
+ret;
+free ret;
+

@@ -1,0 +1,21 @@
+// Quick sort
+
+// Rules
+qsort(ret) >< [] => ret~[];
+qsort(ret) >< (int x):xs =>
+	part(x, left, right)~xs,
+	qsort(cntl)~left, qsort(cntr)~right,
+	Append(ret, x:cntl)~cntr;
+
+// Note: `Append' is implemented as built-in.
+// Append(ret, a)~b  -->  ret ~ b@a
+
+part(int x, a, b) >< [] => a~[], b~[];
+part(int x, a, b) >< (int y):ys
+| y<x => b~(y:cnt), part(x, a, cnt)~ys
+| _   => a~(y:cnt), part(x, cnt, b)~ys;
+
+
+// Nets
+qsort(ret)~[3,6,1,9,2];
+ret;

@@ -1,0 +1,16 @@
+// Greatest common divisor
+//
+//def gcd(a: Int, b: Int): Int =
+//  if (b==0) a else gcd(b, a%b)
+
+
+// Rule
+gcd(ret) >< (int a, int b)
+| b==0 => ret ~ a
+| _ => gcd(ret) ~ (b, a%b);
+
+// Net
+gcd(r) ~ (14,21);
+r; // it should be 7
+
+

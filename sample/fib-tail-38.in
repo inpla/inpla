@@ -1,0 +1,10 @@
+// Fibonacci number
+fibt(r, int a, int b) >< (int n)
+| n == 0 => r~1
+| n == 1 => r~a
+| _ => fibt(r, a+b, a) ~ (n-1);
+
+fibMain(r) >< (int n) => fibt(r, 1, 1) ~ n;
+
+fibMain(r)~9;
+r;

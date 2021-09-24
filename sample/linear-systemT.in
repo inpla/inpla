@@ -1,0 +1,142 @@
+// sample programs of linear-systemT (see POPL2016 paper)
+
+// Basic Rules ----------------------------------------
+Lamc(x,y) >< App(a,b) => a~x, b~y;
+Times(a,b) >< Par(x,y) => a~x, b~y;
+B(a,b,c) >< Lamc(x,y) => a~c, b~Lamc(x,y);
+V >< Lam(x,y,z) => z~Lamc(x,y);
+B(a,b,c)><S(x) => b~S(w), x~B(a,w,c);	// original
+//B(a,b,c) >< S(x) => a~c, b~S(x);	// alternative
+B(a,b,c) >< Z => a~c, b~Z;
+
+
+// Iterator ----------------------------------------
+Iter(r,n,u) >< Lamc(x,t) => n~Itc(u,x,t,r);
+Itc(u,x,t,r) >< Z => u~r,x~Eps,t~Eps;
+Itc(u,x,t,r) >< S(y) => y~Itc(t2,w,t1,r), x~Dup(w,u),t~Dup(t1,t2);
+
+// Dup ----------------------------------------
+Dup(x,y) >< Dup(a,b) => x~a, y~b;
+Dup(x,y) >< Lamc(a,b) => x~Lamc(w1,w2), y~Lamc(z1,z2), a~Dup(w1,z1), b~Dup(w2,z2);
+Dup(x,y) >< App(a,b) => x~App(w1,w2), y~App(z1,z2), a~Dup(w1,z1), b~Dup(w2,z2);
+Dup(x,y) >< Times(a,b) => x~Times(w1,w2), y~Times(z1,z2), a~Dup(w1,z1), b~Dup(w2,z2);
+Dup(x,y) >< Par(a,b) => x~Par(w1,w2), y~Par(z1,z2), a~Dup(w1,z1), b~Dup(w2,z2);
+Dup(x,y) >< V => x~V, y~V;
+
+Dup(a1,a2)>< Z => a1~Z, a2~Z;
+Dup(a1,a2)>< S(x) => a1~S(w1), a2~S(w2), x~Dup(w1,w2);
+
+
+Dup(x,y) >< Iter(a,b,c) =>
+	x~Iter(u1,w1,z1), y~Iter(u2,w2,z2),
+	a~Dup(u1,u2), b~Dup(w1,w2), c~Dup(z1,z2);
+
+Dup(x,y) >< Itc(a,b,c,d) =>
+	x~Itc(u1,w1,z1,k1), y~Itc(u2,w2,z2,k2), 
+	a~Dup(u1,u2), b~Dup(w1,w2), c~Dup(z1,z2), d~Dup(k1,k2);
+
+
+/* needed */
+Dup(x,y) >< B(a,b,c) => x~B(u1,z1,w1), y~B(u2,z2,w2),
+	a~Dup(u1,u2), b~Dup(z1,z2), c~Dup(w1,w2);
+Dup(x,y) >< Lam(a,b,c) => x~Lam(w1,u1,z1), y~Lam(w2,u2,z2),
+	a~Dup(w1,w2), b~Dup(u1,u2), c~Dup(z1,z2);
+
+
+// Eps ----------------------------------------
+Eps >< Eps => ;
+Eps >< Dup(x,y) => Eps~x,Eps~y;
+Eps >< Lamc(x,y) => Eps~x,Eps~y;
+Eps >< App(x,y) => Eps~x, Eps~y;
+Eps >< Par(x,y) => Eps~x, Eps~y;
+Eps >< Times(x,y) => Eps~x, Eps~y;
+
+Eps >< S(x) => x~Eps;
+Eps >< Z => ;
+
+Eps >< Iter(a,b,c) => a~Eps, b~Eps, c~Eps;
+Eps >< Itc(a,b,c,d) => a~Eps, b~Eps, c~Eps,d~Eps;
+
+/* required */
+Eps >< B(a,b,c) => a~Eps, b~Eps, c~Eps;
+Eps >< Lam(a,b,c) => a~Eps, b~Eps, c~Eps;
+Eps >< V => ;
+
+
+// sample ----------------------------------------
+// Cp: nat -o nat Times nat
+n~S(S(Z)),
+cp~Lamc(x,r), Iter(r,x,Times(Z,Z))~Lamc(Par(a,b),Times(S(a),S(b)));
+cp~App(n,res);
+res;
+free res;
+
+// fst: nat Times nat -o nat
+pair~Times(S(S(S(Z))),S(Z)),
+fst~Lamc(Par(n,m), r), Iter(r,m,n)~Lamc(x,x);
+fst~App(pair,res);
+res;
+free res;
+
+// snd: nat Times nat -o nat
+pair~Times(S(S(S(Z))),S(Z)),
+snd~Lamc(Par(n,m), r), Iter(r,n,m)~Lamc(x,x);
+snd~App(pair,res);
+res;
+free res;
+
+
+// ((Add a) b)
+a~S(S(Z)), b~S(S(S(Z))),
+add~Lamc(B(V,u,Lam(n,r,r1)),r1), Iter(r,n,u)~Lamc(x,S(x));
+add~App(a,App(b,res));
+prnat res;
+free res;
+
+
+// ((Mult a) b)
+a~S(S(Z)), b~S(S(S(Z)));
+add~Lamc(B(V,au,Lam(an,ar,ar1)),ar1),Iter(ar,an,au)~Lamc(ax,S(ax)),
+App(n,Iter(r,m,Z))~add,
+mult~Lamc(B(V,n,Lam(m,r,r1)),r1);
+mult~App(a,App(b,res));
+prnat res;
+free res;
+
+// ((Exp a) b)
+a~S(S(Z)), b~S(S(S(Z)));
+add~Lamc(B(V,au,Lam(an,ar,ar1)),ar1),Iter(ar,an,au)~Lamc(ax,S(ax)),
+App(mn,Iter(mr,mm,Z))~add,
+mult~Lamc(B(V,mn,Lam(mm,mr,mr1)),mr1),
+App(n,Iter(r,m,S(Z)))~mult,
+exp~Lamc(B(V,n,Lam(m,r,r1)),r1);
+exp~App(a,App(b,res));
+prnat res;
+free res;
+
+
+// Ack 3 10
+// ver 1: the same as the example on the paper
+a~S(S(S(Z))),
+b~S(S(S(S(S(S(S(S(S(S(Z))))))))));
+Iter(t,x,Lamc(x1,S(x1)))~Lamc(B(V,Iter(r2,S(y),S(Z)),Lam(y,r2,r1)),r1),
+Lamc(x,t)~App(a,App(b, r));
+prnat r;
+free r;
+
+// ver 2: \m.(\n.(iter m (\x.(S x)) (\x.(\y.(iter (S y) (S 0) x))) n))
+a~S(S(S(Z))),
+b~S(S(S(S(S(S(S(S(S(S(Z))))))))));
+Iter(App(n,apr),x,Lamc(x1,S(x1)))~Lamc(B(V,Iter(r2,S(y),S(Z)),Lam(y,r2,r1)),r1),
+Lamc(B(V,x,Lam(n,apr,nr)),nr)~App(a,App(b, r));
+prnat r;
+free r;
+
+// ver 3: another encoding of ver 2.
+a~S(S(S(Z))),
+b~S(S(S(S(S(S(S(S(S(S(Z))))))))));
+Iter(t,m,Lamc(x1,S(x1)))~Lamc(B(V,Iter(r2,S(y),S(Z)),Lam(y,r2,r1)),r1),
+Lamc(m,t)~App(n,apr),
+Lamc(n,apr)~App(a,App(b, r));
+prnat r;
+free r;

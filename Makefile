@@ -1,0 +1,44 @@
+CC      = gcc
+CFLAGS  = -Wall -Winline -O3 -std=gnu99 --param inline-unit-growth=2000 --param max-inline-insns-single=2000
+LDFLAGS = 
+LIBS    = 
+INCLUDE = -I ./src
+SRC_DIR = ./src
+OBJ_DIR = ./build
+#SOURCES = $(SRC_DIR)/ast.c $(SRC_DIR)/id_table.c $(SRC_DIR)/linenoise/linenoise.c
+TARGET  = inpla
+OBJS    = $(OBJ_DIR)/$(TARGET).tab.c $(OBJ_DIR)/ast.o $(OBJ_DIR)/id_table.o $(OBJ_DIR)/linenoise.o
+
+#MYOPTION = -DHAND_FIB -DHAND_FIB_INT  -DHAND_I_CONS -DHAND_IS_CONS -DHAND_Apnd_CONS -DHAND_Part_CONS -DHAND_Split_CONS -DHAND_MergeCC_CONS -DHAND_B_CONS -DHAND_DUP_S -DHAND_ADD_S -DHAND_ACK_S
+#MYOPTION = -DHAND_Split_CONS -DHAND_MergeCC_CONS
+
+.PHONY: all
+
+all: $(OBJ_DIR) $(TARGET) 
+
+$(TARGET): $(OBJS) $(LIBS)
+	$(CC) $(CFLAGS) $(INCLUDE) $(MYOPTION) -o $@ $(OBJS) $(LDFLAGS) 
+
+$(OBJ_DIR)/%.o: $(SRC_DIR)/linenoise/%.c 
+	$(CC) $(CFLAGS) $(INCLUDE) -o $@ -c $< 
+
+
+$(OBJ_DIR)/%.o: $(SRC_DIR)/%.c 
+	$(CC) $(CFLAGS) $(INCLUDE) -o $@ -c $< 
+
+$(OBJ_DIR)/$(TARGET).tab.c : $(SRC_DIR)/$(TARGET).y $(OBJ_DIR)/lex.yy.c
+	bison -o $@ $<
+
+$(OBJ_DIR)/lex.yy.c : $(SRC_DIR)/$(TARGET).l
+	flex -o $@ $^
+
+$(OBJ_DIR):
+	@if [ ! -d $(OBJ_DIR) ]; then \
+		echo ";; mkdir $(OBJ_DIR)"; mkdir $(OBJ_DIR); \
+	fi
+
+clean:
+	rm -f $(TARGET) $(OBJ_DIR)/* *stackdump*
+
+thread: $(OBJS) $(LIBS)
+	$(CC) $(CFLAGS) $(INCLUDE) $(MYOPTION) -DTHREAD -o $(TARGET) $(OBJS) $(LDFLAGS) -lpthread

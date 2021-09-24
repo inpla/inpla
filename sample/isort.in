@@ -1,0 +1,15 @@
+// Insertion sort
+
+// Rules
+isort(ret) >< [] => ret~[];
+isort(ret) >< x:xs => insert(ret, x)~cnt, isort(cnt)~xs;
+
+insert(ret, int x) >< [] => ret~[x];
+insert(ret, int x) >< (int y):ys
+| x<=y => ret~(x:y:ys)
+| _    => ret~(y:cnt), insert(cnt, x)~ys;
+
+
+// Nets
+isort(r)~[3,6,1,9,2];
+r;

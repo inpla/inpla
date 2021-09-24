@@ -1,0 +1,60 @@
+// 245II in YALE encoding
+
+// Rules
+Lam(a,b,c) >< App(x,y) => a~x, b~y, c~D;
+D >< V => ;
+B(a,b,c) >< Z => a~c, b~Z;
+B(a,x,e) >< Lam(b,c,y) => x~Lam(b,c,d), y~DB(a,d,e);
+DB(a,b,c) >< V => a~c, b~V;
+C(x,y) >< Z => x~Z, y~Z;
+C(x,y) >< Lam(s,t,u) =>
+	 x~Lam(a,b,c), y~Lam(d,e,f),
+	 s~Delta(a,d), t~Delta(b,e), u~C(c,f);
+C(x,y) >< V => x~V, y~V;
+Delta(x,y) >< Delta(a,b) => x~a, y~b;
+B(x,a,b) >< Delta(c,d) => x~CB(a,b,Delta(c,d));
+Delta(a,b) >< CB(x,y,z) =>
+	x~Delta(c,d), y~Delta(e,f), z~Delta(B(a,c,e),B(b,d,f));
+Delta(x,y) >< S(z) =>
+	x~S(a), y~S(b), z~Delta(a,b);
+Delta(x,y) >< Z => x~Z, y~Z;
+Delta(x,y) >< V => x~V, y~V;
+Delta(x,y) >< C(t,s) =>
+	x~C(a,b), y~C(c,d), t~Delta(b,d), s~Delta(a,c);
+Delta(x,y) >< App(t,s) =>
+	x~App(a,b), y~App(c,d), t~Delta(a,c), s~Delta(b,d);
+Delta(x,y) >< Lam(t,s,u)=>
+	x~Lam(a,b,c), y~Lam(d,e,f),
+	t~Delta(a,d), s~Delta(b,e), u~Delta(c,f);
+DB(x,y,z) >< CB(t,s,u) =>
+	x~CB(d,e,u), y~CB(t,f,d), s~DB(e,f,z);
+C(x,y) >< CB(t,s,u) =>
+	x~CB(a,b,c), y~CB(d,e,f), 
+	t~Delta(a,d), s~C(b,e), u~C(c,f);
+D >< CB(a,b,c) => a~c, b~D;
+
+Eps >< Eps => ;
+Eps >< S(x) => x~Eps;
+Eps >< V => ;
+Eps >< D =>;
+Eps >< Delta(t,s) => t~Eps,s~Eps;
+Eps >< Lam(t,s,u) => t~Eps,s~Eps,u~Eps;
+Eps >< App(t,s) => t~Eps,s~Eps;
+Eps >< B(t,s,u) => t~Eps,s~Eps,u~Eps;
+Eps >< CB(t,s,u) => t~Eps,s~Eps,u~Eps;
+
+
+// Execution
+id1 ~ Lam(i,i,V);
+id2 ~ Lam(i2,i2,V);
+two1 ~ Lam(Lam(a,b,c),B(c,C(App(a,d),App(d,b)),V),V);
+four1 ~ Lam(Lam(dz4, dx2, da1), B(da1, C(App(dz4, dz3), C(App(dz3, dz2), C(App(dz2, dz1), App(dz1, dx2)))), V), V);
+five3 ~ Lam(Lam(z53, x23, a13), B(a13, C(App(z53, z43), C(App(z43, z33), C(App(z33,z23), C(App(z23, z13), App(z13, x23))))), V), V);
+
+// 245II
+two1 ~ App(aux1, four1);
+aux1 ~ App(aux2, five3);
+aux2 ~ App(aux3, id1);
+aux3 ~ App(aux4, id2);
+aux4;
+exit;

@@ -1,0 +1,28 @@
+// Merge sort
+
+// Rules
+msort(ret) >< [] => ret~[];
+msort(ret) >< x:xs => ms_tail(ret, x)~xs;
+
+ms_tail(ret, n) >< [] => ret~[n];
+ms_tail(ret, n) >< x:xs => 
+	split(left,right) ~ (n:x:xs),
+	msort(a)~left, msort(b)~right, merge(ret,b)~a;
+
+merge(ret, snd) >< [] => ret~snd;
+merge(ret, snd) >< x:xs => mergeCC(ret, x, xs)~snd;
+
+mergeCC(ret, int y, ys) >< [] => ret~(y:ys);
+mergeCC(ret, int y, ys) >< (int x):xs
+| x <= y => ret~(x:cnt), mergeCC(cnt, y, ys) ~ xs
+| _      => ret~(y:cnt), mergeCC(cnt, x, xs) ~ ys;
+
+
+split(right,left) >< [] => right~[], left~[];
+split(right,left) >< x:xs =>
+	right~(x:cntl), left~cntr, split(cntr,cntl)~xs;
+
+
+// Nets
+msort(ret)~[3,6,1,9,2];
+ret;
