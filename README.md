@@ -4,14 +4,14 @@
 
 ## What is Inpla
 
-Inpla is a multi-threaded parallel interpreter of interaction nets. Once you write programs for sequential execution, it also works in multi-threaded parallel execution. Each thread is managed on each core with Posix-thread library.
+Inpla is a multi-threaded parallel interpreter of interaction nets. Once you write programs for sequential execution, it works also in multi-threaded parallel execution. Each thread is managed on each CPU-core with POSIX-thread library.
 
 ![speedup-ratio](pic/benchmark_reuse.png)
 
 
 ### Feature of Version 0.4.1
 - Integer numbers can be written the same as one of the first-class objects.
-- Interaction rules can re-allocate heaps of the rule agents for agents in nets. This re-allocation is specified by modifications such as (\*L), (\*R), called reuse annotation [1], to agents in nets. This annotation can improve execution performance in parallel.
+- Interaction rules can re-allocate heaps of the rule agents to agents in nets. This re-allocation is specified by modifications such as (\*L), (\*R), called reuse annotation [1], to agents in nets. This re-allocation can improve execution performance in parallel.
 - Wead Head Normal Form reduction strategy is supported. It turns on by invoked with ```-w``` option.
 - Nested guards in conditional rules are supporeted.
 - Comparison with other interpreters: Standard ML v110.74 (SML) and Python v3.8.5 (Python) in execution time. (We are planing to have benchmark of Haskell, C, as well in future.)
