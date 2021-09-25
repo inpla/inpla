@@ -7538,7 +7538,7 @@ int main(int argc, char *argv[])
 
     
     max_AgentBuffer = min_AgentBuffer + max_AgentBuffer/MaxThreadNum;
-    printf("max_AgentBuffer:%d\n", max_AgentBuffer);
+    //printf("max_AgentBuffer:%d\n", max_AgentBuffer);
     
     IdTable_init();    
     NameTable_init();
