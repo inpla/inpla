@@ -4,7 +4,7 @@
 
 ## What is Inpla
 
-Inpla is a multi-threaded parallel interpreter of interaction nets. Once you write programs for sequential execution, it works also in multi-threaded parallel execution. Each thread runs on each CPU-core with POSIX-thread library.
+Inpla is a multi-threaded parallel interpreter of interaction nets. Once you write programs for sequential execution, it works also in multi-threaded parallel execution. Each thread is managed on each CPU-core with POSIX-thread library.
 
 ![speedup-ratio](pic/benchmark_reuse.png)
 
@@ -597,7 +597,7 @@ In interaction rule definitions, we can specify which agent is reused in the net
 
 
 
-### Weak Head Normal Form reduction stragety
+### Weak Head Normal Form reduction strategy
 
 In this reduction strategy, only connections that have living names are re-written by interaction rules. This is taken for non-terminate computation such as fixed point combinator and process networks.
 
@@ -674,7 +674,7 @@ Electronic Communications of the EASST, Volume 73: Graph Computation Models - Se
 
 
 
-# Licence
+# License
 
 Copyright (c) 2021 [Shinya SATO](http://satolab.com/)  
  Released under the MIT license  
