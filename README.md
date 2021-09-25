@@ -4,7 +4,7 @@
 
 ## What is Inpla
 
-Inpla is a multi-threaded parallel interpreter of interaction nets. Once you write programs for sequential execution, it works also in multi-threaded parallel execution. Each thread is managed on each CPU-core with POSIX-thread library.
+Inpla is a multi-threaded parallel interpreter of interaction nets. Once you write programs for sequential execution, it works also in multi-threaded parallel execution. Each thread runs on each CPU-core with POSIX-thread library.
 
 ![speedup-ratio](pic/benchmark_reuse.png)
 
