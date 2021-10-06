@@ -8,6 +8,11 @@
 /**************************************
  NAME TABLE
 **************************************/
+/*
+  NameTable[] <-- hashtable
+    NameTable[hash] <-- NameList(linear list)
+*/
+
 
 typedef struct NameList {
   char *name;             // KEY
@@ -21,7 +26,7 @@ typedef struct NameList {
 } NameList;
 
 #define NAME_HASHSIZE  127
-static NameList *NameHashTable[NAME_HASHSIZE];  /* ハッシュテーブル本体 */
+static NameList *NameHashTable[NAME_HASHSIZE];  // HashTable for name strings
 
 // It should be called at first, and never called after that.
 void NameTable_init();

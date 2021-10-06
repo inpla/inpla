@@ -4,6 +4,13 @@
 
 #include "name_table.h"
 
+
+/*
+  NameTable[] <-- hashtable
+    NameTable[hash] <-- NameList (linear list)
+*/
+
+
 NameList *NameList_new() {
   NameList *alist;
   alist = malloc(sizeof(NameList));
@@ -15,7 +22,7 @@ NameList *NameList_new() {
 }
 
 
-// It should be called at first, and never called after that.
+// It should be called at first, and must be never called after that.
 void NameTable_init() {
   int i;
   for (i=0; i<NAME_HASHSIZE; i++) {
@@ -28,13 +35,14 @@ int getHash(char *key)
   int len;
   int ret;
   
-  // 0文字目、最後の文字、真中の文字の数値を加算し
+  // Make the hash number by addition among char nums of
+  // the first, middle, the last letters of the key
   len = strlen(key);
   ret  = key[0];
   ret += key[len-1];
   ret += key[(len-1)/2];
   
-  // ハッシュテーブルのサイズ（山の数）で modulo する
+  // Make the hash number as the modulo of the size of the Hash Table.
   return ret % NAME_HASHSIZE;
 }
 
@@ -43,47 +51,64 @@ int getHash(char *key)
 
 
 void NameTable_set_heap_id(char *key, VALUE heap, IDTYPE id) {
+  // Set (id, heap) for the key in the name table.
+  
   int hash;
   NameList *add;
   hash = getHash(key);
     
-  if (NameHashTable[hash] == NULL) {  // もしハッシュテーブルが空ならば
-    add = NameList_new();             // データノードを作成
+  if (NameHashTable[hash] == NULL) {  
+    // When the linear list of the hash table is EMPTY
 
+    // Make a new linear list
+    add = NameList_new(); 
+
+    // Set (id, heap) for the key
     add->name = key;
     add->id = id;
     IdTable_set_name(id, key);
     add->heap = heap;
     add->next = NULL;
-    
-    NameHashTable[hash] = add;        /* 単にセット */
+
+    // Store the liner list to the hash table
+    NameHashTable[hash] = add;
+    return;
   }
 
-  
-  /* 線形探査 */
-  NameList *at = NameHashTable[hash];  /* 先頭をセット */
+
+  // linear search for the key
+  NameList *at = NameHashTable[hash];
+
   while (at != NULL) {
-    if(strcmp( at->name, key ) == 0) {  /* すでにあれば... */	
+    
+    if (strcmp(at->name, key) == 0) {
+      // already exists
+
+      // set (id, heap) for the key
       at->id = id;
       IdTable_set_name(at->id, key);
       at->heap = heap;
       return;
 
     }
-    at = at->next;  /* 次のチェーンを辿る */
+    at = at->next;
   }
 
-  
-  /* key がなかったら、 先頭に追加 */
+
+  // The case of no entries
+
+  // Make a new linear list
   add = NameList_new();
 
+  // Set (id, heap) for the key
   add->name = key;  
   add->id = id;
   IdTable_set_name(add->id, key);
   add->heap = heap;
 
-  add->next = NameHashTable[hash];  // 以前の先頭を自分の次にする
-  NameHashTable[hash] = add;        // add を先頭とする
+  // Change the first element of the hash table into me.
+  add->next = NameHashTable[hash];
+  NameHashTable[hash] = add;
   
   return;
 }
@@ -91,32 +116,44 @@ void NameTable_set_heap_id(char *key, VALUE heap, IDTYPE id) {
 
 
 
-// NameHashTable から key のエントリーを削除
 void NameTable_erase(char *key) {
+  // Delete the entry for the key
+  
   int hash;
-  //int heap;
-  //NameList *add;
   
   if (key == NULL) return;
   
   hash = getHash(key);
   
-  if (NameHashTable[hash] == NULL) {  // ハッシュテーブルが空ならば何もしない
+  if (NameHashTable[hash] == NULL) {
+    // No entries
+
+    // Nothing to do
     return;
   }
 
-  /* 線形探査 */
-  NameList *at = NameHashTable[hash];  /* 先頭をセット */
+
+  // linear search
+  NameList *at = NameHashTable[hash];
   while (at != NULL) {
-    if (strcmp(at->name, key) == 0) {  /* すでにあれば... */	
+    if (strcmp(at->name, key) == 0) {
+      // already exists
+
+      // No need to be freed
+      // because it stores just a pointer to the heap,
+      // and this function is expected to remove only the information.
       at->heap = (VALUE)NULL;
-      at->id = -1;                  // 登録削除したら ID を -1 にする
-                                    // これを削ると、10%の速度低下。なぜ？
+      //at->id = -1;                  // id stores -1 for the deleted condition.
+                                    // It is not mandatory,
+                                    // but 10% less performance causes
+                                    // if we omit this. WHY?
+                                    // 2021-10-06: it was not caused,
+                                    // so it was commented out.
 
       return;
       
     }
-    at = at->next;  /* 次のチェーンを辿る */
+    at = at->next;
   }
   
   return;  
@@ -126,33 +163,24 @@ void NameTable_erase(char *key) {
 
 VALUE NameTable_get_heap(char *key) {
   int hash;
-  //int heap;
-  //NameList *add;
+  
   hash = getHash(key);
   
   if (NameHashTable[hash] == NULL) {
-    // ハッシュテーブルが空
     return (VALUE)NULL;
   }
 
-  // 線形探査
-  NameList *at = NameHashTable[hash];  // 先頭をセット
+  NameList *at = NameHashTable[hash];
   while (at != NULL) {
-    if (strcmp( at->name, key ) == 0) {  // すでにあれば
-      
-      if (at->heap != (VALUE)NULL) {
-	// NULLP でなければ、既に存在している変数 
-	return at->heap;
-	
-      } else {
-	return (VALUE)NULL;
-	
-      }
+    if (strcmp(at->name, key) == 0) {
+      // already exists
+      return at->heap;
     }
-    at = at->next;  // 次のチェーンを辿る
+    
+    at = at->next;
   }
   
-  // key がなかった
+  // There is no entry for the key
   return (VALUE)NULL;
   
 }
@@ -166,36 +194,36 @@ IDTYPE NameTable_get_set_id(char *key) {
   hash = getHash(key);
   
   if (NameHashTable[hash] == NULL) {
-    // ハッシュテーブルが空
-    add = NameList_new();             // データノードを作成
+
+    add = NameList_new();
     add->name = key;
     add->id = IdTable_new_agentid();
     IdTable_set_name(add->id, add->name);
     add->heap = (VALUE)NULL;
     add->next = NULL;
-    NameHashTable[hash] = add;        // 単にセット
+    NameHashTable[hash] = add;
     return (add->id);
 
   }
   
-  // 線形探査
-  NameList *at = NameHashTable[hash];  // 先頭をセット
+  NameList *at = NameHashTable[hash];
   while (at != NULL) {
-    if (strcmp(at->name, key) == 0) {  // すでにあれば
+    if (strcmp(at->name, key) == 0) {
       return (at->id);
       
     }
-    at = at->next;  // 次のチェーンを辿る
+    at = at->next;
   }
   
-  // key がなかったら→ 先頭に追加
+
   add = NameList_new();
   add->name = key;  
   add->id = IdTable_new_agentid();
   IdTable_set_name(add->id, add->name);
   add->heap = (VALUE)NULL;
-  add->next = NameHashTable[hash];  // 以前の先頭を自分の次にする
-  NameHashTable[hash] = add;        // 先頭に追加
+  
+  add->next = NameHashTable[hash];
+  NameHashTable[hash] = add;
 
   return (add->id);
 }
