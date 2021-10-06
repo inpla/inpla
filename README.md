@@ -17,7 +17,7 @@ Inpla is a multi-threaded parallel interpreter of interaction nets. Once you wri
 - Comparison with other interpreters: Standard ML v110.74 (SML) and Python v3.8.5 (Python) in execution time. (We are planing to have benchmark of Haskell, C, as well in future.)
   - Execution time in second  (Linux PC, Core i7-9700 (8 threads, no Hyper-threading), 16GB memory).
   - Inpla*n*  and Inpla*n*_**r** mean *n* threads without/with reuse-annotated execution, respectively. 
-  - `ack(3,6)` is computation of Ackermann function with (3,6), though its execution time is too short. Python cannot  calculate the case of (3,7) due to stack size limitation, so anyway we include it in the comparison table.
+  - `ack` is computation of Ackermann function. Though execution time with (3,6) is too short and  Python cannot  calculate the case of (3,7) due to stack size limitation, anyway we include it in the comparison table.
 
 |        | SML | Python | Inpla1 | Inpla1_r | Inpla3 | Inpla3_r | Inpla7 | Inpla7_r |
 | ---    | :-: | :-:    | :-:     | :-:     | :-:    | :-:     | :-:   | :-:     |
@@ -63,7 +63,7 @@ $ make thread
 - The symbol `>>>` is a prompt of this system. After the prompt you can write rules and nets as follows (`//` is a comment):
 
   ```
-  >>> inc(ret)><(int i) => ret~(i+1);   // a rule for inc >< (int i)
+  >>> inc(ret) >< (int i) => ret~(i+1);   // a rule for inc >< (int i)
   >>> inc(r)~10;                        // a net
   (1 interactions, 0.16 sec)
   >>> r;                                // show a connected net from the r
@@ -127,13 +127,14 @@ $ make thread
 
     ```
     // Rules
-    isort(ret) >< [] => ret~[];
-    isort(ret) >< x:xs => insert(ret, x)~cnt, isort(cnt)~xs;
-    
     insert(ret, int x) >< [] => ret~[x];
     insert(ret, int x) >< (int y):ys
     | x<=y => ret~(x:y:ys)
     | _    => ret~(y:cnt), insert(cnt, x)~ys;
+    
+    isort(ret) >< [] => ret~[];
+    isort(ret) >< x:xs => insert(ret, x)~cnt, isort(cnt)~xs;
+    
     
     // Nets
     isort(r)~[3,6,1,9,2];
@@ -279,11 +280,11 @@ Unary natural numbers are built by Z and S. For instance, 0, 1, 2, 3 are express
 >>> inc(result) >< S(x) => result~S(S(x));
 ```
 
-In the first rule, the name `result` occurs in its `<connection>` part once, so it satisfies the rule proviso. In the second rule, the `result` and `x` satisfies also because these are distinct and occur once in its `<connections>` part. 
+In the first rule, the name `result` occurs in its `<connection>` part once, so it satisfies the rule proviso. The second rule also satisfies because the `result` and `x` are distinct names and occur once in its `<connections>` part. 
 
-When agents can be separated into constructors and de-constructors, then it could be good to use strings of all small letters for de-constructors like `inc` , and ones start from a capital letter for constructors like `Z` and `S`.
+When agents works can be separated into constructors and de-constructors, it could be good to use strings of all small letters for de-constructors such as `inc` , and for constructors ones start from a capital letter such as `Z` and `S`.
 
-Let's have a result of the increment operation for `S(S(Z))`:
+Let's have the result of the increment operation for `S(S(Z))`:
 
 ```
 >>> inc(r)~S(S(Z));
@@ -316,21 +317,21 @@ Let's clean the result in case it could be used anywhere:
 
   - add(x, Z) = x,  
   - add(x, S(y)) = add(S(x), y),
+  
+  ```
+  >>> add(result, x) >< Z => result~x;
+  >>> add(result, x) >< S(y) => add(result, S(x))~y;
+  >>> add(r,S(Z))~S(S(Z));
+  (3 interactions, 0.00 sec)
+  >>> r;
+  S(S(S(Z)))
+  >>> prnat result;
+  3
+  >>> free r;
+  >>>
+  ```
+  
 
-We note that `Add` is already used as a built-in rule, so use `add`.
-
-```
->>> add(result, x) >< Z => result~x;
->>> add(result, x) >< S(y) => add(result, S(x))~y;
->>> add(r,S(Z))~S(S(Z));
-(3 interactions, 0.00 sec)
->>> r;
-S(S(S(Z)))
->>> prnat result;
-3
->>> free r;
->>>
-```
 
 
 
@@ -396,9 +397,9 @@ Z S(Z) S(S(Z))
 
 ## Attributes (integers)
 
-Agents can have integers as arguments. These integers are called attributes. 
+Agents can have integers as their arguments. These integers are called *attributes*. 
 
-- For instance, `A(100)` is evaluated as an agent `A` that holds an attribute of an integer 100.
+- For instance, `A(100)` is evaluated as an agent `A` that holds an attribute of an integer value 100.
 
 ```
 >>> x~A(100);
@@ -469,7 +470,7 @@ A(8)
 
 
 ### Interaction rules with expressions on attributes
-In interaction rules, attributes can be managed by using a modifier `int`. 
+In interaction rules, attributes must be recognised by the modifier `int` in order to operate these.
 - Example: Incrementor on an attribute:
 ```
 >>> inc(result) >< (int a) => result~(a+1);
