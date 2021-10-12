@@ -64,9 +64,9 @@ $ make thread
 
   ```
   >>> inc(ret) >< (int i) => ret~(i+1);   // a rule for inc >< (int i)
-  >>> inc(r)~10;                        // a net
+  >>> inc(r)~10;                          // a net
   (1 interactions, 0.16 sec)
-  >>> r;                                // show a connected net from the r
+  >>> r;                                  // show a connected net from the r
   11
   >>> 
   ```
@@ -95,6 +95,7 @@ $ make thread
   - Sample file: `sample/gcd.in`
 
     ```
+    // Example program in Python
     // def gcd(a: Int, b: Int): Int =
     //   if (b==0) a else gcd(b, a%b)
     
@@ -196,11 +197,11 @@ Inpla evaluates *nets*, which are built by *connections between terms*. First, w
 <term> ::= <name> | <agent>
 <name> ::= <nameID>
 <agent> ::= <agentID>
-          | <agentID> [( <term> , ... , <term> )]     
+          | <agentID> ['(' <term> ',' ... ',' <term> ')']     
 ```
 - **Name**: It works a buffer between terms. The ```<nameID>``` is defined as strings start with a small letter, e.g. ```x``` and ```y```. 
 
-- **Agent**: It works constructors and de-constructors (defined functions). The ```<agentID>``` is defined as strings start with a capital letter, e.g. ```A``` and ```Succ```, and also strings the same as  ```<nameID>``` when it is followed by a open curry bracket```(```. So, ```foo(x)``` is recognised as an agent.
+- **Agent**: It works constructors and de-constructors (defined functions). The ```<agentID>``` is defined as strings start with a capital letter, e.g. ```A``` and ```Succ```, and also ```<nameID>``` followed by a open curry bracket```(```. So, ```foo(x)``` is recognised as an agent.
 
 
 
@@ -208,7 +209,7 @@ Inpla evaluates *nets*, which are built by *connections between terms*. First, w
 
 A **connection** is a relation between two terms, and it is expressed with the symbol `~`. For instance, a connection between a name `x` and an agent `A` is denoted as `x~A`. 
 
-- Connections between a name and an agent, such as `x~A`, evaluated that the `A` is connected from the `x`.   
+- Connections between a name and an agent are evaluated that the agent is connected from the name. For instance, `x~A` is evaluated that the `A` is connected from the `x`.   
 - Connections between agents are evaluated according to `interaction rules` explained later. 
 
 Here, as an example, type `x~A` with the termination symbol `;` as follows:
@@ -234,7 +235,7 @@ To dispose the name `x` and anything connceted from the `x`, use `free` command:
 >>>
 ```
 
-One more connections are also evaluated. For instance, `x~A, x~y` is evaluated as `y~A`. **We note** that the `x` is disposed because it is consumed (used) by this re-connection:
+One more connections are also evaluated. For instance, `x~A, x~y` is evaluated as `y~A`. **We note** that the `x` is disposed because it is consumed (used) by the re-connection:
 ```
 >>> x~A, x~y;
 (0 interactions, 0.00 sec)
@@ -261,9 +262,9 @@ Just in case for other examples, let the `y` disposed:
 Connections between agents are re-written according to **interaction rules**:
 
 ```
-<interaction-rule> ::= <rule-agent> >< <rule-agent> => <connections> ;
+<interaction-rule> ::= <rule-agent> '><' <rule-agent> '=>' <connections> ';'
 <rule-agent> ::= <agentID>
-               | <agentID> ( <name>, ... , <name> )
+               | <agentID> '(' <name> ',' ... ',' <name> ')'
 ```
   where
 
@@ -427,9 +428,9 @@ Attributes can be given as the results of arithmetic operation using `where` sta
 ```
 <connections-with-expressions> ::= 
                          <connections> 
-                       | <connections> where <let-clause>* ;
+                       | <connections> 'where' <let-clause>* ';'
                        
-<let-clause> ::= <name> = <arithmetic expression>
+<let-clause> ::= <name> '=' <arithmetic expression>
 ```
 
 The symbol of addition, subtraction, multiplication, division and modulo are `+`, `-`, `*`, `/` and `%`, respectively.
