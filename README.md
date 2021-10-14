@@ -51,7 +51,7 @@ $ make thread
 ## How to execute
 
 ### Interactive mode (single-thread version)
-- Inpla starts in the interactive mode by typing the following command:
+- Inpla starts in the interactive mode by typing the following command (where the symbol `$` is a shell prompt):
 	
 	```
 	$ ./inpla
@@ -60,7 +60,7 @@ $ make thread
 	```
 
 
-- The symbol `>>>` is a prompt of this system. After the prompt you can write rules and nets as follows (`//` is a comment):
+- The symbol `>>>` is a prompt of Inpla. After the prompt you can write rules and nets. For instance, the following is a rule for incrementation `inc`  and a net to bind the increment result of `10` to a name `r`  (`//` is a comment):
 
   ```
   >>> inc(ret) >< (int i) => ret~(i+1);   // a rule for inc >< (int i)
