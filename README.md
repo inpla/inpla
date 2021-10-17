@@ -9,6 +9,9 @@ Inpla is a multi-threaded parallel interpreter of interaction nets. Once you wri
 ![speedup-ratio](pic/benchmark_reuse.png)
 
 
+### Feature of Version 0.4.2
+- Line edit supports multi-line inputs.
+
 ### Feature of Version 0.4.1
 - Integer numbers can be written the same as one of the first-class objects.
 - Interaction rules can re-allocate heaps of the rule agents to agents in nets. This re-allocation is specified by modifications such as (\*L), (\*R), called reuse annotation [1], to agents in nets. This re-allocation can improve execution performance in parallel.
