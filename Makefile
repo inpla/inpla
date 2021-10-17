@@ -19,7 +19,10 @@ all: $(OBJ_DIR) $(TARGET)
 $(TARGET): $(OBJS) $(LIBS)
 	$(CC) $(CFLAGS) $(INCLUDE) $(MYOPTION) -o $@ $(OBJS) $(LDFLAGS) 
 
-$(OBJ_DIR)/%.o: $(SRC_DIR)/linenoise/%.c 
+$(OBJ_DIR)/linenoise.o: $(SRC_DIR)/linenoise/linenoise.c
+	@if [ ! -f $(SRC_DIR)/linenoise/linenoise.c.orig ]; then \
+		patch --backup --version-control=simple --suffix=.orig $(SRC_DIR)/linenoise/linenoise.c $(SRC_DIR)/linenoise/linenoise-multiline.patch; \
+	fi
 	$(CC) $(CFLAGS) $(INCLUDE) -o $@ -c $< 
 
 
@@ -38,7 +41,12 @@ $(OBJ_DIR):
 	fi
 
 clean:
-	rm -f $(TARGET) $(OBJ_DIR)/* *stackdump*
+	rm -f $(TARGET)* $(OBJ_DIR)/* *stackdump*
+	@if [ -f $(SRC_DIR)/linenoise/linenoise.c.orig ]; then \
+		echo "mv -f $(SRC_DIR)/linenoise/linenoise.c.orig $(SRC_DIR)/linenoise/linenoise.c"; \
+		mv -f $(SRC_DIR)/linenoise/linenoise.c.orig $(SRC_DIR)/linenoise/linenoise.c; \
+	fi
+
 
 thread: $(OBJS) $(LIBS)
 	$(CC) $(CFLAGS) $(INCLUDE) $(MYOPTION) -DTHREAD -o $(TARGET) $(OBJS) $(LDFLAGS) -lpthread

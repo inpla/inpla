@@ -1,5 +1,19 @@
 # Changelog
 
+## v0.4.2 (16 October 2021)
+
+### Improved
+
+- Line edit was improved to support multi-line paste, according to the following suggestion:
+  https://github.com/antirez/linenoise/issues/43
+
+- History in Line edit becomes available.
+
+
+### Bug Fix
+- Long length lists are printed out as abbreviation of 14-length lists,
+though these were printed out as 1-length lists after putting long lists.
+
 
 
 ## v0.4.1 (24 September 2021)

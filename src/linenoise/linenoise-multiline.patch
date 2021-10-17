@@ -1,0 +1,12 @@
+258c258,260
+<     if (tcsetattr(fd,TCSAFLUSH,&raw) < 0) goto fatal;
+---
+>     //if (tcsetattr(fd,TCSAFLUSH,&raw) < 0) goto fatal;
+>     // https://github.com/antirez/linenoise/issues/43
+>     if (tcsetattr(fd,TCSADRAIN,&raw) < 0) goto fatal;
+269c271,273
+<     if (rawmode && tcsetattr(fd,TCSAFLUSH,&orig_termios) != -1)
+---
+>     //  if (rawmode && tcsetattr(fd,TCSAFLUSH,&orig_termios) != -1)
+>     // https://github.com/antirez/linenoise/issues/43
+>       if (rawmode && tcsetattr(fd,TCSADRAIN,&orig_termios) != -1)

@@ -33,7 +33,7 @@ static int mygetinput(char *buf, int size) {
        fprintf(stderr,"input line too long\n"); return YY_NULL; }
     sprintf(buf,"%s\n",line);
     linenoiseHistoryAdd(line);
-    //linenoiseHistorySave(".inpla.history.txt"); 
+    linenoiseHistorySave(".inpla.history.txt"); 
     free(line);
     return strlen(buf);
 }   

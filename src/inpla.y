@@ -7,6 +7,8 @@
 #include <errno.h>
 #include <sched.h>
   
+#include "linenoise/linenoise.h"
+
 #include "ast.h"
 #include "id_table.h"
 #include "name_table.h"
@@ -46,8 +48,8 @@ int ActiveThreadNum=0;
 
 //#define YYDEBUG 1
 
-#define VERSION "0.4.1"
-#define BUILT_DATE  "22 Sept. 2021"
+#define VERSION "0.4.2"
+#define BUILT_DATE  "16 Oct. 2021"
 
 extern FILE *yyin;
 
@@ -1117,6 +1119,7 @@ void puts_term(VALUE ptr) {
       Puts_list_element++;
       if (Puts_list_element > PUTS_ELEMENTS_NUM) {
 	printf("...]");
+	Puts_list_element=0;
 	break;
       }
       
@@ -1331,7 +1334,7 @@ void freeAgentRec(VALUE ptr) {
   } else {
     if (BASIC(ptr)->id == ID_CONS) {
       if (IS_FIXNUM(AGENT(ptr)->port[0])) {
-	VALUE port1 = AGENT(ptr)->port[0];
+	VALUE port1 = AGENT(ptr)->port[1];
 	freeAgent(ptr);
 	ptr = port1; goto loop;
       }
@@ -7574,6 +7577,7 @@ int main(int argc, char *argv[])
   }
   
 
+  linenoiseHistoryLoad(".inpla.history.txt");
 
   // the main loop of parsing and execution
   while(1) {
