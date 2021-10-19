@@ -168,7 +168,7 @@ $ make thread
     	qsort(left)~smaller, qsort(right)~larger;
     
     // Note: `Append' is implemented as the following built-in agent:
-    // Append(ret, b)~a  -->  ret ~ a@b
+    // Append(ret, b)~a  -->  ret ~ a++b
     
     part(smaller, larger, int x) >< [] => smaller~[], larger~[];
     part(smaller, larger, int x) >< (int y):ys
