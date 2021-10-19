@@ -126,7 +126,7 @@ $ make thread
   
 
 #### Insertion sort
-
+![insertion sort](pic/isort.png)
   - Sample file: `sample/isort.in`
 
     ```
@@ -151,6 +151,42 @@ $ make thread
     $ ./inpla -f sample/isort.in
     Inpla 0.4.1 : Interaction nets as a programming language [built: 21 Sept. 2021]
     (16 interactions, 0.00 sec)
+    [1,2,3,6,9]
+    
+    $
+    ```
+
+#### Quick sort
+![quick sort](pic/qsort.png)
+  - Sample file: `sample/qsort.in`
+
+    ```
+    // Rules
+    qsort(ret) >< [] => ret~[];
+    qsort(ret) >< (int x):xs =>
+    	Append(ret, x:right)~left, part(smaller, larger, x)~xs,
+    	qsort(left)~smaller, qsort(right)~larger;
+    
+    // Note: `Append' is implemented as the following built-in agent:
+    // Append(ret, b)~a  -->  ret ~ a@b
+    
+    part(smaller, larger, int x) >< [] => smaller~[], larger~[];
+    part(smaller, larger, int x) >< (int y):ys
+    | y<x => smaller~(y:cnt), part(cnt, larger, x)~ys
+    | _   => larger~(y:cnt), part(smaller, cnt, x)~ys;
+    
+    
+    // Nets
+    isort(r)~[3,6,1,9,2];
+    r;
+    ```
+
+  - Execution:
+
+    ```
+    $ ./inpla -f sample/isort.in
+    Inpla 0.4.1 : Interaction nets as a programming language [built: 21 Sept. 2021]
+    (22 interactions, 0.00 sec)
     [1,2,3,6,9]
     
     $
