@@ -15,7 +15,7 @@ Inpla is a multi-threaded parallel interpreter of interaction nets. Once you wri
 ### Feature of Version 0.4.1
 - Integer numbers can be written the same as one of the first-class objects.
 - Interaction rules can re-allocate heaps of the rule agents to agents in nets. This re-allocation is specified by modifications such as (\*L), (\*R), called reuse annotation [1], to agents in nets. This re-allocation can improve execution performance in parallel.
-- Wead Head Normal Form reduction strategy is supported. It turns on by invoked with ```-w``` option.
+- Weak reduction strategy is supported. It turns on by invoked with ```-w``` option.
 - Nested guards in conditional rules are supporeted.
 - Comparison with other interpreters: Standard ML v110.74 (SML) and Python v3.8.5 (Python) in execution time. (We are planing to have benchmark of Haskell, C, as well in future.)
   - Execution time in second  (Linux PC, Core i7-9700 (8 threads, no Hyper-threading), 16GB memory).
@@ -217,7 +217,7 @@ Options:
  -c <number>      Set the size of term cells   (Defalut is   100000)
  -x <number>      Set the size of the AP stack (Default is    10000)
  -t <number>      Set the number of threads    (Default is        1)
- -w               Enable Weak Head Normal Form strategy (Default: false)
+ -w               Enable Weak reduction strategy (Default: false)
  -h               Print this help message
 ```
 (The option ```-t``` is available for the multi-thread version that is compiled by ```make thread```.)
@@ -638,7 +638,7 @@ In interaction rule definitions, we can specify which agent is reused in the net
 
 
 
-### Weak Head Normal Form reduction strategy
+### Weak reduction strategy
 
 In this reduction strategy, only connections that have living names are re-written by interaction rules. This is taken for non-terminate computation such as fixed point combinator and process networks.
 
