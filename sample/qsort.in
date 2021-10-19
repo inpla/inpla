@@ -3,17 +3,16 @@
 // Rules
 qsort(ret) >< [] => ret~[];
 qsort(ret) >< (int x):xs =>
-	part(x, left, right)~xs,
-	qsort(cntl)~left, qsort(cntr)~right,
-	Append(ret, x:cntl)~cntr;
+	Append(ret, x:right)~left, part(smaller, larger, x)~xs,
+	qsort(left)~smaller, qsort(right)~larger;
 
-// Note: `Append' is implemented as built-in.
-// Append(ret, a)~b  -->  ret ~ b@a
+// Note: `Append' is implemented as the following built-in agent:
+// Append(ret, b)~a  -->  ret ~ a@b
 
-part(int x, a, b) >< [] => a~[], b~[];
-part(int x, a, b) >< (int y):ys
-| y<x => b~(y:cnt), part(x, a, cnt)~ys
-| _   => a~(y:cnt), part(x, cnt, b)~ys;
+part(smaller, larger, int x) >< [] => smaller~[], larger~[];
+part(smaller, larger, int x) >< (int y):ys
+| y<x => smaller~(y:cnt), part(cnt, larger, x)~ys
+| _   => larger~(y:cnt), part(smaller, cnt, x)~ys;
 
 
 // Nets
