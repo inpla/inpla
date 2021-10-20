@@ -639,17 +639,15 @@ fib(result) >< (int n)
 ## Commands
 
 - Inpla has the following commands:
-  - `free` *name_1* ... *name_n* `;`     
-  Terms connected from the *name_1* ... *name_n* and itself are disposed.
-  - *name_1* ... *name_n* `;`  
-  Put terms connected from the *name_1* ... *name_n*.
-  - `prnat`*name*`;`    
+  - `free` *name1* ... *name_n* `;`     
+  The *name1* ... *name_n* and connected terms from these are disposed. To dispose every living name and term connected from those, type `free ifce;`, where the `ifce` is an abbreviation of *interface* that is called for the set of living names.
+  - *name1* ... *name_n* `;`  
+  Put terms connected from the *name1* ... *name_n*.  To put every term connected from the interface, type `ifce;`.
+  - `prnat` *name*`;`    
   Put a term connected from the *name* as a natural number.
   - `use` `"`filename`";`  
   Read the file named as "filename". 
-  - `ifce;`       
-  Put all live names and connections from these name. The living name list is called *interface*, and the `ifce` is an abbreviation of Interface.
-  - `exit;`            
+   - `exit;`            
   Quit the system.
 
 - Inpla has the following macro:
