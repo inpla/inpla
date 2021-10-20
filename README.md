@@ -238,15 +238,19 @@ Inpla evaluates *nets*, which are built by *connections between terms*. First, w
 <agent> ::= <agentID>
           | <agentID> ['(' <term> ',' ... ',' <term> ')']     
 ```
-- **Name**: It works a buffer between terms. The ```<nameID>``` is defined as strings start with a small letter, e.g. ```x``` and ```y```. 
+- **Name**: It works a buffer between terms and **the same name must occur at most twice in order to ensure one-to-one connections between terms**. The ```<nameID>``` is defined as strings start with a small letter, e.g. ```x``` and ```y```. 
 
-- **Agent**: It works constructors and de-constructors (defined functions). The ```<agentID>``` is defined as strings start with a capital letter, e.g. ```A``` and ```Succ```, and also ```<nameID>``` followed by a open curry bracket```(```. So, ```foo(x)``` is recognised as an agent.
+- **Agent**: It works constructors and de-constructors (defined functions). Generally agents have one *principal port* and *n*-fixed *auxiliary ports*. The fixed number of auxiliary ports is called *arity*, and it is determined according to each agents. In graphical representation an agent term `A(x1,...,xn)`, whose arity is *n*, is drawn as the following picture, where its auxiliary ports and the principal port correspond to the occurrences of the `x1`,...`xn`, and `A(x1,...,xn)`, respectively: 
+  ![agent](pic/agent.png)
+  
 
+  The ```<agentID>``` is defined as strings start with a capital letter, e.g. ```A``` and ```Succ```, and also ```<nameID>``` followed by a open curry bracket```(```. So, ```foo(x)``` is recognised as an agent. 
 
+  
 
 ## Connections
 
-A **connection** is a relation between two terms, and it is expressed with the symbol `~`. For instance, a connection between a name `x` and an agent `A` is denoted as `x~A`. 
+A **connection** is a relation between two terms, and it is expressed with the symbol `~`. For instance, a connection between a name `x` and an agent `A` (whose arity is 0) is denoted as `x~A`. 
 
 - Connections between a name and an agent are evaluated that the agent is connected from the name. For instance, `x~A` is evaluated that the `A` is connected from the `x`.   
 - Connections between agents are evaluated according to `interaction rules` explained later. 
@@ -274,7 +278,7 @@ To dispose the name `x` and anything connceted from the `x`, use `free` command:
 >>>
 ```
 
-One more connections are also evaluated. For instance, `x~A, x~y` is evaluated as `y~A`. **We note** that the `x` is disposed because it is consumed (used) by the re-connection:
+One more connections are also evaluated. For instance, `x~A, x~y` is evaluated as `y~A`. **We note** that the `x` is disposed because it is consumed (used) by the re-connection. Thus, **every term connection can be one-to-one via names, not one-to-many**.
 ```
 >>> x~A, x~y;
 (0 interactions, 0.00 sec)
@@ -351,12 +355,14 @@ Let's clean the result in case it could be used anywhere:
 >>>
 ```
 
-- Exercise: Addition on unary natural numbers.
+- **Exercise**: Addition on unary natural numbers.
 
-  It is defined recursively as follows:
+  It is defined recursively in term rewriting systems as follows:
 
   - add(x, Z) = x,  
-  - add(x, S(y)) = add(S(x), y),
+  - add(x, S(y)) = add(S(x), y).
+  
+  This is written in Inpla as follows:
   
   ```
   >>> add(result, x) >< Z => result~x;
@@ -510,7 +516,7 @@ A(8)
 
 
 ### Interaction rules with expressions on attributes
-In interaction rules, attributes must be recognised by the modifier `int` in order to operate these.
+In interaction rules, attributes can be recognised by the modifier `int` in order to apply arithmetic expressions.
 - Example: Incrementor on an attribute:
 ```
 >>> inc(result) >< (int a) => result~(a+1);
@@ -520,6 +526,36 @@ In interaction rules, attributes must be recognised by the modifier `int` in ord
 11
 >>> free r;
 >>>
+```
+
+We have to be careful for operations of two attributes. For instance, we take the following rule of an `add` agent:
+
+```
+>>> add(result, int b) >< (int a) => result~(a+b);
+```
+
+Of course, it works as an addition operation on two attributes:
+
+```
+>>> add(r, 3) ~ 5;
+(1 interactions, 0.00 sec)
+>>> r;
+8
+>>> free r;
+>>>
+```
+
+However, it can cause core dump error in computation for results of something because the argument `b` of `add` must be an attribute when the rule is invoked. For instance, we take the following computation:
+
+```
+>>> add(r, b)~3, add(b, 10)~20;
+```
+
+If the `add(r, b)~3` is operated first, it causes core dump error because the `b` is not connected to an attribute, though it is OK if the `add(b, 10)~20` is operated first. To prevent this fragile situation, we should have auxiliary rules to ensure that every argument with the modifier `int` connects to an attribute. In this example, we should write rules as follows:
+
+```
+>>> add(result, b) >< (int a) => addn(result a) ~ b;
+>>> add(result, int a) >< (int b) => r~(a+b);
 ```
 
 
