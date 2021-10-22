@@ -15,7 +15,7 @@ Inpla is a multi-threaded parallel interpreter of interaction nets. Once you wri
 ### Feature of Version 0.4.1
 - Integer numbers can be written the same as one of the first-class objects.
 - Interaction rules can re-allocate heaps of the rule agents to agents in nets. This re-allocation is specified by modifications such as (\*L), (\*R), called reuse annotation [1], to agents in nets. This re-allocation can improve execution performance in parallel.
-- Weak reduction strategy is supported. It turns on by invoked with ```-w``` option.
+- Weak reduction strategy is supported. It turns on by invoked with ```-w``` option, and then only connections that have living names are evaluated.
 - Nested guards in conditional rules are supporeted.
 - Comparison with other interpreters: Standard ML v110.74 (SML) and Python v3.8.5 (Python) in execution time. (We are planing to have benchmark of Haskell, C, as well in future.)
   - Execution time in second  (Linux PC, Core i7-9700 (8 threads, no Hyper-threading), 16GB memory).
@@ -238,7 +238,17 @@ Inpla evaluates *nets*, which are built by *connections between terms*. First, w
 <agent> ::= <agentID>
           | <agentID> ['(' <term> ',' ... ',' <term> ')']     
 ```
-- **Name**: It works a buffer between terms and **the same name must occur at most twice in order to ensure one-to-one connections between terms**. The ```<nameID>``` is defined as strings start with a small letter, e.g. ```x``` and ```y```. 
+- **Name**: It works a buffer between terms and **the same name must occur at most twice in order to ensure one-to-one connections between terms**. The ```<nameID>``` is defined as strings start with a small letter, e.g. ```x``` and ```y```. To show connected terms from names, type the names. For instance, type just `x` to show a term connected from the 'x':
+
+  ```
+  >>> x;
+  <NON-DEFINED>
+  >>>
+  ```
+
+  Nothing is connected from the `x` yet, of course.
+
+  
 
 - **Agent**: It works constructors and de-constructors (defined functions). Generally agents have one *principal port* and *n*-fixed *auxiliary ports*. The fixed number of auxiliary ports is called *arity*, and it is determined according to each agents. In graphical representation an agent term `A(x1,...,xn)`, whose arity is *n*, is drawn as the following picture, where its auxiliary ports and the principal port correspond to the occurrences of the `x1`,...`xn`, and `A(x1,...,xn)`, respectively: 
   
@@ -252,32 +262,41 @@ Inpla evaluates *nets*, which are built by *connections between terms*. First, w
 
 A **connection** is a relation between two terms, and it is expressed with the symbol `~`. For instance, a connection between a name `x` and an agent `A` (whose arity is 0) is denoted as `x~A`. There is no order in the left-hand and the right-hand side terms, thus `x~A` and `A~x` are identified as the same one.
 
-- **Connections between a name and an agent** are evaluated that the agent is connected from the name. For instance, `x~A` is evaluated that the `A` is connected from the `x`.   
-- **Connections between names** are evaluated that these names are connected mutually in interaction nets. However, in Inpla, these are evaluated that the left-hand side name connects to the right-hand side name, thus only one way. For instance, `x~y` is evaluated that the `y` is connected from the `x`. 
+- **Connections between a name and an agent** are evaluated that the agent is connected from the name. For instance, `x~A` is evaluated that the `A` is connected from the `x`.   Here, as an example, type `x~A` with the termination symbol `;` as follows:
+  ```
+  >>> x~A;
+  (0 interactions, 0.00 sec)
+  >>>
+  ```
+  
+  To show the connected terms from the name x, type just `x`:  
+  ```
+  >>> x;
+  A
+  >>>
+  ```
+  
+  To dispose the name `x` and anything connceted from the `x`, use `free` command:
+  ```
+  >>> free x;
+  >>> x;
+  <NON-DEFINED>
+  >>>
+  ```
+
+
+- **Connections between names** are evaluated that these names are connected mutually in interaction nets. However, in Inpla, these are evaluated that the left-hand side name connects to the right-hand side name, thus only one way. For instance, `x~y` is evaluated that the `y` is connected from the `x`:
+
+  ```
+  >>> x~y;
+  >>> x;
+  y
+  >>> y;
+  <EMPTY>
+  >>>
+  ```
+
 - **Connections between agents** are evaluated according to *interaction rules* explained later. 
-
-Here, as an example, type `x~A` with the termination symbol `;` as follows:
-
-```
->>> x~A;
-(0 interactions, 0.00 sec)
->>>
-```
-
-To show the connected terms from the name x, type just `x`:  
-```
->>> x;
-A
->>>
-```
-
-To dispose the name `x` and anything connceted from the `x`, use `free` command:
-```
->>> free x;
->>> x;
-<NON-DEFINED>
->>>
-```
 
 One more connections are also evaluated. Connections whose the left-hand side is a name, such as `x~t`,  are disposed and the occurrence `x` in other connections is replaced with the `t`.  For instance, `x~A, x~y` are evaluated as `A~y` by replacing `x` with `A`, or possibly `y~A` by replacing the `x` with `y` when the second connection `x~y` is used.  **We note** that the `x` is disposed because it is consumed by the substitution. Thus, **every connection is one-to-one via names, cannot be one-to-many**.
 ```
@@ -363,11 +382,13 @@ Let's clean the result in case it could be used anywhere:
   - add(x, Z) = x,  
   - add(x, S(y)) = add(S(x), y).
   
-  This is written in Inpla as follows:
+  This is written in interaction nets as follows:
+  
+   ![add1](pic/add1.png)
   
   ```
-  >>> add(result, x) >< Z => result~x;
-  >>> add(result, x) >< S(y) => add(result, S(x))~y;
+  >>> add(ret, x) >< Z => ret~x;
+  >>> add(ret, x) >< S(y) => add(ret, S(x))~y;
   >>> add(r,S(Z))~S(S(Z));
   (3 interactions, 0.00 sec)
   >>> r;
@@ -377,8 +398,21 @@ Let's clean the result in case it could be used anywhere:
   >>> free r;
   >>>
   ```
-  
 
+- **Exricise**: Another version of the addition.
+
+  There is another version defined as follows in term rewriting system:
+
+  - add(x,Z) = x,
+  - add(x, S(y)) = S(add(x,y)).
+
+  This is written in interaction nets as follows:
+  
+   ![add2](pic/add2.png)
+  ```
+  >>> add(ret,x) >< Z => ret~x;
+  >>> add(ret,x) >< S(y) => ret~S(cnt), add(cnt, x)~y;
+  ```
 
 
 
@@ -524,7 +558,7 @@ A(8)
 
 
 ### Interaction rules with expressions on attributes
-In interaction rules, attributes can be recognised by the modifier `int` in order to apply arithmetic expressions.
+In interaction rules, attributes can be recognised by the modifier `int` in order to apply arithmetic expressions. We can use the same variable with the modifier `int` many times in the connection parts of interaction rules.
 - Example: Incrementor on an attribute:
 ```
 >>> inc(result) >< (int a) => result~(a+1);
@@ -535,6 +569,20 @@ In interaction rules, attributes can be recognised by the modifier `int` in orde
 >>> free r;
 >>>
 ```
+
+- Example: Duplicator of integer lists:
+```
+>>> dup(a1,a2) >< (int i):xs => a1~(i:xs1), a2~(i:xs2), dup(xs1,xs2)~xs;
+>>> dup(a1,a2) >< []         => a1~[], a2~[];
+>>> dup(a,b) ~ [1,2,3];
+(4 interactions, 0.00 sec)
+>>> a b;
+[1,2,3] [1,2,3]
+>>> free a b;
+>>>
+```
+
+  
 
 **We have to be careful for operations of two attributes**. For instance, we take the following rule of an `add` agent:
 
@@ -682,7 +730,7 @@ In interaction rule definitions, we can specify which agent is reused in the net
 
 ### Weak reduction strategy
 
-In this reduction strategy, only connections that have living names are re-written by interaction rules. This is taken for non-terminate computation such as fixed point combinator and process networks.
+In this reduction strategy, only connections that have living names are evaluated. This is taken for non-terminate computation such as fixed point combinator and process networks.
 
 - Example: We have a sample net in `sample/processnet1.in` that keep producing natural numbers from 1 and output these to the port `r`:
 
