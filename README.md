@@ -250,10 +250,11 @@ Inpla evaluates *nets*, which are built by *connections between terms*. First, w
 
 ## Connections
 
-A **connection** is a relation between two terms, and it is expressed with the symbol `~`. For instance, a connection between a name `x` and an agent `A` (whose arity is 0) is denoted as `x~A`. 
+A **connection** is a relation between two terms, and it is expressed with the symbol `~`. For instance, a connection between a name `x` and an agent `A` (whose arity is 0) is denoted as `x~A`. There is no order in the left-hand and the right-hand side terms, thus `x~A` and `A~x` are identified as the same one.
 
-- Connections between a name and an agent are evaluated that the agent is connected from the name. For instance, `x~A` is evaluated that the `A` is connected from the `x`.   
-- Connections between agents are evaluated according to `interaction rules` explained later. 
+- **Connections between a name and an agent** are evaluated that the agent is connected from the name. For instance, `x~A` is evaluated that the `A` is connected from the `x`.   
+- **Connections between names** are evaluated that these names are connected mutually in interaction nets. However, in Inpla, these are evaluated that the left-hand side name connects to the right-hand side name, thus only one way. For instance, `x~y` is evaluated that the `y` is connected from the `x`. 
+- **Connections between agents** are evaluated according to *interaction rules* explained later. 
 
 Here, as an example, type `x~A` with the termination symbol `;` as follows:
 
@@ -278,13 +279,13 @@ To dispose the name `x` and anything connceted from the `x`, use `free` command:
 >>>
 ```
 
-One more connections are also evaluated. For instance, `x~A, x~y` is evaluated as `y~A`. **We note** that the `x` is disposed because it is consumed (used) by the re-connection. Thus, **every term connection can be one-to-one via names, not one-to-many**.
+One more connections are also evaluated. Connections whose the left-hand side is a name, such as `x~t`,  are disposed and the occurrence `x` in other connections is replaced with the `t`.  For instance, `x~A, x~y` are evaluated as `A~y` by replacing `x` with `A`, or possibly `y~A` by replacing the `x` with `y` when the second connection `x~y` is used.  **We note** that the `x` is disposed because it is consumed by the substitution. Thus, **every connection is one-to-one via names, cannot be one-to-many**.
 ```
 >>> x~A, x~y;
 (0 interactions, 0.00 sec)
 >>> y;
 A
->>> x;        // x has been consumed and displosed by the re-connection of x~A and x~y.
+>>> x;        // x has been consumed by the re-connection of x~A and x~y.
 <NON-DEFINED>
 >>>
 ```
@@ -407,32 +408,39 @@ Inpla has built-in agents:
 
 ### Built-in rules for tuples and lists
 
-For pairs of the same built-in agents there are built-in rules that match and connect each element such that:
+There are built-in rules for pairs of the same built-in agents that match and connect each element such that:
 
 ```
 (x1,x2)><(y1,y2) => x1~y1, x2~y2 // This is already defined as a built-in rule.
 ```
 
-With respect to lists, we also have a built-in agent `Append` to append two lists as shown in the following pseudo code:
+We also have a built-in agent `Append` to append two lists as shown in the following pseudo code:
 
 ```
-Append(r, alist) ~ blist --> r~ (blist @ alist)  // pseudo code
+Append(r, listB) ~ listA --> r ~ (listA ++ listB)  // pseudo code
 ```
 
 - The following is an example of built-in agents:
 
 ```
->>> x~(Z, S(Z));
-(0 interactions, 0.00 sec)
->>> (x1,x2)~x;
+>>> (x1,x2)~(Z, S(Z));
+(1 interactions, 0.00 sec)
 >>> x1 x2;
 Z S(Z)
->>> y~[Z, S(Z), S(S(Z))];
-(0 interactions, 0.00 sec)
->>> [y1, y2, y3]~y;
+>>>
+```
+
+```
+>>> [y1, y2, y3]~[Z, S(Z), S(S(Z))];
+(1 interactions, 0.00 sec)
 >>> y1 y2 y3;
 Z S(Z) S(S(Z))
+>>>
+```
+
+```
 >>> Append(r, [Z, S(Z)]) ~ [A,B,C];
+(4 interactions, 0.00 sec)
 >>> r;
 [A,B,C,Z,S(Z)]
 >>> free x1 x2 y1 y2 y3 r;
@@ -443,7 +451,7 @@ Z S(Z) S(S(Z))
 
 ## Attributes (integers)
 
-Agents can have integers as their arguments. These integers are called *attributes*. 
+Agents can have integers as their ports. These integers are called *attributes*. 
 
 - For instance, `A(100)` is evaluated as an agent `A` that holds an attribute of an integer value 100.
 
@@ -528,7 +536,7 @@ In interaction rules, attributes can be recognised by the modifier `int` in orde
 >>>
 ```
 
-We have to be careful for operations of two attributes. For instance, we take the following rule of an `add` agent:
+**We have to be careful for operations of two attributes**. For instance, we take the following rule of an `add` agent:
 
 ```
 >>> add(result, int b) >< (int a) => result~(a+b);
@@ -551,11 +559,11 @@ However, it can cause core dump error in computation for results of something be
 >>> add(r, b)~3, add(b, 10)~20;
 ```
 
-If the `add(r, b)~3` is operated first, it causes core dump error because the `b` is not connected to an attribute, though it is OK if the `add(b, 10)~20` is operated first. To prevent this fragile situation, we should have auxiliary rules to ensure that every argument with the modifier `int` connects to an attribute. In this example, we should write rules as follows:
+If the `add(r, b)~3` is operated first, it causes core dump error because the `b` is not connected to an attribute, though it is OK if the `add(b, 10)~20` is operated first. To prevent this fragile situation, **we have to have extra rules to ensure that every port with the modifier `int` connects to an attribute**. For the rule of the `add` agent, the following is a **solution** to have the extra rule where `addn` is introduced as an extra agent:
 
 ```
->>> add(result, b) >< (int a) => addn(result a) ~ b;
->>> add(result, int a) >< (int b) => r~(a+b);
+>>> add(result, b) >< (int a) => addn(result, a) ~ b;
+>>> addn(result, int a) >< (int b) => r~(a+b);
 ```
 
 
