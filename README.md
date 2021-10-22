@@ -340,8 +340,8 @@ Something complicated? No problem! Let's us learn how to define the rules with s
 Unary natural numbers are built by Z and S. For instance, 0, 1, 2, 3 are expressed as Z, S(Z), S(S(Z)), S(S(S(Z))). Here, let's think about an increment operation `inc` such that inc(n) = S(n). This is written as rules for Z and S(x) as follows:
 
 ```
->>> inc(result) >< Z => result~S(Z);
->>> inc(result) >< S(x) => result~S(S(x));
+inc(ret) >< Z => ret~S(Z);
+inc(ret) >< S(x) => ret~S(S(x));
 ```
 
 In the first rule, the name `result` occurs in its `<connection>` part once, so it satisfies the rule proviso. The second rule also satisfies because the `result` and `x` are distinct names and occur once in its `<connections>` part. 
@@ -382,13 +382,16 @@ Let's clean the result in case it could be used anywhere:
   - add(x, Z) = x,  
   - add(x, S(y)) = add(S(x), y).
   
-  This is written in interaction nets as follows:
+  This is written in interaction nets and Inpla as follows:
   
    ![add1](pic/add1.png)
   
   ```
-  >>> add(ret, x) >< Z => ret~x;
-  >>> add(ret, x) >< S(y) => add(ret, S(x))~y;
+add(ret, x) >< Z => ret~x;
+add(ret, x) >< S(y) => add(ret, S(x))~y;
+  ```
+  The following is an execution example:
+  ```
   >>> add(r,S(Z))~S(S(Z));
   (3 interactions, 0.00 sec)
   >>> r;
@@ -399,19 +402,19 @@ Let's clean the result in case it could be used anywhere:
   >>>
   ```
 
-- **Exricise**: Another version of the addition.
+- **Exercise**: Another version of the addition.
 
   There is another version defined as follows in term rewriting system:
 
   - add(x,Z) = x,
   - add(x, S(y)) = S(add(x,y)).
 
-  This is written in interaction nets as follows:
+  This is written in interaction nets and Inpla as follows:
   
    ![add2](pic/add2.png)
   ```
-  >>> add(ret,x) >< Z => ret~x;
-  >>> add(ret,x) >< S(y) => ret~S(cnt), add(cnt, x)~y;
+  add(ret,x) >< Z => ret~x;
+  add(ret,x) >< S(y) => ret~S(cnt), add(cnt, x)~y;
   ```
 
 
