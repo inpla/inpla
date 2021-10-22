@@ -387,8 +387,8 @@ Let's clean the result in case it could be used anywhere:
    ![add1](pic/add1.png)
   
   ```
-add(ret, x) >< Z => ret~x;
-add(ret, x) >< S(y) => add(ret, S(x))~y;
+  add(ret, x) >< Z => ret~x;
+  add(ret, x) >< S(y) => add(ret, S(x))~y;
   ```
   The following is an execution example:
   ```
