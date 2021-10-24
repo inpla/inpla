@@ -1,0 +1,22 @@
+// Insertion sort
+IS(ret) >< [] => ret~[];
+IS(ret) >< x:xs => I(ret, x)~cnt, IS(cnt)~xs;
+
+I(ret, int x) >< [] => ret~[x];
+I(ret, int x) >< (int y):ys
+| x<=y => ret~(x:y:ys)
+| _    => ret~(y:cnt), I(cnt, x)~ys;
+
+
+const LIST_ELEM=40000;
+
+MkRandList(ret) >< (int n)
+| n>0 => ret~(rd:cnt), MkRandList(cnt)~(n-1) 
+  where rd=rand(10000)
+| _ => ret~[];
+
+MkRandList(cnt)~(LIST_ELEM),
+IS(ret)~cnt;
+ret;
+
+

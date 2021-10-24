@@ -1,0 +1,29 @@
+// Quick sort
+QS(ret) >< [] => ret~(*R)[];
+QS(ret) >< (int x):xs =>
+	(*R)Part(x, left, right)~xs,
+	(*L)QS(cntl)~left, QS(cntr)~right,
+	Append(ret, x:cntl)~cntr;
+
+// Note: `Append' is implemented as built-in.
+
+// Apnd(ret, a)~b  -->  ret ~ b@a
+//Apnd(ret, a) >< [] => ret~a;
+//Apnd(ret, a) >< x:xs => ret~(x:cnt), Apnd(cnt, a)~xs;
+
+Part(int x, a, b) >< [] => a~(*L)[], b~(*R)[];
+Part(int x, a, b) >< (int y):ys
+| y<x => b~(*R)(y:cnt), (*L)Part(x, a, cnt)~ys
+| _   => a~(*R)(y:cnt), (*L)Part(x, cnt, b)~ys;
+
+
+const LIST_ELEM=800000;
+
+MkRandList(ret) >< (int n)
+| n>0 => ret~(rd:cnt), (*L)MkRandList(cnt)~(n-1) 
+  where rd=rand(10000)
+| _ => ret~[];
+
+MkRandList(cnt)~(LIST_ELEM),
+QS(ret)~cnt;
+ret;

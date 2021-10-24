@@ -1,0 +1,63 @@
+#!/bin/bash
+# $1: executable file name
+# $2: name list of script files
+# ex: ./sptest_scripts.sh sml 'fib5.sml fib10.sml'
+#     Then, 'sml < fib5.sml' and "sml < fib10.sml' are executed.
+
+
+# repeat and waittimes
+#ct=10
+ct=1
+waittime=5
+
+# etc
+comf=$1
+log="log.txt"
+sfs=($2);  # sourcefiles
+
+# -------------------------------------------------
+function gettime() {
+  rm -f _result.txt
+  for ((i=1; i<ct; i++))
+  do
+      (time $1 < $2) 2>> _result.txt
+      echo 
+      echo "Done ($i/$ct)"
+      sleep $waittime
+      echo 'Restart'
+  done
+  (time $1 < $2) 2>> _result.txt
+  echo
+  echo
+  logtime=`grep real _result.txt | cut -f2 | sed -e "s/\(.*\)m\(.*\)s/\1 \2/" | awk -F' ' '{print ($1*60+$2)}'`
+  echo "Execution times"
+  echo "$logtime"
+  res=`echo "$logtime\n" | awk 'BEGIN{r=0;c=0} {r=r+$0;c++} END{print r/c}'` 
+
+  # for return value
+  res=`grep real _result.txt | awk -F'\t' '{print $2}' | cut -c3- | awk -F's' '{print $1}' | awk 'BEGIN{r=0;c=0} {r=r+$0;c++} END{print r/c}'`
+  rm -f _result.txt
+}
+
+
+rm -f $log
+
+echo '' >> $log
+echo "$ct" | awk -F',' '{printf("%-27s| avg. time over %d runs (sec)\n","",$1)}' >> $log
+echo '===========================+=============================' >> $log
+
+for f in "${sfs[@]}"
+do
+  command="$f"
+  echo 'Now just cooling CPU...'
+  sleep $waittime
+  echo 'The experimental was started.'
+  echo "------------------"   
+  echo "$comf < $f"
+  gettime "$comf" "$f"
+  echo "Average ${res}sec"
+  echo "$command,$res" | awk -F',' '{printf("%-27s| %.2f\n",$1,$2)}' >> $log
+done
+echo
+cat $log
+

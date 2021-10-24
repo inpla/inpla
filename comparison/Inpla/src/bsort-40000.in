@@ -1,0 +1,24 @@
+// Bubble sort
+BS(ret) >< [] => ret~[];
+BS(ret) >< x:xs => BS(ret)~cnt, B(cnt, x)~xs;
+BS(ret) >< M(x) => ret~x;
+
+B(ret, int x) >< [] => ret~M([x]);
+B(ret, int x) >< M(w) => ret~M(x:w);
+B(ret, int x) >< (int y):ys
+| x<y => ret~(x:cnt), B(cnt, y)~ys
+| _   => ret~(y:cnt), B(cnt, x)~ys;
+
+
+
+
+const LIST_ELEM=40000;
+
+MkRandList(ret) >< (int n)
+| n>0 => ret~(rd:cnt), MkRandList(cnt)~(n-1) 
+  where rd=rand(10000)
+| _ => ret~[];
+
+MkRandList(cnt)~(LIST_ELEM),
+BS(ret)~cnt;
+ret;

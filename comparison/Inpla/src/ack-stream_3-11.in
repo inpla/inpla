@@ -1,0 +1,41 @@
+// Ackermann Function: streaming version
+//
+// fun ack(0,n) = n+1
+// | ack(m,0) = ack(m-1,1)        
+// | ack(m,n) = ack(m-1,ack(m,n-1));
+
+// The below rule is wrong because there is no gurantee
+// such that cnt is an integer agent when Ack(r)~(m-1,cnt) is evaluated.
+//
+// Ack(r) >< (int m, int n)
+// | m==0 => r~(n+1)
+// | n==0 => Ack(r) ~ (m-1,1)
+// | _ => Ack(cnt)~(m,n-1), Ack(r)~(m-1,cnt);
+
+
+// When m==0, we should not have OneUp(ret)~n
+// because the n is correspoidng to cnt in Ack(ret,cnt)~(m-1),
+// and we have to wait for finishing evaluation of Ack(cnt,n-1)~m.
+// So, without waiting, we put ret~Inc(n) in order to continue evaluation.
+// The the number of Inc is evaluated later by using Sumup.
+
+Ack(ret, n) >< (int m)
+| m==0 => ret~Inc(n)
+| _ => Ackm(ret, m)~n;
+
+Ackm(ret, int m) >< (int n)
+| n==0 => Ack(ret,Inc(0)) ~ (m-1)
+| _ => Ack(cnt,n-1)~m, Ack(ret,cnt)~(m-1);
+
+Ackm(ret, int m) >< Inc(n)
+=> Ack(cnt,n)~m, Ack(ret,cnt)~(m-1);
+
+Sumup(ret, int sum) >< Inc(x) => Sumup(ret, sum+1)~x;
+Sumup(ret, int sum) >< (int n) => ret~sum+n;
+
+
+AckMain(ret)><(int m, int n) => Ack(cnt,n)~m, Sumup(ret,0)~cnt;
+
+AckMain(ret)~(3,11);
+ret;
+free ret;

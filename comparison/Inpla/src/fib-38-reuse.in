@@ -1,0 +1,17 @@
+// Fibonacci number
+Fib(r) >< (int n)
+| n == 0 => r~0
+| n == 1 => r~1
+| _ => Fib(cnt1)~(n-1), Fib(cnt2)~(n-2), (*L)Add(r,cnt2)~cnt1;
+
+/* Add is realised as built-in.
+Addd(r,n) >< (int m)
+=> Addd2(r,m) ~ n;
+
+Addd2(r,int m) >< (int n)
+=> r~(m+n);
+*/
+
+Fib(r)~38;
+r;
+free r;
