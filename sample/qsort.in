@@ -7,13 +7,12 @@ qsort(ret) >< (int x):xs =>
 	qsort(left)~smaller, qsort(right)~larger;
 
 // Note: `Append' is implemented as the following built-in agent:
-// Append(ret, b)~a  -->  ret ~ a@b
+// Append(ret, b)~a  -->  ret ~ (a++b)
 
 part(smaller, larger, int x) >< [] => smaller~[], larger~[];
 part(smaller, larger, int x) >< (int y):ys
 | y<x => smaller~(y:cnt), part(cnt, larger, x)~ys
 | _   => larger~(y:cnt), part(smaller, cnt, x)~ys;
-
 
 // Nets
 qsort(ret)~[3,6,1,9,2];
