@@ -8,28 +8,30 @@ Inpla is a multi-threaded parallel interpreter of interaction nets. Once you wri
 
 ![speedup-ratio](pic/benchmark_reuse.png)
 
-- Comparison with other implementations: Haskell (GHC version 8.10.7), Standard ML v110.74 (interpreter mode) and Python 3.8.5 in execution time. There are scripts in the `comparison` directory.
-  - Execution time in second  on Linux PC (Core i7-9700 (8 threads, no Hyper-threading), 16GB memory). The fastest one is shown with bold style in the table.
-  - Inpla*n*  and Inpla*n*_**r** mean *n* threads without/with reuse-annotated execution, respectively. 
-  - `ack(3,11)` is computation of Ackermann function.  There is a blank in Python execution due to stack size limitation. 
-  - `fib 38` is computation to get the 38th Fibonacci number. 
-  - `bsort` *n*, `isort` *n*, `qsort` *n* and `msort` *n* are computation of bubble sort, insertion sort, quick sort and merge sort for random *n*-element list, respectively.
-
 |                | Haskell  |   SML    | Python | Inpla1 | Inpla1_r | Inpla7 | Inpla7_r |
 | -------------- | :------: | :------: | :----: | :----: | :------: | :----: | :------: |
-| `ack(3,11)`    |   2.31   | **0.41** |   -    |  4.76  |   4.36   |  0.98  |   0.88   |
-| `fib 38`       |   1.60   | **0.26** |  8.49  |  3.59  |   3.56   |  0.56  |   0.54   |
-| `bsort 40000`  |  34.81   |  11.17   | 76.72  | 22.85  |  18.40   |  5.53  | **2.94** |
-| `isort 40000`  | **0.02** |   2.97   | 36.63  | 10.59  |   8.74   |  2.59  |   1.43   |
-| `qsort 800000` | **0.15** |   1.16   | 97.30  |  1.85  |   1.55   |  0.76  |   0.41   |
-| `msort 800000` | **0.46** |   1.00   | 98.27  |  1.18  |   1.34   |  0.65  |   0.49   |
+| ack(3,11)    |   2.31   | **0.41** |   -    |  4.76  |   4.36   |  0.98  |   0.88   |
+| fib 38       |   1.60   | **0.26** |  8.49  |  3.59  |   3.56   |  0.56  |   0.54   |
+| bsort 40000  |  34.81   |  11.17   | 76.72  | 22.85  |  18.40   |  5.53  | **2.94** |
+| isort 40000  | **0.02** |   2.97   | 36.63  | 10.59  |   8.74   |  2.59  |   1.43   |
+| qsort 800000 | **0.15** |   1.16   | 97.30  |  1.85  |   1.55   |  0.76  |   0.41   |
+| msort 800000 | **0.46** |   1.00   | 98.27  |  1.18  |   1.34   |  0.65  |   0.49   |
+
+- **Comparison in execution time** with other implementations: **Haskell** (GHC version 8.10.7), **Standard ML** v110.74 (interpreter mode) and **Python** 3.8.5 in execution time.
+  - The above table contains execution time in second on average of ten times execution by using Linux PC (Core i7-9700 (8 threads, no Hyper-threading), 16GB memory). The fastest one is shown with bold style.  There are scripts in the `comparison` directory.
+  - Inpla*n*  and Inpla*n*_**r** mean *n* threads without/with reuse-annotated execution, respectively. 
+  - "ack(3,11)" is computation of Ackermann function.  There is a blank in Python due to stack size limitation error. 
+  - "fib 38" is computation to get the 38th Fibonacci number. 
+  - "bsort *n*", "isort *n*", "qsort *n*" and "msort *n*" are computation of bubble sort, insertion sort, quick sort and merge sort for random *n*-element lists, respectively.
+
+
 
 ### Feature of Version 0.4.2
 - Line edit supports multi-line inputs.
 
 ### Feature of Version 0.4.1
 - Integer numbers can be written the same as one of the first-class objects.
-- Interaction rules can re-allocate heaps of the rule agents to agents in nets. This re-allocation is specified by modifications such as (\*L), (\*R), called reuse annotation [1], to agents in nets. This re-allocation can improve execution performance in parallel.
+- Interaction rules can re-allocate heaps of the rule agents to agents in nets. This re-allocation is specified by modifications such as (\*L), (\*R), called reuse annotation [1], to agents in nets. This re-allocation can improve execution performance in parallel. This is an experimental, thus in future version these should be decided automatically, so please do not care so much.
 - Weak reduction strategy is supported. It turns on by invoked with ```-w``` option, and then only connections that have living names are evaluated.
 - Nested guards in conditional rules are supporeted.
 
