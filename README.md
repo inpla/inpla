@@ -187,7 +187,7 @@ $ make thread
   - Execution:
 
     ```
-    $ ./inpla -f sample/isort.in
+    $ ./inpla -f sample/qsort.in
     Inpla 0.4.1 : Interaction nets as a programming language [built: 21 Sept. 2021]
     (22 interactions, 0.00 sec)
     [1,2,3,6,9]
