@@ -8,6 +8,21 @@ Inpla is a multi-threaded parallel interpreter of interaction nets. Once you wri
 
 ![speedup-ratio](pic/benchmark_reuse.png)
 
+- Comparison with other implementations: Haskell (GHC version 8.10.7), Standard ML v110.74 (interpreter mode) and Python 3.8.5 in execution time. There are scripts in the `comparison` directory.
+  - Execution time in second  on Linux PC (Core i7-9700 (8 threads, no Hyper-threading), 16GB memory). The fastest one is shown with bold style in the table.
+  - Inpla*n*  and Inpla*n*_**r** mean *n* threads without/with reuse-annotated execution, respectively. 
+  - `ack(3,11)` is computation of Ackermann function.  There is a blank in Python execution due to stack size limitation. 
+  - `fib 38` is computation to get the 38th Fibonacci number. 
+  - `bsort` *n*, `isort` *n*, `qsort` *n* and `msort` *n* are computation of bubble sort, insertion sort, quick sort and merge sort for random *n*-element list, respectively.
+
+|                | Haskell  |   SML    | Python | Inpla1 | Inpla1_r | Inpla7 | Inpla7_r |
+| -------------- | :------: | :------: | :----: | :----: | :------: | :----: | :------: |
+| `ack(3,11)`    |   2.31   | **0.41** |   -    |  4.76  |   4.36   |  0.98  |   0.88   |
+| `fib 38`       |   1.60   | **0.26** |  8.49  |  3.59  |   3.56   |  0.56  |   0.54   |
+| `bsort 40000`  |  34.81   |  11.17   | 76.72  | 22.85  |  18.40   |  5.53  | **2.94** |
+| `isort 40000`  | **0.02** |   2.97   | 36.63  | 10.59  |   8.74   |  2.59  |   1.43   |
+| `qsort 800000` | **0.15** |   1.16   | 97.30  |  1.85  |   1.55   |  0.76  |   0.41   |
+| `msort 800000` | **0.46** |   1.00   | 98.27  |  1.18  |   1.34   |  0.65  |   0.49   |
 
 ### Feature of Version 0.4.2
 - Line edit supports multi-line inputs.
@@ -17,20 +32,6 @@ Inpla is a multi-threaded parallel interpreter of interaction nets. Once you wri
 - Interaction rules can re-allocate heaps of the rule agents to agents in nets. This re-allocation is specified by modifications such as (\*L), (\*R), called reuse annotation [1], to agents in nets. This re-allocation can improve execution performance in parallel.
 - Weak reduction strategy is supported. It turns on by invoked with ```-w``` option, and then only connections that have living names are evaluated.
 - Nested guards in conditional rules are supporeted.
-- Comparison with other interpreters: Standard ML v110.74 (SML) and Python v3.8.5 (Python) in execution time. (We are planing to have benchmark of Haskell, C, as well in future.)
-  - Execution time in second  (Linux PC, Core i7-9700 (8 threads, no Hyper-threading), 16GB memory).
-  - Inpla*n*  and Inpla*n*_**r** mean *n* threads without/with reuse-annotated execution, respectively. 
-  - `ack` is computation of Ackermann function. Though execution time with (3,6) is too short and  Python cannot  calculate the case of (3,7) due to stack size limitation, anyway we include it in the comparison table.
-
-|        | SML | Python | Inpla1 | Inpla1_r | Inpla3 | Inpla3_r | Inpla7 | Inpla7_r |
-| ---    | :-: | :-:    | :-:     | :-:     | :-:    | :-:     | :-:   | :-:     |
-|ack(3,6)  (too short)|0.05|0.04|0.11|0.11|0.11|0.11|0.11|0.11|
-|ack(3,11)|**0.41**|-|4.76|4.36|1.65|1.49|0.98|0.88|
-|fibonacci 38|**0.26**|8.49|3.59|3.56|1.24|1.23|0.56|0.54|
-|bsort 40000|11.17|76.72| 22.85  | 18.40   | 8.07   | 6.34    | 5.53   | **2.94** |
-|isort 40000|2.97|36.63| 10.59  | 8.74    | 3.91   | 3.04    | 2.59   | **1.43** |
-|qsort 800000|1.16|97.30| 1.85   | 1.55    | 0.84   | 0.65    | 0.76   | **0.41** |
-|msort 800000|1.00|98.27| 1.18   | 1.34    | 0.61   | 0.57    | 0.65   | **0.49** |
 
 
 
