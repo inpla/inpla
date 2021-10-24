@@ -31,7 +31,7 @@ Inpla is a multi-threaded parallel interpreter of interaction nets. Once you wri
 
 ### Feature of Version 0.4.1
 - Integer numbers can be written the same as one of the first-class objects.
-- Interaction rules can re-allocate heaps of the rule agents to agents in nets. This re-allocation is specified by modifications such as (\*L), (\*R), called reuse annotation [1], to agents in nets. This re-allocation can improve execution performance in parallel. This is an experimental, thus in future version these should be decided automatically, so please do not care so much.
+- Interaction rules can re-allocate heaps of the rule agents to agents in nets. This re-allocation is specified by modifications such as (\*L), (\*R), called reuse annotation [1], to agents in nets. This re-allocation can improve execution performance in parallel. This is experimental, thus in future version these should be decided automatically, so please do not care so much.
 - Weak reduction strategy is supported. It turns on by invoked with ```-w``` option, and then only connections that have living names are evaluated.
 - Nested guards in conditional rules are supporeted.
 
