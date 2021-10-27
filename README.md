@@ -18,9 +18,9 @@ Inpla is a multi-threaded parallel interpreter of interaction nets. Once you wri
 | msort 800000 | **0.46** |   1.00   | 98.27  |  1.18  |   1.34   |  0.65  |   0.49   |
 
 - **Comparison in execution time** with other implementations: **Haskell** (GHC version 8.10.7), **Standard ML** v110.74 (interpreter mode) and **Python** 3.8.5 in execution time.
-  - The above table contains execution time in second on average of ten times execution by using Linux PC (Core i7-9700 (8 threads, no Hyper-threading), 16GB memory). The fastest one is shown with bold style.  There are scripts in the `comparison` directory.
+  - The above table contains execution time in second on average of ten times execution by using Linux PC (Core i7-9700 (8 threads, no Hyper-threading), 16GB memory). The fastest one is shown with bold style.  These scripts are stored in the `comparison` directory.
   - Inpla*n*  and Inpla*n*_**r** mean *n* threads without/with reuse-annotated execution, respectively. 
-  - "ack(3,11)" is computation of Ackermann function.  There is a blank in Python due to stack size limitation error. 
+  - "ack(3,11)" is computation of Ackermann function.  Execution time of Python is a blank due to stack size limitation error. 
   - "fib 38" is computation to get the 38th Fibonacci number. 
   - "bsort *n*", "isort *n*", "qsort *n*" and "msort *n*" are computation of bubble sort, insertion sort, quick sort and merge sort for random *n*-element lists, respectively.
 
@@ -197,7 +197,7 @@ $ make thread
 
 
 #### Other samples
-- Evaluation of a lambda term `245II` in [YALE encoding](http://dl.acm.org/citation.cfm?id=289434), where `2 4 5` mean church numbers of lambda terms respectively and  `I` is a lambda term $\lambda x.x$:
+- Evaluation of a lambda term `245II` in [YALE encoding](http://dl.acm.org/citation.cfm?id=289434), where `2`, `4`, `5` mean church numbers of lambda terms, respectively, and  `I` is a lambda term $\lambda x.x$:
   
       $ ./inpla -f sample/245II.in
 
