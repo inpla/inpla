@@ -237,6 +237,27 @@ $ make thread
     r;
     ```
 
+    These rules and nets are also written by using abbreviation:
+    ```
+    // Rules
+    qsort(ret) >< [] => ret~[];
+    qsort(ret) >< (int x):xs =>
+    	ret << Append(left, x:right), 
+    	smaller, larger << part(x,xs),
+    	left << qsort(smaller), right << qsort(larger);
+    
+    part(smaller, larger, int x) >< [] => smaller~[], larger~[];
+    part(smaller, larger, int x) >< (int y):ys
+    | y<x => smaller~(y:cnt),  
+             cnt, larger << part(x,ys)
+    | _   => larger~(y:cnt), 
+             smaller, cnt << part(x,ys);
+    
+    // Nets
+    r << isort([3,6,1,9,2]);
+    r;
+    ```
+
   - Execution:
 
     ```
@@ -407,7 +428,7 @@ When agents works can be separated into constructors and de-constructors, it cou
 Let's have the result of the increment operation for `S(S(Z))`:
 
 ```
->>> inc(r)~S(S(Z));
+>>> inc(r)~S(S(Z));         // This is also written as:  r << inc(S(S(Z)))
 (1 interactions, 0.01 sec)
 >>> r;
 S(S(S(Z))
@@ -448,7 +469,7 @@ Let's clean the result in case it could be used anywhere:
   ```
   The following is an execution example:
   ```
-  >>> add(r,S(Z))~S(S(Z));
+  >>> add(r,S(Z))~S(S(Z));     // This is also written as:   r << add(S(Z), S(S(Z)))
   (3 interactions, 0.00 sec)
   >>> r;
   S(S(S(Z)))
@@ -617,31 +638,38 @@ A(8)
 
 
 ### Interaction rules with expressions on attributes
-In interaction rules, attributes can be recognised by the modifier `int` in order to apply arithmetic expressions. We can use the same variable with the modifier `int` many times in the connection parts of interaction rules.
+In interaction rules, attributes can be recognised by the modifier `int` in order to apply arithmetic expressions. **We can use the same variable with the modifier `int` many times (of course, zero times is also OK) in the connection parts of interaction rules**.
 - Example: Incrementor on an attribute:
-```
->>> inc(result) >< (int a) => result~(a+1);
->>> inc(r)~10;
-(1 interactions, 0.00 sec)
->>> r;
-11
->>> free r;
->>>
-```
+
+  ```
+  >>> inc(result) >< (int a) => result~(a+1);
+  >>> inc(r)~10;                             // This is also written as:  r << inc(10)
+  (1 interactions, 0.00 sec)
+  >>> r;
+  11
+  >>> free r;
+  >>>
+  ```
+
 
 - Example: Duplicator of integer lists:
-```
->>> dup(a1,a2) >< (int i):xs => a1~(i:xs1), a2~(i:xs2), dup(xs1,xs2)~xs;
->>> dup(a1,a2) >< []         => a1~[], a2~[];
->>> dup(a,b) ~ [1,2,3];
-(4 interactions, 0.00 sec)
->>> a b;
-[1,2,3] [1,2,3]
->>> free a b;
->>>
-```
+  
+  ![dup_list](pic/dup_list.png)
 
   
+  ```
+  >>> dup(a1,a2) >< (int i):xs => a1~(i:xs1), a2~(i:xs2), dup(xs1,xs2)~xs;
+  >>> dup(a1,a2) >< []         => a1~[], a2~[];
+  >>> dup(a,b) ~ [1,2,3];    // This is also written as:   a,b << dup([1,2,3])
+  (4 interactions, 0.00 sec)
+  >>> a b;
+  [1,2,3] [1,2,3]
+  >>> free a b;
+  >>>
+  ```
+
+  
+
 
 **We have to be careful for operations of two attributes**. For instance, we take the following rule of an `add` agent:
 
