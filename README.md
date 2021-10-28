@@ -197,7 +197,7 @@ $ make thread
 
 
 #### Other samples
-- Evaluation of a lambda term `245II` in [YALE encoding](http://dl.acm.org/citation.cfm?id=289434), where `2`, `4`, `5` mean church numbers of lambda terms, respectively, and  `I` is a lambda term $\lambda x.x$:
+- Evaluation of a lambda term `245II` in [YALE encoding](http://dl.acm.org/citation.cfm?id=289434), where `2`, `4`, `5` mean church numbers of lambda terms, and  `I` is a lambda term $\lambda x.x$:
   
       $ ./inpla -f sample/245II.in
 
