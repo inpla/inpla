@@ -218,11 +218,13 @@ $ make thread
     // Rules
     qsort(ret) >< [] => ret~[];
     qsort(ret) >< (int x):xs =>
-    	Append(ret, x:right)~left, part(smaller, larger, x)~xs,
+    	ret << Append(left, x:right), part(smaller, larger, x)~xs,
     	qsort(left)~smaller, qsort(right)~larger;
     
     // Note: `Append' is implemented as the following built-in agent:
-    // Append(ret, b)~a  -->  ret ~ a++b
+    //   Append(ret, b)~a  -->  ret ~ a++b
+    // The ret << Append(left, x:right) is rewritten by the built-in abrreviation as:
+    //   Append(ret, x:right)~left.
     
     part(smaller, larger, int x) >< [] => smaller~[], larger~[];
     part(smaller, larger, int x) >< (int y):ys
