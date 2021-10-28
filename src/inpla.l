@@ -6,7 +6,6 @@
 #undef YY_INPUT
 #define YY_INPUT(buf,result,max_size) result = mygetinput(buf, max_size);
 
-// lineno de kubetu?
 static int mygetinput(char *buf, int size) {
     char *line;
     if (feof(yyin))  return YY_NULL;
@@ -23,6 +22,7 @@ static int mygetinput(char *buf, int size) {
       return len;
     }
 
+    linenoiseSetMultiLine(1);
     if (yylineno == 1) {
       line = linenoise(">>> ");
     } else {
@@ -30,8 +30,10 @@ static int mygetinput(char *buf, int size) {
     }      
     if(!line)        return YY_NULL;
     if(strlen(line) > size-2){
-       fprintf(stderr,"input line too long\n"); return YY_NULL; }
-    sprintf(buf,"%s\n",line);
+      fprintf(stderr,"input line too long\n");
+      return YY_NULL;
+    }
+    sprintf(buf, "%s\n", line);
     linenoiseHistoryAdd(line);
     linenoiseHistorySave(".inpla.history.txt"); 
     free(line);
@@ -101,7 +103,7 @@ char *Parse_closeStringBuffer() {
 <INITIAL>"/" return (DIV);
 <INITIAL>"%" return (MOD);
 <INITIAL>"_" return (ANY);
-<INITIAL>"?" return (QUE);
+<INITIAL>"<<" return (ABR);
 
 <INITIAL>"int" return(INT);
 
@@ -132,7 +134,7 @@ char *Parse_closeStringBuffer() {
 <INITIAL>"*R" return(ANNOTATE_R);
 <INITIAL>[a-z][a-zA-Z0-9_'\.]* { yylval.chval = strdup(yytext);
          return (NAME);}
-<INITIAL>[_A-Z][a-zA-Z0-9_'\.]* { yylval.chval = strdup(yytext);
+<INITIAL>[A-Z][a-zA-Z0-9_'\.]* { yylval.chval = strdup(yytext);
          return (AGENT);}
 <INITIAL>[0-9]+ { yylval.intval = atoi(yytext);
          return (INT_LITERAL);}
@@ -143,8 +145,8 @@ char *Parse_closeStringBuffer() {
 <COM_STATE>\n ;
 <COM_STATE>"*/" BEGIN INITIAL; //comment
 
-<INITIAL>\r\n {}
-<INITIAL>[\n|\r] {}
+<INITIAL>\r\n ;
+<INITIAL>[\n|\r] ;
 <INITIAL>[ \t]+ ;
 <INITIAL><<EOF>> {return END_OF_FILE;}
 <INITIAL>\" {

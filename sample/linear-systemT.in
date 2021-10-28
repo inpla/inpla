@@ -36,7 +36,7 @@ Dup(x,y) >< Itc(a,b,c,d) =>
 	a~Dup(u1,u2), b~Dup(w1,w2), c~Dup(z1,z2), d~Dup(k1,k2);
 
 
-/* needed */
+/* required */
 Dup(x,y) >< B(a,b,c) => x~B(u1,z1,w1), y~B(u2,z2,w2),
 	a~Dup(u1,u2), b~Dup(z1,z2), c~Dup(w1,w2);
 Dup(x,y) >< Lam(a,b,c) => x~Lam(w1,u1,z1), y~Lam(w2,u2,z2),
@@ -116,7 +116,7 @@ free res;
 
 
 // Ack 3 10
-// ver 1: the same as the example on the paper
+// ver.1: the same as the example on the paper
 a~S(S(S(Z))),
 b~S(S(S(S(S(S(S(S(S(S(Z))))))))));
 Iter(t,x,Lamc(x1,S(x1)))~Lamc(B(V,Iter(r2,S(y),S(Z)),Lam(y,r2,r1)),r1),
@@ -124,7 +124,7 @@ Lamc(x,t)~App(a,App(b, r));
 prnat r;
 free r;
 
-// ver 2: \m.(\n.(iter m (\x.(S x)) (\x.(\y.(iter (S y) (S 0) x))) n))
+// ver.2: \m.(\n.(iter m (\x.(S x)) (\x.(\y.(iter (S y) (S 0) x))) n))
 a~S(S(S(Z))),
 b~S(S(S(S(S(S(S(S(S(S(Z))))))))));
 Iter(App(n,apr),x,Lamc(x1,S(x1)))~Lamc(B(V,Iter(r2,S(y),S(Z)),Lam(y,r2,r1)),r1),
@@ -132,7 +132,7 @@ Lamc(B(V,x,Lam(n,apr,nr)),nr)~App(a,App(b, r));
 prnat r;
 free r;
 
-// ver 3: another encoding of ver 2.
+// ver.3: another encoding of ver.2.
 a~S(S(S(Z))),
 b~S(S(S(S(S(S(S(S(S(S(Z))))))))));
 Iter(t,m,Lamc(x1,S(x1)))~Lamc(B(V,Iter(r2,S(y),S(Z)),Lam(y,r2,r1)),r1),

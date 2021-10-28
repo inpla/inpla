@@ -26,17 +26,28 @@
 #define ID_CONS 8
 #define IS_LISTID(id) ((id == ID_NIL) && (id == ID_CONS))
 
-#define ID_INTAGENT 9
+#define ID_INTAGENT 10   // This is an experimental dummy agent
+                         // to show the use effect of Int agent.
 
-#define START_ID_OF_BUILTIN_AGENT 10
-#define ID_ADD  10
-#define ID_ADD2 11
-#define ID_APPEND  12
-#define ID_APPEND2 13
-#define END_ID_OF_BUILTIN_AGENT 13
+
+#define START_ID_OF_BUILTIN_AGENT 15
+#define ID_APPEND   15
+#define ID_MERGER   16
+#define ID_MERGER_P 17
+#define ID_ADD      18
+#define ID_ADD2     19
+#define ID_SUB      20
+#define ID_SUB2     21
+#define ID_MUL      22
+#define ID_MUL2     23
+#define ID_DIV      24
+#define ID_DIV2     25
+#define ID_MOD      26
+#define ID_MOD2     27
+#define END_ID_OF_BUILTIN_AGENT 27
 
  
-#define START_ID_OF_AGENT 20
+#define START_ID_OF_AGENT END_ID_OF_BUILTIN_AGENT+1
 //#define NUM_AGENTS 1024
 #define END_ID_OF_AGENT 255
 #define NUM_AGENTS END_ID_OF_AGENT+1  // 256

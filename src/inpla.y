@@ -6,9 +6,9 @@
 #include <unistd.h>
 #include <errno.h>
 #include <sched.h>
-  
-#include "linenoise/linenoise.h"
 
+#include "linenoise/linenoise.h"
+  
 #include "ast.h"
 #include "id_table.h"
 #include "name_table.h"
@@ -48,8 +48,8 @@ int ActiveThreadNum=0;
 
 //#define YYDEBUG 1
 
-#define VERSION "0.4.2"
-#define BUILT_DATE  "16 Oct. 2021"
+#define VERSION "0.5.0"
+#define BUILT_DATE  "28 Oct. 2021"
 
 extern FILE *yyin;
 
@@ -186,7 +186,7 @@ void eat_to_newline(void)
 %token <chval> NAME AGENT
 %token <intval> INT_LITERAL
 %token <chval> STRING_LITERAL
-%token LP RP LC RC LB RB COMMA CROSS DELIMITER QUE
+%token LP RP LC RC LB RB COMMA CROSS DELIMITER ABR
 %token COLON
 %token TO CNCT
 
@@ -441,7 +441,7 @@ val_declare
 
 agent_cons
 : LB astterm PIPE astterm RB
-{$$ = ast_makeAST(AST_OPCONS, NULL, ast_makeList2($2, $4)); }
+{ $$ = ast_makeAST(AST_OPCONS, NULL, ast_makeList2($2, $4)); }
 ;
 
 agent_list
@@ -464,8 +464,8 @@ agentterm
 ;
 
 
-astparam  :
-LP RP { $$ = NULL; }
+astparam
+: LP RP { $$ = NULL; }
 | LP astparams RP { $$ = $2; }
 ;
 
@@ -476,7 +476,15 @@ astparams
 
 ap
 : astterm CNCT astterm { $$ = ast_makeAST(AST_CNCT, $1, $3); }
+//
+| astparams ABR AGENT LP astparams RP
+{ $$ = ast_unfoldABR($1, $3, $5); }
+//
+| astparams ABR NAME LP astparams RP
+{ $$ = ast_unfoldABR($1, $3, $5); }
 ;
+
+
 
 aplist
 : ap { $$ = ast_makeList1($1); }
@@ -747,7 +755,7 @@ VALUE myallocAgent(Heap *hp) {
 }
 
 
-static inline
+//static inline
 VALUE myallocName(Heap *hp) {
 
 #ifdef MALLOC
@@ -1033,7 +1041,8 @@ char *Pretty_Name(VALUE a) {
 #endif
 
 
-#define PUTS_ELEMENTS_NUM 12
+//#define PUTS_ELEMENTS_NUM 12
+#define PUTS_ELEMENTS_NUM 30
 static int Puts_list_element=0;
 
 
@@ -1044,7 +1053,7 @@ void puts_term(VALUE ptr) {
     printf("%d", FIX2INT(ptr));
     return;
   } else if (BASIC(ptr) == NULL) {
-    printf("[NULL]");
+    printf("<NULL>");
     return;
   }
 
@@ -1124,7 +1133,7 @@ void puts_term(VALUE ptr) {
       }
       
     }
-
+        
   } else {
     // Agent
     int i, arity;
@@ -1230,7 +1239,8 @@ void free_names_ast(Ast *ast) {
 
   while (param != NULL) {
     char *sym = param->left->sym;
-    flush_name_port0(NameTable_get_heap(sym));
+    VALUE heap = NameTable_get_heap(sym);
+    flush_name_port0(heap);
     param = ast_getTail(param);		     
   }
 }
@@ -2663,6 +2673,7 @@ int CompileTermFromAst(Ast *ptr, int target) {
     return result;
     break;
 
+    
   case AST_CONS:
     if (target == -1) {      
       result = CmEnv_newreg();
@@ -2730,7 +2741,7 @@ int CompileTermFromAst(Ast *ptr, int target) {
     break;
     */
 
-
+    
   case AST_TUPLE:
     arity = ptr->intval;
 
@@ -3765,10 +3776,15 @@ void makeRule(Ast *ast) {
   // 単純に ruleAgentL、ruleAgentR を入れ替えれば良いわけではない。
 
   if (idL > idR) {
-    // 標準では Append(xs, r) >< [y|ys] なので
+    // Generally the order should be as Append(xs,r) >< y:ys,
+    // so idL should be greater than idR.
+    
+    // JAPANESE: 標準では Append(xs, r) >< [y|ys] なので
     // idL の方が大きくなって欲しい
 
-    // annotation が (*L) なら左側、(*R) なら右側を指すものとする
+    
+    // (*L) is interpreted as the left-hand side agent, (*R) is the right one.
+    // JAPANESE: annotation が (*L) なら左側、(*R) なら右側を指すものとする
     setAnnotateLR(VM_OFFSET_ANNOTATE_L, VM_OFFSET_ANNOTATE_R);
     
   } else {
@@ -3781,8 +3797,11 @@ void makeRule(Ast *ast) {
     idTmp = idL;
     idL = idR;
     idR = idTmp;
-    
-    // aplist 内の (*L) (*R) はそのままにしておき、
+
+    // Keep the occurrence (*L) and (*R) in aplist,
+    // change the interpretation of (*L) as (*R), vice versa.
+
+    // JAPANESE: aplist 内の (*L) (*R) はそのままにしておき、
     // annotation が (*L) なら右側、(*R) なら左側を指すものとする
     setAnnotateLR(VM_OFFSET_ANNOTATE_R, VM_OFFSET_ANNOTATE_L);
   }
@@ -3790,7 +3809,8 @@ void makeRule(Ast *ast) {
   {
     int arity;
 
-    // code の先頭2つは idL、idR の arity を格納する
+    // IMPORTANT:
+    // The first two codes store arities of idL and idR.
     if (idL == ID_INT) {
       arity = 0;
     } else {
@@ -3816,14 +3836,14 @@ void makeRule(Ast *ast) {
   
   if (idL == ID_INT) {
     setMetaL_asIntName(ruleL);
-    CmEnv.annotateL = ANNOTATE_AS_INT_AGENT; // FreeL 出力を防ぐ
+    CmEnv.annotateL = ANNOTATE_AS_INT_AGENT; // to prevent putting FreeL out
   } else {
     setMetaL(ruleL);
   }
   
   if (idR == ID_INT) {
     setMetaR_asIntName(ruleR);
-    CmEnv.annotateR = ANNOTATE_AS_INT_AGENT;  // FreeR 出力を防ぐ
+    CmEnv.annotateR = ANNOTATE_AS_INT_AGENT;  // to prevent putting FreeR out
   } else {
     setMetaR(ruleR);
   }
@@ -3833,7 +3853,6 @@ void makeRule(Ast *ast) {
 
 
   
-  //code_size = CompileGuardBodiesFromAST(guard_bodies, code, code_size);
   code_size += CompileIfSentenceFromAST(if_sentence, code, code_size);
   if (code_size < 0)
     return;
@@ -6317,12 +6336,14 @@ loop_a2IsFixnum:
      
       getRuleCodeInt(a1, &code);
 
-      if (code == NULL) {
-
+      if (code == NULL) {	
 	// built-in
 	switch (BASIC(a1)->id) {
 	case ID_ADD:
 	  {
+#ifdef COUNT_INTERACTION
+	    vm->NumberOfInteraction++;
+#endif
 	    BASIC(a1)->id = ID_ADD2;
 	    VALUE a1port1 = AGENT(a1)->port[1];
 	    AGENT(a1)->port[1] = a2;
@@ -6331,9 +6352,113 @@ loop_a2IsFixnum:
 	  }
 	case ID_ADD2:
 	  {
-	    int m = FIX2INT(AGENT(a1)->port[1]);
-	    int n = FIX2INT(a2);
+#ifdef COUNT_INTERACTION
+	    vm->NumberOfInteraction++;
+#endif
+	    // r << Add(m,n)
+	    int n = FIX2INT(AGENT(a1)->port[1]);
+	    int m = FIX2INT(a2);
 	    a2 = INT2FIX(m+n);
+	    VALUE a1port0 = AGENT(a1)->port[0];
+	    freeAgent(a1);
+	    a1 = a1port0;
+	    goto loop;
+	  }
+	case ID_SUB:
+	  {
+#ifdef COUNT_INTERACTION
+	    vm->NumberOfInteraction++;
+#endif
+	    BASIC(a1)->id = ID_SUB2;
+	    VALUE a1port1 = AGENT(a1)->port[1];
+	    AGENT(a1)->port[1] = a2;
+	    a2 = a1port1;
+	    goto loop;
+	  }
+	case ID_SUB2:
+	  {
+#ifdef COUNT_INTERACTION
+	    vm->NumberOfInteraction++;
+#endif
+	    // r << Sub(m,n)
+	    int n = FIX2INT(AGENT(a1)->port[1]);
+	    int m = FIX2INT(a2);
+	    a2 = INT2FIX(m-n);
+	    VALUE a1port0 = AGENT(a1)->port[0];
+	    freeAgent(a1);
+	    a1 = a1port0;
+	    goto loop;
+	  }
+	case ID_MUL:
+	  {
+#ifdef COUNT_INTERACTION
+	    vm->NumberOfInteraction++;
+#endif
+	    BASIC(a1)->id = ID_MUL2;
+	    VALUE a1port1 = AGENT(a1)->port[1];
+	    AGENT(a1)->port[1] = a2;
+	    a2 = a1port1;
+	    goto loop;
+	  }
+	case ID_MUL2:
+	  {
+#ifdef COUNT_INTERACTION
+	    vm->NumberOfInteraction++;
+#endif
+	    // r << Mult(m,n)
+	    int n = FIX2INT(AGENT(a1)->port[1]);
+	    int m = FIX2INT(a2);
+	    a2 = INT2FIX(m*n);
+	    VALUE a1port0 = AGENT(a1)->port[0];
+	    freeAgent(a1);
+	    a1 = a1port0;
+	    goto loop;
+	  }
+	case ID_DIV:
+	  {
+#ifdef COUNT_INTERACTION
+	    vm->NumberOfInteraction++;
+#endif
+	    BASIC(a1)->id = ID_DIV2;
+	    VALUE a1port1 = AGENT(a1)->port[1];
+	    AGENT(a1)->port[1] = a2;
+	    a2 = a1port1;
+	    goto loop;
+	  }
+	case ID_DIV2:
+	  {
+#ifdef COUNT_INTERACTION
+	    vm->NumberOfInteraction++;
+#endif
+	    // r << DIV(m,n)
+	    int n = FIX2INT(AGENT(a1)->port[1]);
+	    int m = FIX2INT(a2);
+	    a2 = INT2FIX(m/n);
+	    VALUE a1port0 = AGENT(a1)->port[0];
+	    freeAgent(a1);
+	    a1 = a1port0;
+	    goto loop;
+	  }
+	case ID_MOD:
+	  {
+#ifdef COUNT_INTERACTION
+	    vm->NumberOfInteraction++;
+#endif
+	    BASIC(a1)->id = ID_MOD2;
+	    VALUE a1port1 = AGENT(a1)->port[1];
+	    AGENT(a1)->port[1] = a2;
+	    a2 = a1port1;
+	    goto loop;
+	  }
+	case ID_MOD2:
+	  {
+#ifdef COUNT_INTERACTION
+	    vm->NumberOfInteraction++;
+#endif
+	    // r << MOD(m,n)
+	    int n = FIX2INT(AGENT(a1)->port[1]);
+	    int m = FIX2INT(a2);
+	    a2 = INT2FIX(m%n);
 	    VALUE a1port0 = AGENT(a1)->port[0];
 	    freeAgent(a1);
 	    a1 = a1port0;
@@ -6435,98 +6560,10 @@ loop_a2IsAgent:
     // a1 が fixnum
     if (IS_FIXNUM(a1)) {
       // fixnum >< agent
-      
-      void **code = NULL;
-            
-      getRuleCodeInt(a2, &code);
-      
-      if (code == NULL) {
-
-	
-	// built-in
-	VALUE tmp = a1;
-	a1 = a2;
-	a2 = tmp;
-	switch (BASIC(a1)->id) {
-
-	case ID_ADD:
-	  {
-	    BASIC(a1)->id = ID_ADD2;
-	    VALUE a1port1 = AGENT(a1)->port[1];
-	    AGENT(a1)->port[1] = a2;
-	    a2 = a1port1;
-	    goto loop;
-	  }
-	case ID_ADD2:
-	  {
-	    int m = FIX2INT(AGENT(a1)->port[1]);
-	    int n = FIX2INT(a2);
-	    a2 = INT2FIX(m+n);
-	    VALUE a1port0 = AGENT(a1)->port[0];
-	    freeAgent(a1);
-	    a1 = a1port0;
-	    goto loop;
-	  }
-
-	}	  
-
-
-
-	
-	printf("Runtime Error: There is no interaction rule for the following pair:\n  ");
-	puts_term(a1);
-	printf("~");
-	puts_term(a2);
-	puts("");
-
-	if (yyin != stdin) exit(-1);
-
-#ifndef THREAD
-	mark_and_sweep();
-	return;
-#else
-	printf("Retrieve is not supported in the multi-threaded version.\n");
-	exit(-1);
-#endif
-      }
-
-      int i;
-      unsigned long arity;
-      arity = (unsigned long)code[0];
-
-      switch(arity) {
-      case 0:
-	break;
-
-      case 1:
-	vm->agentReg[VM_OFFSET_META_R(0)] = AGENT(a2)->port[0];
-	break;
-
-      case 2:
-	vm->agentReg[VM_OFFSET_META_R(0)] = AGENT(a2)->port[0];
-	vm->agentReg[VM_OFFSET_META_R(1)] = AGENT(a2)->port[1];
-	break;
-	
-      case 3:
-	vm->agentReg[VM_OFFSET_META_R(0)] = AGENT(a2)->port[0];
-	vm->agentReg[VM_OFFSET_META_R(1)] = AGENT(a2)->port[1];
-	vm->agentReg[VM_OFFSET_META_R(2)] = AGENT(a2)->port[2];
-	break;
-
-      default:	
-	for (i=0; i<arity; i++) {
-	  vm->agentReg[VM_OFFSET_META_R(i)] = AGENT(a2)->port[i];
-	}
-      }
-      
-      vm->agentReg[VM_OFFSET_ANNOTATE_L] = a2;
-      vm->agentReg[VM_OFFSET_ANNOTATE_R] = a1;
-
-#ifdef COUNT_INTERACTION
-      vm->NumberOfInteraction++;
-#endif
-      ExecCode(1, vm, &code[2]);
-      return;            
+      VALUE tmp = a1;
+      a1 = a2;
+      a2 = tmp;
+      goto loop_a2IsFixnum;
     }
 
     // a1 が agent
@@ -6561,7 +6598,7 @@ loop_a2IsAgent:
       if (result == 0) {
 
 
-	if (BASIC(a2)->id <= ID_CONS)  {
+	if (BASIC(a2)->id < START_ID_OF_BUILTIN_AGENT)  {
 	
 	  // built-in
 	  switch (BASIC(a1)->id) {
@@ -6569,6 +6606,9 @@ loop_a2IsAgent:
 	  case ID_TUPLE0:
 	    if (BASIC(a2)->id == ID_TUPLE0) {
 	      // [] ~ [] --> nothing
+#ifdef COUNT_INTERACTION
+      vm->NumberOfInteraction++;
+#endif
 	      freeAgent(a1);
 	      freeAgent(a2);	    
 	      return;
@@ -6580,6 +6620,9 @@ loop_a2IsAgent:
 	  case ID_TUPLE2:
 	    if (BASIC(a2)->id == ID_TUPLE2) {
 	      // (x1,x2) ~ (y1,y2) --> x1~y1, x2~y2
+#ifdef COUNT_INTERACTION
+      vm->NumberOfInteraction++;
+#endif
 	      VALUE a1p1 = AGENT(a1)->port[1];
 	      VALUE a2p1 = AGENT(a2)->port[1];
 	      PUSH(vm, a1p1, a2p1);
@@ -6596,6 +6639,9 @@ loop_a2IsAgent:
 	  case ID_TUPLE3:
 	    if (BASIC(a2)->id == ID_TUPLE3) {
 	      // (x1,x2,x3) ~ (y1,y2,y3) --> x1~y1, x2~y2, x3~y3
+#ifdef COUNT_INTERACTION
+      vm->NumberOfInteraction++;
+#endif
 	      PUSH(vm, AGENT(a1)->port[2], AGENT(a2)->port[2]);
 	      PUSH(vm, AGENT(a1)->port[1], AGENT(a2)->port[1]);
 
@@ -6612,6 +6658,9 @@ loop_a2IsAgent:
 	  case ID_TUPLE4:
 	    if (BASIC(a2)->id == ID_TUPLE4) {
 	      // (x1,x2,x3) ~ (y1,y2,y3) --> x1~y1, x2~y2, x3~y3
+#ifdef COUNT_INTERACTION
+      vm->NumberOfInteraction++;
+#endif
 	      PUSH(vm, AGENT(a1)->port[3], AGENT(a2)->port[3]);
 	      PUSH(vm, AGENT(a1)->port[2], AGENT(a2)->port[2]);
 	      PUSH(vm, AGENT(a1)->port[1], AGENT(a2)->port[1]);
@@ -6629,6 +6678,9 @@ loop_a2IsAgent:
 	  case ID_TUPLE5:
 	    if (BASIC(a2)->id == ID_TUPLE5) {
 	      // (x1,x2,x3) ~ (y1,y2,y3) --> x1~y1, x2~y2, x3~y3
+#ifdef COUNT_INTERACTION
+      vm->NumberOfInteraction++;
+#endif
 	      PUSH(vm, AGENT(a1)->port[4], AGENT(a2)->port[4]);
 	      PUSH(vm, AGENT(a1)->port[3], AGENT(a2)->port[3]);
 	      PUSH(vm, AGENT(a1)->port[2], AGENT(a2)->port[2]);
@@ -6647,6 +6699,9 @@ loop_a2IsAgent:
 	  case ID_NIL:
 	    if (BASIC(a2)->id == ID_NIL) {
 	      // [] ~ [] --> nothing
+#ifdef COUNT_INTERACTION
+      vm->NumberOfInteraction++;
+#endif
 	      freeAgent(a1);
 	      freeAgent(a2);	    
 	      return;
@@ -6658,6 +6713,9 @@ loop_a2IsAgent:
 	  case ID_CONS:
 	    if (BASIC(a2)->id == ID_CONS) {
 	      // a:b ~ c:d --> a~c, b~d
+#ifdef COUNT_INTERACTION
+      vm->NumberOfInteraction++;
+#endif
 	      VALUE a1p1 = AGENT(a1)->port[1];
 	      VALUE a2p1 = AGENT(a2)->port[1];
 	      PUSH(vm, a1p1, a2p1);
@@ -6679,6 +6737,9 @@ loop_a2IsAgent:
 	    case ID_NIL:
 	      {
 		// App(r,a) >< [] => r~a;
+#ifdef COUNT_INTERACTION
+      vm->NumberOfInteraction++;
+#endif
 		VALUE a1p0 = AGENT(a1)->port[0];
 		VALUE a1p1 = AGENT(a1)->port[1];
 		freeAgent(a1);
@@ -6691,6 +6752,9 @@ loop_a2IsAgent:
 	    case ID_CONS:
 	      {
 		// App(r,a) >< [x|xs] => r~(*R)[x|w], (*L)App(w,a)~xs;
+#ifdef COUNT_INTERACTION
+      vm->NumberOfInteraction++;
+#endif
 		VALUE a1p0 = AGENT(a1)->port[0];
 		VALUE a2p1 = AGENT(a2)->port[1];
 		VALUE w = makeName(vm);
@@ -6708,7 +6772,118 @@ loop_a2IsAgent:
 	    break; // end ID_APPEND
 
 	  
-	  
+	  case ID_MERGER:
+	    switch (BASIC(a2)->id) {
+	    case ID_TUPLE2:
+	      {
+		// MG(r) ~ (a|b) => *MGp(*r)~a, *MGp(*r)~b
+#ifdef COUNT_INTERACTION
+      vm->NumberOfInteraction++;
+#endif
+		BASIC(a1)->id = ID_MERGER_P;
+		AGENT(a1)->port[1] = (VALUE)NULL;
+		AGENT(a1)->port[2] = (VALUE)NULL;
+		PUSH(vm, a1, AGENT(a2)->port[1]);
+		PUSH(vm, a1, AGENT(a2)->port[0]);
+		freeAgent(a2);
+		return;
+		
+		
+	      }
+	    }
+	    break; // end ID_MG
+
+	  case ID_MERGER_P:
+	    switch (BASIC(a2)->id) {
+	    case ID_NIL:
+	      // *MGP(r)~[]
+#ifndef THREAD
+	      if (AGENT(a1)->port[1] == (VALUE)NULL) {
+		AGENT(a1)->port[1] = a2;
+		return;
+	      } else {
+		VALUE a1p0 = AGENT(a1)->port[0];
+		freeAgent(AGENT(a1)->port[1]);
+		freeAgent(a1);
+		a1 = a1p0;
+		goto loop;
+	      }
+#else
+	      if (AGENT(a1)->port[2] == (VALUE)NULL) {
+		if (!(__sync_bool_compare_and_swap(&(AGENT(a1)->port[2]),
+						   NULL, a2))) {
+		  // something exists already
+		  goto loop;		
+		  
+		} else {
+		  return;
+		}
+	      } else if ((AGENT(a1)->port[2] != (VALUE)NULL) &&
+			 (BASIC(AGENT(a1)->port[2])->id == ID_NIL)) {
+	      
+		VALUE a1p0 = AGENT(a1)->port[0];
+		freeAgent(AGENT(a1)->port[2]);
+		freeAgent(a1);
+		a1 = a1p0;
+		goto loop;
+	      } else {
+		goto loop;
+	      }
+	      
+#endif
+	    case ID_CONS:
+	      // *MGP(r)~x:xs => r~x:w, *MGP(w)~xs;
+	      {
+#ifndef THREAD
+		VALUE a1p0 = AGENT(a1)->port[0];
+
+		VALUE w = makeName(vm);
+		AGENT(a1)->port[0] = w;
+		PUSH(vm, a1, AGENT(a2)->port[1]);
+		
+		AGENT(a2)->port[1] = w;
+		a1 = a1p0;
+		goto loop;
+#else
+		if (AGENT(a1)->port[1] == (VALUE)NULL) {
+		  if (!(__sync_bool_compare_and_swap(&(AGENT(a1)->port[1]),
+						     NULL,
+						     a2))) {
+		    goto loop;
+		  }
+		
+		  VALUE a1p0 = AGENT(a1)->port[0];
+		  
+		  VALUE w = makeName(vm);
+		  AGENT(a1)->port[0] = w;
+		  PUSH(vm, a1, AGENT(a2)->port[1]);
+		  
+		  AGENT(a2)->port[1] = w;
+		  
+		  AGENT(a1)->port[1] = (VALUE)NULL; // free the lock
+		  
+		  a1 = a1p0;
+		  
+		  goto loop;
+		  
+		} else if ((AGENT(a1)->port[2] != (VALUE)NULL) &&
+			   (BASIC(AGENT(a1)->port[2])->id == ID_NIL)) {
+		  freeAgent(AGENT(a1)->port[2]);
+		  VALUE a1p0 = AGENT(a1)->port[0];
+		  freeAgent(a1);
+		  a1 = a1p0;
+		  goto loop;
+		
+		} else {
+		  goto loop;
+		}
+		
+		
+#endif
+	      }
+	      
+	    }
+	    break; // end ID_MERGER_P
 	  }
 	}
     
@@ -6919,14 +7094,18 @@ void WHNFInfo_push_equation(VALUE t1, VALUE t2) {
 
 void WHNF_execution_loop() {
   VALUE t1, t2;
+
   while (PopEQStack(&VM, &t1, &t2)) {
+
+    puts_term(t1); printf("~"); puts_term(t2); puts("");
     
-    if ((NameTable_ckech_if_term_has_gname(t1) == 1) ||
-	(NameTable_ckech_if_term_has_gname(t2) == 1)) {
-	
+    if ((NameTable_check_if_term_has_gname(t1) == 1) ||
+	(NameTable_check_if_term_has_gname(t2) == 1)) {
+
       eval_equation(&VM, t1, t2);
 	
     } else {
+      
       WHNFInfo_push_equation(t1, t2);
     }
   }
@@ -7401,6 +7580,7 @@ int main(int argc, char *argv[])
 	case '-':
 	case 'h':
 	case '?':
+	  printf("Inpla version %s\n", VERSION);	  
 	  puts("Usage: inpla [options]\n");
 	  puts("Options:");
 	  printf(" -f <filename>    Set input file name          (Defalut:    STDIN)\n");
@@ -7420,7 +7600,7 @@ int main(int argc, char *argv[])
 		 MaxThreadNum);
 
 #else
-	  printf(" -w               Enable Weak Head Normal Form strategy (Default: false)\n"
+	  printf(" -w               Enable Weak Reduction strategy (Default: false)\n"
 		 );
 	  
 	  
@@ -7524,7 +7704,7 @@ int main(int argc, char *argv[])
     
 #ifndef THREAD
     if (WHNFinfo.enabled) {
-      printf("Inpla %s (WHNF) : Interaction nets as a programming language",
+      printf("Inpla %s (Weak Strategy) : Interaction nets as a programming language",
 	     VERSION);
       printf(" [%s]\n", BUILT_DATE);
     } else {
@@ -7578,7 +7758,7 @@ int main(int argc, char *argv[])
   
 
   linenoiseHistoryLoad(".inpla.history.txt");
-
+  
   // the main loop of parsing and execution
   while(1) {
 

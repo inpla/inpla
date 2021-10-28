@@ -1,22 +1,61 @@
 # Changelog
 
-## v0.4.2 (16 October 2021)
+## v0.5.0 (released 28 October 2021)
+### New features:
+- **Abbreviation notation**: An abbreviation notation `<<` is introduced. The following description:
 
-### Improved
+  ```
+  a,b,...,z << Agent(aa,bb,...,yy,zz)
+  ```
 
-- Line edit was improved to support multi-line paste, according to the following suggestion:
-  https://github.com/antirez/linenoise/issues/43
+  is rewritten internally as follows:
 
-- History in Line edit becomes available.
+  ```
+  Agent(a,b,...,z,aa,bb,...,yy) ~ zz
+  ```
+
+  For instance, `r << Add(1,2)` is rewritten internally as `Add(r,1)~2`. It is handy to denote ports that take computation results. As a special case we prepare a built-in abbreviation for the built-in agent `Append(a,b)` because the order of those arguments `a`, `b` is different from the abbreviation rewriting rule:
+
+  ```
+  ret << Append(a,b)  --- rewritten as ---> Append(ret,b)~a
+  ```
+
+- **Merger agent that merges two lists into one**: Merger agent is implemented, such that it has two principal ports for the two lists, and whose interactions are performed as soon as one of the principal ports is ready for the interaction, that is to say, connected to a list. So, the merged result is decided non-deterministically, especially in multi-threaded execution.
+  
+  ![merger](pic/merger.png)
+  
+  We overload `<<` in order to use the Merger agent naturally as follows:
+
+  ```
+  ret << Merger(alist, blist)
+  ```
+
+- **Built-in rules for arithmetic operations between two agents**: These are implemented, and these operations are managed agents `Sub`, `Mul`, `Div`, `Mod`:
+
+  ```
+  >>> r1 << Add(3,5), r2 << Sub(r1,2);
+  >>> ifce;      // put all interface (living names) and connected nets.
+  r2
+  
+  Connections:
+  r2 ->6
+  
+  >>>
+  ```
 
 
-### Bug Fix
-- Long length lists are printed out as abbreviation of 14-length lists,
-though these were printed out as 1-length lists after putting long lists.
+
+- ## v0.4.2 (released 16 October 2021)
+  ### Improved
+  - Line edit was improved to support multi-line paste, according to the following suggestion: https://github.com/antirez/linenoise/issues/43
+  - History in Line edit becomes available.
+
+  ### Bug Fix
+  - Long length lists are printed out as abbreviation of 14-length lists, though these were printed out as 1-length lists after putting long lists.
 
 
 
-## v0.4.1 (24 September 2021)
+## v0.4.1 (released 24 September 2021)
 
 ### Improved
 
@@ -35,7 +74,7 @@ though these were printed out as 1-length lists after putting long lists.
 
 
 
-## v0.4.0 (17 September 2021)
+## v0.4.0 (released 17 September 2021)
 
 ### New Feature: 
 
@@ -64,7 +103,7 @@ though these were printed out as 1-length lists after putting long lists.
 
 
 
-## v0.3.2 (3 August 2021)
+## v0.3.2 (released 3 August 2021)
 
 ### New Feature: 
 
@@ -92,7 +131,7 @@ though these were printed out as 1-length lists after putting long lists.
 
   
 
-## v0.3.1 (7 May 2021)
+## v0.3.1 (released 7 May 2021)
 
 ### New Feature: 
 

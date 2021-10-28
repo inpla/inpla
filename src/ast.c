@@ -36,7 +36,7 @@ char *recordSymbol(SymbolTable *table, char *name) {
       // The `name' has existed already,
       // and table->sym[i] is used instead of that,
       // so starduped memory for the `name' should be freed here.
-      free(name);
+      // free(name);
       
       return table->sym[i];
     }
@@ -150,6 +150,7 @@ void ast_recordConst(char *name, int val) {
 }
 
 
+
 Ast *ast_makeAST(AST_ID id, Ast *left, Ast *right) {
   Ast *ptr;
   if ((id == AST_AGENT) && (right == NULL)) {
@@ -252,7 +253,7 @@ void puts_ast(Ast *p) {
     "(*L)", "(*R)",
 
     // extension
-    "TUPLE", 
+    "TUPLE", "PPAIR", 
     "INT", "LD", "ADD", "SUB", "MUL", "DIV", "MOD", 
     "LT", "LE",  "EQ", "NE", "UNM", 
     "CONS", "NIL", "OPCONS",
@@ -276,6 +277,11 @@ void puts_ast(Ast *p) {
     puts_ast(p->right);
     printf(")");
     break;
+  case AST_PPAIR:
+    printf("PPAIR(");
+    puts_ast(p->right);
+    printf(")");
+    break;
   case AST_NIL:
     printf("NIL");
     break;
@@ -293,6 +299,88 @@ void puts_ast(Ast *p) {
 
   }
 }
+
+
+Ast *ast_unfoldABR(Ast *left, char *sym, Ast *paramlist) {
+  // input:
+  // left << (AST_AGENT, sym, paramlist)
+
+  // output:
+  // p1,p2,...,pn << (AST_AGENT, sym, params @ [param])
+  // ==> (AST_CNCT left right)
+  // where left = (AST_AGENT sym, p1,p2,...,pn,params)
+  //       right = (AST_NAME param)
+
+  if (!strcmp(sym, "Append")) {
+    // paramlist: [a,b] => [b,a]
+    if (paramlist->right != NULL) {
+      Ast *tmp = paramlist->left;                // tmp for a
+      paramlist->left = paramlist->right->left;  // a := b
+      paramlist->right->left = tmp;              // b := a
+    }
+  } else if (!strcmp(sym, "Merger")) {
+    // left << Merger(paramlist)  ==> Merger(left) ~ (paramlist)
+    Ast *agent_left = ast_makeAST(AST_AGENT, ast_makeSymbol("Merger"), left);
+    Ast *agent_right = ast_makeTuple(paramlist);
+    Ast *cnct = ast_makeAST(AST_CNCT, agent_left, agent_right);
+    return cnct;    
+  }
+  
+  //puts_ast(left);puts("");
+  //puts_ast(paramlist);puts("");
+
+  Ast *params, *param, *at;
+
+  // paramlist: (AST_LIST elem next)
+  if (paramlist->right == NULL) {
+    // [x] => [], x
+    param = paramlist->left;
+    params = NULL;
+  } else {
+    params = param = NULL;
+    
+    // params@[param] => params, param
+    at = paramlist;    
+    while (at->right != NULL) {
+      if (at->right->right == NULL) {
+	param = at->right->left; // compoment
+	at->right = NULL;        // break the list chain
+	params = paramlist;      // params is the list whose last is just broken
+	break;
+      }
+      at = at->right;
+    }
+  }
+
+  //  puts_ast(params);puts("");
+  //  puts_ast(param);puts("");
+
+
+  // make left as left@params
+  at = left;
+  while (at != NULL) {
+    if (at->right == NULL) {
+      at->right = params;
+      break;
+    }
+    at = at->right;
+  }
+  //  puts_ast(left);puts("");
+
+    
+  Ast *agent_left = ast_makeAST(AST_AGENT, ast_makeSymbol(sym), left);
+  Ast *agent_right = param;
+  Ast *cnct = ast_makeAST(AST_CNCT, agent_left, agent_right);
+  
+  //puts_ast(agent_left);puts("");
+  //puts_ast(agent_right);puts("");
+
+  //exit(1);
+  return cnct;
+  
+}
+
+
 
 
 Ast *ast_remove_tuple1(Ast *p) {

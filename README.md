@@ -19,23 +19,74 @@ Inpla is a multi-threaded parallel interpreter of interaction nets. Once you wri
 
 - **Comparison in execution time** with other implementations: **Haskell** (GHC version 8.10.7), **Standard ML** v110.74 (interpreter mode) and **Python** 3.8.5 in execution time.
   - The above table contains execution time in second on average of ten times execution by using Linux PC (Core i7-9700 (8 threads, no Hyper-threading), 16GB memory). The fastest one is shown with bold style.  These scripts are stored in the `comparison` directory.
+  
   - Inpla*n*  and Inpla*n*_**r** mean *n* threads without/with reuse-annotated execution, respectively. 
+  
   - "ack(3,11)" is computation of Ackermann function.  Execution time of Python is a blank due to stack size limitation error. 
+  
   - "fib 38" is computation to get the 38th Fibonacci number. 
+  
   - "bsort *n*", "isort *n*", "qsort *n*" and "msort *n*" are computation of bubble sort, insertion sort, quick sort and merge sort for random *n*-element lists, respectively.
+  
+    
+
+### Feature of Version 0.5.0 (released on 28 October 2021)
+- **Abbreviation notation**: An abbreviation notation `<<` is introduced. The following description:
+
+  ```
+  a,b,...,z << Agent(aa,bb,...,yy,zz)
+  ```
+
+  is rewritten internally as follows:
+
+  ```
+  Agent(a,b,...,z,aa,bb,...,yy) ~ zz
+  ```
+
+  For instance, `r << Add(1,2)` is rewritten internally as `Add(r,1)~2`. It is handy to denote ports that take computation results. As a special case we prepare a built-in abbreviation for the built-in agent `Append(a,b)` because the order of those arguments `a`, `b` is different from the abbreviation rewriting rule:
+
+  ```
+  ret << Append(a,b)  --- rewritten as ---> Append(ret,b)~a
+  ```
+
+- **Merger agent that merges two lists into one**: Merger agent is implemented, such that it has two principal ports for the two lists, and whose interactions are performed as soon as one of the principal ports is ready for the interaction, that is to say, connected to a list. So, the merged result is decided non-deterministically, especially in multi-threaded execution.
+  
+  ![merger](pic/merger.png)
+  
+  We overload `<<` in order to use the Merger agent naturally as follows:
+
+  ```
+  ret << Merger(alist, blist)
+  ```
+
+  The following is an execution example (the count of interactions is not supported yet):
+  ```
+  >>> r << Merger([0,0,0,0,0,0,0,0,0,0], [1,1,1,1,1,1,1,1,1,1]); 
+  (1 interactions by 4 threads, 0.10 sec)
+  >>> ifce;
+  r 
+  
+  Connections:
+  r ->[0,0,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0]
+  
+  >>> 
+  ```
 
 
+- **Built-in rules for arithmetic operations between two agents**: These are implemented, and these operations are managed agents `Sub`, `Mul`, `Div`, `Mod`:
 
-### Feature of Version 0.4.2
-- Line edit supports multi-line inputs.
+  ```
+  >>> r1 << Add(3,5), r2 << Sub(r1,2);
+  >>> ifce;      // put all interface (living names) and connected nets.
+  r2
+  
+  Connections:
+  r2 ->6
+  
+  >>>
+  ```
 
-### Feature of Version 0.4.1
-- Integer numbers can be written the same as one of the first-class objects.
-- Interaction rules can re-allocate heaps of the rule agents to agents in nets. This re-allocation is specified by modifications such as (\*L), (\*R), called reuse annotation [1], to agents in nets. This re-allocation can improve execution performance in parallel. This is experimental, thus in future version these should be decided automatically, so please do not care so much.
-- Weak reduction strategy is supported. It turns on by invoked with ```-w``` option, and then only connections that have living names are evaluated.
-- Nested guards in conditional rules are supporeted.
-
-
+  
 
 ## Getting started
 - Requirement  
@@ -61,12 +112,12 @@ $ make thread
 	
 	```
 	$ ./inpla
-	Inpla 0.4.1 : Interaction nets as a programming language [built: 21 Sept. 2021]
+	Inpla 0.5.0 : Interaction nets as a programming language [built: 28 Oct. 2021]
 	>>> 
 	```
 
 
-- The symbol `>>>` is a prompt of Inpla. After the prompt you can write rules and nets. For instance, the following is a rule for incrementation `inc`  and a net to bind the increment result of `10` to a name `r`  (`//` is a comment):
+- The symbol `>>>` is a prompt of Inpla. After the prompt you can write rules and nets. For instance, the following is a rule for incrementation `inc`  and a net to bind the increment result of `10` to a name `r`  (where `//` is a comment):
 
   ```
   >>> inc(ret) >< (int i) => ret~(i+1);   // a rule for inc >< (int i)
@@ -119,7 +170,7 @@ $ make thread
 
     ```
     $ ./inpla -f sample/gcd.in
-    Inpla 0.4.1 : Interaction nets as a programming language [built: 21 Sept. 2021]
+    Inpla 0.5.0 : Interaction nets as a programming language [built: 28 Oct. 2021]
     (4 interactions, 0.00 sec)
     7
     
@@ -152,7 +203,7 @@ $ make thread
 
     ```
     $ ./inpla -f sample/isort.in
-    Inpla 0.4.1 : Interaction nets as a programming language [built: 21 Sept. 2021]
+    Inpla 0.5.0 : Interaction nets as a programming language [built: 28 Oct. 2021]
     (16 interactions, 0.00 sec)
     [1,2,3,6,9]
     
@@ -188,7 +239,7 @@ $ make thread
 
     ```
     $ ./inpla -f sample/qsort.in
-    Inpla 0.4.1 : Interaction nets as a programming language [built: 21 Sept. 2021]
+    Inpla 0.5.0 : Interaction nets as a programming language [built: 28 Oct. 2021]
     (22 interactions, 0.00 sec)
     [1,2,3,6,9]
     
@@ -624,19 +675,21 @@ If the `add(r, b)~3` is operated first, it causes core dump error because the `b
 
 ### Built-in rules of attributes in the anonymous agents
 
-There is a built-in rule for attributes on the two anonymous agents. This could be required to calculate attributes obtained as evaluation results of two nets. In this version, we have the following rules as built-in:
+There are built-in rules for arithmetic operations between two agents by using `Add`, `Sub`, `Mul`, `Div`, `Mod` agents as addition, subtraction, multiplication, division and modulo, respectively. Rules for the `Add` are defined as follows, and the others are also defined the same way:
 
 ```
-Add(result, y)><(int x) => Addn(result, x)~y;
-Addn(result, int x)><(int y) => result~(x+y);
+Add(result, y)><(int x) => _Add(result, x)~y;
+_Add(result, int x)><(int y) => result~(x+y);
 ```
 
 - Example:
 
 ```
->>> Add(r, 3)~5;   // Add is already defined as a bulit-in
+>>> Add(r,3)~5;   // Add is already defined as a bulit-in
 >>> r;
 8
+>>> result << Sub(r,2)   // This is also written as an abbreviation form.
+6
 >>>
 ```
 
@@ -661,10 +714,10 @@ The sequence of `<condition-on-attributes> ` must be finished with the otherwise
 
 - Example: The following shows rules to obtain a list that contains only even numbers:
 ```
-// Rules (because it is long definition, so copy and paste is recommended)
+// Rules
 evenList(result) >< [] => r~[];
 evenList(result) >< (int x):xs
-| x%2==0 => result~(x:r1), evenList(r1)~xs
+| x%2==0 => result~(x:cnt), evenList(cnt)~xs
 | _      => evenList(result)~xs;
 ```
 
@@ -681,11 +734,15 @@ evenList(result) >< (int x):xs
 fib(result) >< (int n)
 | n == 0 => result~0
 | n == 1 => result~1
-| _ => fib(r1)~(n-1), fib(r2)~(n-1), Add(result, r2)~r1;
+| _ => fib(r1)~(n-1), fib(r2)~(n-2), Add(result, r2)~r1;
 
 // * We cannot write result~(r1+r2)
-// because r1 and r2 are not recognised as attributes.
-// Therefore, we have to apply those to the built-in rule Add(r, int x)><(int y).
+// because r1, r2 may be not connected to attributes in the anonymous agents,
+// thus we have to leave the addition until fib(r1) and fib(r2) are finished.
+// For this purpose we must use addition operation between agents as 
+// Add(result, r2)~r1. 
+// In this case, after r1,r2 are connected to (int y), (int x),
+// y+x is executed and the addition result is connected to the result.
 ```
 
 ```
@@ -702,7 +759,7 @@ fib(result) >< (int n)
 
 - Inpla has the following commands:
   - `free` *name1* ... *name_n* `;`     
-  The *name1* ... *name_n* and connected terms from these are disposed. To dispose every living name and term connected from those, type `free ifce;`, where the `ifce` is an abbreviation of *interface* that is called for the set of living names.
+  The *name1* ... *name_n* and connected terms from these are disposed. To dispose every living name and term connected from those, type `free ifce;`, where the `ifce` is an abbreviation of *interface* that is called for the set of names that live and occur once.
   - *name1* ... *name_n* `;`  
   Put terms connected from the *name1* ... *name_n*.  To put every term connected from the interface, type `ifce;`.
   - `prnat` *name*`;`    
@@ -718,7 +775,16 @@ fib(result) >< (int n)
 
 
 
-## Extensions in Version 0.4
+## Feature of Version 0.4
+
+#### Summaries
+- Integer numbers can be written the same as one of the first-class objects.
+- Interaction rules can re-allocate heaps of the rule agents to agents in nets. This re-allocation is specified by modifications such as `(*L)`, `(*R)`, called reuse annotation [1], in front of agents in nets, such as `(*L)Add(r,a)`. This re-allocation can improve performance in multi-threaded execution. This is experimental, thus in future version these can be decided automatically, so please do not care so much.
+- Weak reduction strategy is supported. It turns on by invoked with ```-w``` option, and then only connections that have living names are evaluated.
+- Nested guards in conditional rules are supporeted.
+- Line edit supports multi-line inputs.
+
+
 
 ### Reuse annotations
 
@@ -736,7 +802,7 @@ In interaction rule definitions, we can specify which agent is reused in the net
 
 ### Weak reduction strategy
 
-In this reduction strategy, only connections that have living names are evaluated. This is taken for non-terminate computation such as fixed point combinator and process networks.
+In this reduction strategy, only connections that have interface names (thus, live and occur once) are evaluated. This is taken for non-terminate computation such as fixed point combinator and process networks.
 
 - Example: We have a sample net in `sample/processnet1.in` that keep producing natural numbers from 1 and output these to the port `r`:
 
@@ -765,7 +831,7 @@ In this reduction strategy, only connections that have living names are evaluate
 
   ```
   $ ./inpla -w
-  Inpla 0.4.1 : Interaction nets as a programming language [built: 21 Sept. 2021]
+  Inpla 0.5.0 (Weak Strategy) : Interaction nets as a programming language [28 Oct. 2021]
   >>> use "sample/processnet1.in";
   (2 interactions, 0.00 sec)
   >>> ifce;

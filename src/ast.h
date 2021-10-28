@@ -13,8 +13,8 @@ typedef enum {
   // annotation
   AST_ANNOTATION_L, AST_ANNOTATION_R, 
 
-  // builtin tuble
-  AST_TUPLE,
+  // builtin tuple
+  AST_TUPLE, AST_PPAIR,
 
   // operation
   AST_INT, AST_LD, AST_PLUS, AST_SUB, AST_MUL, AST_DIV, AST_MOD,
@@ -50,7 +50,7 @@ void puts_ast(Ast *p);
 Ast *ast_paramToCons(Ast *ast);
 void ast_recordConst(char *name, int val);
 Ast *ast_remove_tuple1(Ast *p);
-
+Ast *ast_unfoldABR(Ast *left, char *sym, Ast *paramlist);
 
 #define ast_makeCons(x1,x2) ast_makeAST(AST_LIST,x1,x2)
 #define ast_makeList1(x1) ast_makeAST(AST_LIST,x1,NULL)

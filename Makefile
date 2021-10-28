@@ -1,11 +1,10 @@
 CC      = gcc
-CFLAGS  = -Wall -Winline -O3 -std=gnu99 --param inline-unit-growth=2000 --param max-inline-insns-single=2000
+CFLAGS  = -Wall -Winline -O3 -std=gnu99 --param inline-unit-growth=1000 --param max-inline-insns-single=1200
 LDFLAGS = 
 LIBS    = 
 INCLUDE = -I ./src
 SRC_DIR = ./src
 OBJ_DIR = ./build
-#SOURCES = $(SRC_DIR)/ast.c $(SRC_DIR)/id_table.c $(SRC_DIR)/linenoise/linenoise.c
 TARGET  = inpla
 OBJS    = $(OBJ_DIR)/$(TARGET).tab.c $(OBJ_DIR)/ast.o $(OBJ_DIR)/id_table.o $(OBJ_DIR)/linenoise.o
 
@@ -41,7 +40,7 @@ $(OBJ_DIR):
 	fi
 
 clean:
-	rm -f $(TARGET)* $(OBJ_DIR)/* *stackdump*
+	rm -f $(TARGET)* $(OBJ_DIR)/* *stackdump* *core*
 	@if [ -f $(SRC_DIR)/linenoise/linenoise.c.orig ]; then \
 		echo "mv -f $(SRC_DIR)/linenoise/linenoise.c.orig $(SRC_DIR)/linenoise/linenoise.c"; \
 		mv -f $(SRC_DIR)/linenoise/linenoise.c.orig $(SRC_DIR)/linenoise/linenoise.c; \

@@ -45,7 +45,7 @@ IDTYPE NameTable_get_set_id(char *key);
 void NameTable_puts_all();
 void NameTable_free_all();
 
-int NameTable_ckech_if_term_has_gname(VALUE term);
+int NameTable_check_if_term_has_gname(VALUE term);
 
 int term_has_keynode(VALUE keynode, VALUE term);
 int keynode_exists_in_another_term(VALUE keynode, VALUE *connected_from);

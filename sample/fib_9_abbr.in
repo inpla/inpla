@@ -4,13 +4,13 @@
 fib(ret) >< (int n)
 | n == 0 => ret~0
 | n == 1 => ret~1
-| _ => fib(cnt1)~(n-1), fib(cnt2)~(n-2), Add(ret, cnt2)~cnt1;
+| _ => cnt1 << fib(n-1), cnt2 << fib(n-2), ret << Add(cnt1,cnt2);
 
 
 // Note: Add is implemented as a built-in agent such that:
 //   Add(ret, int m) ~ (int n) --> ret~(m+n);
 
 // Nets
-fib(ret)~9;
+ret << fib(9);
 ret;
 

@@ -418,7 +418,7 @@ void NameTable_free_all() {
 }
 
 
-int NameTable_ckech_if_term_has_gname(VALUE term) {
+int NameTable_check_if_term_has_gname(VALUE term) {
   int i;
   NameList *at;
   VALUE ptr;

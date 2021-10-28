@@ -1,0 +1,98 @@
+// 245II in YALE encoding
+
+// Rules
+
+D >< V => ;
+B(a,b,c) >< Z => a~c, b~Z;
+B(a,b,c) >< Lam(x,t,v) => b~Lam(x,t,w), v~DB(a,w,c);
+DB(a,b,c) >< V => a~c, b~V;
+C(x,y) >< Z => x~Z, y~Z;
+C(x,y) >< Lam(s,t,u) =>
+	 x~Lam(a,b,c), y~Lam(d,e,f),
+	 s~Delta(a,d), t~Delta(b,e), u~C(c,f);
+C(x,y) >< V => x~V, y~V;
+Delta(x,y) >< Delta(a,b) => x~a, y~b;
+B(x,a,b) >< Delta(c,d) => x~CB(a,b,Delta(c,d));
+Delta(a,b) >< CB(x,y,z) =>
+	x~Delta(c,d), y~Delta(e,f), z~Delta(B(a,c,e),B(b,d,f));
+Delta(x,y) >< S(z) =>
+	x~S(a), y~S(b), z~Delta(a,b);
+Delta(x,y) >< Z => x~Z, y~Z;
+Delta(x,y) >< V => x~V, y~V;
+Delta(x,y) >< C(t,s) =>
+	x~C(a,b), y~C(c,d), t~Delta(b,d), s~Delta(a,c);
+Delta(x,y) >< AppTo(t,s) =>
+	x~AppTo(a,b), y~AppTo(c,d), t~Delta(a,c), s~Delta(b,d);
+Delta(x,y) >< Lam(t,s,u)=>
+	x~Lam(a,b,c), y~Lam(d,e,f),
+	t~Delta(a,d), s~Delta(b,e), u~Delta(c,f);
+DB(x,y,z) >< CB(t,s,u) =>
+	x~CB(d,e,u), y~CB(t,f,d), s~DB(e,f,z);
+C(x,y) >< CB(t,s,u) =>
+	x~CB(a,b,c), y~CB(d,e,f), 
+	t~Delta(a,d), s~C(b,e), u~C(c,f);
+D >< CB(a,b,c) => a~c, b~D;
+
+Eps >< Eps => ;
+Eps >< S(x) => x~Eps;
+Eps >< V => ;
+Eps >< D =>;
+Eps >< Delta(t,s) => t~Eps,s~Eps;
+Eps >< Lam(t,s,u) => t~Eps,s~Eps,u~Eps;
+Eps >< AppTo(t,s) => t~Eps,s~Eps;
+Eps >< B(t,s,u) => t~Eps,s~Eps,u~Eps;
+Eps >< CB(t,s,u) => t~Eps,s~Eps,u~Eps;
+
+
+
+Lam(x,t,c) >< AppTo(result,s) => result~t, x~s, c~D;
+// We can write this avtive pair in nets as
+//   result << AppTo(s, lam_term)  for  AppTo(result, s)~ lam_term.
+
+// If the `<<' is defined as user macro, then it becomes more readable:
+//   result << App(lam_term, s)  =def=  lam_term ~ App(result, s)
+
+
+// Nets
+id1 ~ Lam(x,x,V);
+id2 ~ Lam(x,x,V);
+
+
+// lam f. lam x. f(fx)
+two ~ Lam(fb, Lam(x,r2,c),V),
+  fb ~ B(c,f,V),
+  f2,f1 << C(f),   // C(f2,f1) ~ f
+  r2 << AppTo(r1, f2),
+  r1 << AppTo(x, f1);   
+
+
+// lam f. lam x. f(f(f(fx)))
+four ~ Lam(fb, Lam(x, r4, c), V),
+  fb~B(c, f, V),
+  f4, C(f3, C(f2, f1)) << C(f),
+  r4 << AppTo(r3, f4),
+  r3 << AppTo(r2, f3),
+  r2 << AppTo(r1, f2),
+  r1 << AppTo(x, f1);
+
+
+// lam f. lam x. f(f(f(f(fx))))
+five ~ Lam(fb, Lam(x, r5, c), V),
+  fb~B(c, f, V),
+  f5, C(f4, C(f3, C(f2, f1))) << C(f),
+  r5 << AppTo(r4, f5),
+  r4 << AppTo(r3, f4),
+  r3 << AppTo(r2, f3),
+  r2 << AppTo(r1, f2),
+  r1 << AppTo(x, f1);
+
+
+
+// (((24)5)I)I
+aux24 << AppTo(four, two);
+aux245 << AppTo(five, aux24);
+aux245I << AppTo(id1, aux245);
+aux245II << AppTo(id2, aux245I);
+
+aux245II;
+exit;

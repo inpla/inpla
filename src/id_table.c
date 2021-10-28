@@ -35,10 +35,19 @@ void IdTable_init() {
   IdTable[ID_CONS].arity = 2;
   IdTable[ID_INTAGENT].arity = 1;
 
+  IdTable[ID_APPEND].arity = 2;
+  IdTable[ID_MERGER].arity = 1;
+  IdTable[ID_MERGER_P].arity = 1;
   IdTable[ID_ADD].arity = 2;
   IdTable[ID_ADD2].arity = 2;
-  //  IdTable[ID_APPEND].arity = 2;
-  //  IdTable[ID_APPEND2].arity = 2;
+  IdTable[ID_SUB].arity = 2;
+  IdTable[ID_SUB2].arity = 2;
+  IdTable[ID_MUL].arity = 2;
+  IdTable[ID_MUL2].arity = 2;
+  IdTable[ID_DIV].arity = 2;
+  IdTable[ID_DIV2].arity = 2;
+  IdTable[ID_MOD].arity = 2;
+  IdTable[ID_MOD2].arity = 2;
 
   IdTable[ID_INT].name = "int";
   IdTable[ID_TUPLE0].name = "Tuple0";
@@ -51,10 +60,19 @@ void IdTable_init() {
   IdTable[ID_CONS].name = "Cons";
   IdTable[ID_INTAGENT].name = "Int";
   
-  IdTable[ID_ADD].name = "Add";
-  IdTable[ID_ADD2].name = "Add2";
   IdTable[ID_APPEND].name = "Append";
-  IdTable[ID_APPEND2].name = "Append2";
+  IdTable[ID_MERGER].name = "Merger";
+  IdTable[ID_MERGER_P].name = "_MergerP";
+  IdTable[ID_ADD].name = "Add";
+  IdTable[ID_ADD2].name = "_Add";
+  IdTable[ID_SUB].name = "Sub";
+  IdTable[ID_SUB2].name = "_Sub";
+  IdTable[ID_MUL].name = "Mul";
+  IdTable[ID_MUL2].name = "_Mul";
+  IdTable[ID_DIV].name = "Div";
+  IdTable[ID_DIV2].name = "_Div";
+  IdTable[ID_MOD].name = "Mod";
+  IdTable[ID_MOD2].name = "_Mod";
 }
 
 
@@ -67,16 +85,22 @@ int IdTable_getid_builtin_funcAgent(Ast *agent) {
     return -1;
   }
   
-  if (strcmp((char *)agent->left->sym, "Add2") == 0) {
-    id = ID_ADD2;
-  } else if (strcmp((char *)agent->left->sym, "Add") == 0) {
+  if (strcmp((char *)agent->left->sym, "Add") == 0) {
     id = ID_ADD;      
+  } else if (strcmp((char *)agent->left->sym, "Sub") == 0) {
+    id = ID_SUB;      
+  } else if (strcmp((char *)agent->left->sym, "Mul") == 0) {
+    id = ID_MUL;      
+  } else if (strcmp((char *)agent->left->sym, "Div") == 0) {
+    id = ID_DIV;      
+  } else if (strcmp((char *)agent->left->sym, "Mod") == 0) {
+    id = ID_MOD;      
   } else if (strcmp((char *)agent->left->sym, "Append") == 0) {
     id = ID_APPEND;      
-  } else if (strcmp((char *)agent->left->sym, "Append2") == 0) {
-    id = ID_APPEND2;
   } else if (strcmp((char *)agent->left->sym, "Int") == 0) {
     id = ID_INTAGENT;
+  } else if (strcmp((char *)agent->left->sym, "Merger") == 0) {
+    id = ID_MERGER;
   }
 
   return id;
@@ -100,7 +124,8 @@ int IdTable_is_builtin_rule(Ast *agentL, Ast *agentR) {
 
   int idL = IdTable_getid_builtin_funcAgent(agentL);
   if (agentR->id == AST_INT) {
-    if ((idL == ID_ADD) || (idL == ID_ADD2)) {
+    if ((idL == ID_ADD) || (idL == ID_SUB) || (idL == ID_MUL)
+	|| (idL == ID_DIV) || (idL == ID_MOD)) {
       return 1;
     }
     return 0;
@@ -112,6 +137,16 @@ int IdTable_is_builtin_rule(Ast *agentL, Ast *agentR) {
     }
     return 0;
   }
+
+  if (idL == ID_MERGER) {
+    if ((agentR->id == AST_TUPLE) && (agentR->intval == 2)) {
+      // Merger >< Tuple2
+      return 1;
+    }
+    return 0;
+  }
+
+
   
   return 0;
 }
@@ -133,7 +168,7 @@ void IdTable_set_arity(int id, int arity)
   if ((IdTable[id].arity == -1) || (IdTable[id].arity == arity)) {
     IdTable[id].arity = arity;
   } else {
-    printf("Warning: The agent '%s' has been already defined as whose arity is %d, but now redefined as the arity is %d.\n",  
+    printf("Warning: The agent '%s' has been already defined as whose arity is %d, but now used as the arity is %d.\n",  
 	   IdTable[id].name, IdTable[id].arity, arity);
     IdTable[id].arity = arity;
   } 
@@ -162,10 +197,12 @@ int IdTable_new_agentid() {
 
 int IdTable_new_gnameid() {
   NextGnameId++;
-  if (NextAgentId > IDTABLE_SIZE) {
-    printf("ERROR: The number of agents exceeded the size of names in SYMTABLE (%d)\n",
-	 ID_NAME);
+  if (NextGnameId < IDTABLE_SIZE) {
+    return(NextGnameId);
+  } else {
+    
+    printf("ERROR: The total number of agents and names exceeded the size of names in IDTABLE (%d)\n",
+	 IDTABLE_SIZE);
     exit(-1);
   }
-  return(NextGnameId);
 }
