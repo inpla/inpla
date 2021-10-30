@@ -93,7 +93,7 @@ Inpla is a multi-threaded parallel interpreter of interaction nets. Once you wri
   _Add(ret, int a) >< (int b) => r~(a+b);
   ```
   
-  For instance, in the following rules for Fibonacci numbers, we can join recursively computed two results safely:
+  For instance, in the following rules for Fibonacci numbers, we can join two recursively computed results safely:
   
   ```
   // Fibonacci number
