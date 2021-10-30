@@ -521,7 +521,7 @@ Let's clean the result in case it could be used anywhere:
   add(ret,x) >< Z => ret~x;
   add(ret,x) >< S(y) => ret~S(cnt), add(cnt, x)~y;
   ```
-  In comparison with the previous example such that computational results are stored in an auxiliary ports, the results `S(cnt)` can be sent to other soon. So, **this version is suitable for parallel execution**.
+  In comparison with the previous example such that calculation results are stored until every computation finishes, the results can be sent partially as `S(cnt)` to other soon. So, **this version is suitable for parallel execution**.
   
   
 
