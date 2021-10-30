@@ -248,7 +248,8 @@ $ make thread
     
     // Note: `Append' is implemented as the following built-in agent:
     //   Append(ret, b)~a  -->  ret ~ a++b
-    // The ret << Append(left, x:right) is rewritten by the built-in abrreviation as:
+    // The ret << Append(left, x:right) is rewritten 
+    // by the built-in abrreviation into:
     //   Append(ret, x:right)~left.
     
     part(smaller, larger, int x) >< [] => smaller~[], larger~[];
@@ -487,7 +488,7 @@ Let's clean the result in case it could be used anywhere:
   
   This is written in interaction nets as follows: ![add1](pic/add1.png)
   
-  In Inpla, each agent is expressed as a term. For instance, after putting distinct names on auxiliary ports, the `add` agent is written as a term `add(ret,x)`. Every computation is performed on connections between principal ports (drawn as arrow) according to interaction rules. These rules are written textually as follows:
+  In Inpla, each agent is expressed as a term. For instance, after putting distinct names on auxiliary ports, the `add` agent is written as a term `add(ret,x)`. Every computation is performed on connections between principal ports (drawn as arrows) according to interaction rules. These rules are written textually as follows:
   
   ```
   add(ret, x) >< Z => ret~x;
@@ -520,7 +521,9 @@ Let's clean the result in case it could be used anywhere:
   add(ret,x) >< Z => ret~x;
   add(ret,x) >< S(y) => ret~S(cnt), add(cnt, x)~y;
   ```
-
+  In comparison with the previous example such that computational results are stored in an auxiliary ports, the results `S(cnt)` can be sent to other soon. So, **this version is suitable for parallel execution**.
+  
+  
 
 
 ## Built-in agents
