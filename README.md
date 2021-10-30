@@ -73,10 +73,10 @@ Inpla is a multi-threaded parallel interpreter of interaction nets. Once you wri
   ```
 
 
-- **Built-in rules for arithmetic operations between two agents**: These are implemented, and these operations are managed agents `Sub`, `Mul`, `Div`, `Mod`:
+- **Built-in rules for arithmetic operations between two agents**: These operation, besides `Add`,  are fully implemented and managed by agents `Sub`, `Mul`, `Div`, `Mod`:
 
   ```
-  >>> r1 << Add(3,5), r2 << Sub(r1,2);
+  >>> r1<<Add(3,5), r2<<Sub(r1,2);
   >>> ifce;      // put all interface (living names) and connected nets.
   r2
   
@@ -86,6 +86,31 @@ Inpla is a multi-threaded parallel interpreter of interaction nets. Once you wri
   >>>
   ```
 
+  These are useful to join safely two computational results on two agents in multi-threaded execution regardless of finished status of the two agents, because there rules are written so that the arithmetic operation is invoked after ensuring that every argument modified by `int` has an attribute value as follows:
+  
+  ```
+  Add(ret, b) >< (int a) => _Add(ret, a)~b;
+  _Add(ret, int a) >< (int b) => r~(a+b);
+  ```
+  
+  For instance, in the following rules for Fibonacci numbers, we can join recursively computed two results safely:
+  
+  ```
+  // Fibonacci number
+  
+  // Rules
+  fib(ret) >< (int n)
+  | n == 0 => ret~0
+  | n == 1 => ret~1
+  | _ => fib(cnt1)~(n-1), fib(cnt2)~(n-2), Add(ret,cnt1)~cnt2;
+  ```
+  
+  The last line is also written by the abbreviation naturally:
+  
+  ```
+  | _ => cnt1 << fib(n-1), cnt2 << fib(n-2), ret << Add(cnt1,cnt2);
+  ```
+  
   
 
 ## Getting started
@@ -406,9 +431,10 @@ Connections between agents are re-written according to **interaction rules**:
 <rule-agent> ::= <agentID>
                | <agentID> '(' <name> ',' ... ',' <name> ')'
 ```
-  where
+  with the **priviso** that:
 
-  - each name of the ```<name>``` must be **distinct**, and must **occur once** in the ```<connections>```.
+  - each name that occur in `<rule-agent>` must be **distinct**
+  - (**Linearity restriction**): every name in `<interaction-rule>` must **occur twice**.
 
 Something complicated? No problem! Let's us learn how to define the rules with some example!
 
@@ -421,7 +447,7 @@ inc(ret) >< Z => ret~S(Z);
 inc(ret) >< S(x) => ret~S(S(x));
 ```
 
-In the first rule, the name `result` occurs in its `<connection>` part once, so it satisfies the rule proviso. The second rule also satisfies because the `result` and `x` are distinct names and occur once in its `<connections>` part. 
+In the first rule, the name `ret` occurs twice, so it satisfies the rule proviso. The second rule also satisfies because the `ret` and `x` are distinct names and occur twice in the rule. 
 
 When agents works can be separated into constructors and de-constructors, it could be good to use strings of all small letters for de-constructors such as `inc` , and for constructors ones start from a capital letter such as `Z` and `S`.
 
@@ -435,7 +461,7 @@ S(S(S(Z))
 >>>
 ```
 
-Good! We get the result  `S(S(S(Z)))` of incrementation of  `S(S(Z))` .
+Good! We get `S(S(S(Z)))` as the result of incrementation of  `S(S(Z))` .
 
 To show the result as a natural number, use `prnat` command:
 
@@ -459,9 +485,9 @@ Let's clean the result in case it could be used anywhere:
   - add(x, Z) = x,  
   - add(x, S(y)) = add(S(x), y).
   
-  This is written in interaction nets and Inpla as follows:
+  This is written in interaction nets as follows: ![add1](pic/add1.png)
   
-   ![add1](pic/add1.png)
+  In Inpla, each agent is expressed as a term. For instance, after putting distinct names on auxiliary ports, the `add` agent is written as a term `add(ret,x)`. Every computation is performed on connections between principal ports (drawn as arrow) according to interaction rules. These rules are written textually as follows:
   
   ```
   add(ret, x) >< Z => ret~x;
@@ -478,7 +504,7 @@ Let's clean the result in case it could be used anywhere:
   >>> free r;
   >>>
   ```
-
+  
 - **Exercise**: Another version of the addition.
 
   There is another version defined as follows in term rewriting system:
@@ -486,9 +512,10 @@ Let's clean the result in case it could be used anywhere:
   - add(x,Z) = x,
   - add(x, S(y)) = S(add(x,y)).
 
-  This is written in interaction nets and Inpla as follows:
+  This is written in interaction nets: ![add2](pic/add2.png)
   
-   ![add2](pic/add2.png)
+   In Inpla, putting distinct names also on connections between auxiliary ports, these rules are written textually as follows:
+  
   ```
   add(ret,x) >< Z => ret~x;
   add(ret,x) >< S(y) => ret~S(cnt), add(cnt, x)~y;
@@ -670,8 +697,7 @@ In interaction rules, attributes can be recognised by the modifier `int` in orde
 
   
 
-
-**We have to be careful for operations of two attributes**. For instance, we take the following rule of an `add` agent:
+**We have to be careful for operations of two attributes on distinct agents**. For instance, we take the following rule of an `add` agent:
 
 ```
 >>> add(result, int b) >< (int a) => result~(a+b);
@@ -688,13 +714,13 @@ Of course, it works as an addition operation on two attributes:
 >>>
 ```
 
-However, it can cause core dump error in computation for results of something because the argument `b` of `add` must be an attribute when the rule is invoked. For instance, we take the following computation:
+However, it can cause runtime error because the argument `b` of `add` can be not connected to an attribute when the rule is invoked. For instance, we take the following computation:
 
 ```
 >>> add(r, b)~3, add(b, 10)~20;
 ```
 
-If the `add(r, b)~3` is operated first, it causes core dump error because the `b` is not connected to an attribute, though it is OK if the `add(b, 10)~20` is operated first. To prevent this fragile situation, **we have to have extra rules to ensure that every port with the modifier `int` connects to an attribute**. For the rule of the `add` agent, the following is a **solution** to have the extra rule where `addn` is introduced as an extra agent:
+If the `add(r, b)~3` is operated first, it causes runtime error because the `b` is not connected to an attribute, though it is OK if the `add(b, 10)~20` is operated first. To prevent this fragile situation, **we have to have extra rules to ensure that every port with the modifier `int` connects to an attribute**. For the rule of the `add` agent, the following is a **solution** to have the extra rule where `addn` is introduced as an extra agent:
 
 ```
 >>> add(result, b) >< (int a) => addn(result, a) ~ b;
@@ -705,7 +731,7 @@ If the `add(r, b)~3` is operated first, it causes core dump error because the `b
 
 ### Built-in rules of attributes in the anonymous agents
 
-There are built-in rules for arithmetic operations between two agents by using `Add`, `Sub`, `Mul`, `Div`, `Mod` agents as addition, subtraction, multiplication, division and modulo, respectively. Rules for the `Add` are defined as follows, and the others are also defined the same way:
+There are built-in rules for arithmetic operations between two agents by using `Add`, `Sub`, `Mul`, `Div`, `Mod` agents as addition, subtraction, multiplication, division and modulo, respectively. Rules for the `Add` are defined so that it can join two attributes on distinct agents safely as follows, and the others are also defined the same way:
 
 ```
 Add(result, y)><(int x) => _Add(result, x)~y;
@@ -718,8 +744,9 @@ _Add(result, int x)><(int y) => result~(x+y);
 >>> Add(r,3)~5;   // Add is already defined as a bulit-in
 >>> r;
 8
->>> result << Sub(r,2)   // This is also written as an abbreviation form.
-6
+>>> r1 << Sub(r,2), r2 << Mul(r1,10)  // These are also written as an abbreviation form.
+>>> r2;
+60
 >>>
 ```
 
