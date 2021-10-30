@@ -108,7 +108,7 @@ Inpla is a multi-threaded parallel interpreter of interaction nets. Once you wri
   The last line is also written by the abbreviation naturally:
   
   ```
-  | _ => cnt1 << fib(n-1), cnt2 << fib(n-2), ret << Add(cnt1,cnt2);
+  | _ => cnt1<<fib(n-1), cnt2<<fib(n-2), ret<<Add(cnt1,cnt2);
   ```
   
   
