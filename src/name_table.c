@@ -230,7 +230,12 @@ IDTYPE NameTable_get_set_id(char *key) {
 
 
 
-// Whether the given 'term' has a name node 'keynode'.
+
+
+
+
+
+// Whether the given 'term' has a node 'keynode'.
 int term_has_keynode(VALUE keynode, VALUE term) {
   int i;
 
@@ -266,8 +271,10 @@ int term_has_keynode(VALUE keynode, VALUE term) {
 
 
 int keynode_exists_in_another_term(VALUE keynode, VALUE *connected_from) {
-  // It returns how many occurs in terms connected from global names.
-  // Also, the one of the terms is stored in the 'connected_from'.
+  // It returns how times the keynode occurs in
+  // terms connected from global names.
+  // When there are such connected terms, 
+  // one of these will be stored in the 'connected_from' as the result.
   int i, result=0;
   NameList *at;
 
@@ -300,7 +307,8 @@ int keynode_exists_in_another_term(VALUE keynode, VALUE *connected_from) {
 
 
 VALUE replace_keynode(VALUE keynode, VALUE term, VALUE heap) {
-
+  // heap[term/keynode]
+  
   if ((heap == (VALUE)NULL) || (IS_FIXNUM(heap))) {
     return heap;
   }

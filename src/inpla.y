@@ -21,7 +21,7 @@
 //#define COUNT_CNCT    // count of execution of JMP_CNCT
 
 //#define COUNT_MKAGENT // count of execution fo mkagent
-//#define CELL_USE_VERBOSE  // count of memory access
+#define CELL_USE_VERBOSE  // count of memory access
 
 
   
@@ -48,8 +48,8 @@ int ActiveThreadNum=0;
 
 //#define YYDEBUG 1
 
-#define VERSION "0.5.0"
-#define BUILT_DATE  "28 Oct. 2021"
+#define VERSION "0.5.1"
+#define BUILT_DATE  "2 Nov. 2021"
 
 extern FILE *yyin;
 
@@ -824,40 +824,6 @@ unsigned long getNumOfAvailAgentHeap(Heap *hp) {
 
 
 
-/*
-VALUE myallocVal(Heap *hp) {
-
-#ifdef MALLOC
-  Agent *ptr;
-  ptr = malloc(sizeof(Agent));
-  return ptr;
-#else
-
-  int i,idx;
-
-  idx = hp->lastAlloc;
-
-  for (i=0; i < hp->size; i++) {
-    if (!IS_FLAG_AVAIL(((Val *)hp->heap)[idx].basic.id)) {
-      idx++;
-      if (idx >= hp->size) {
-	idx -= hp->size;
-      }
-      continue;
-    }
-    TOGGLE_FLAG_AVAIL(((Val *)hp->heap)[idx].basic.id);
-    hp->lastAlloc = idx;
-    return (VALUE)&(((Val *)hp->heap)[idx]);
-  }
-
-  printf("\nCritical ERROR: All %d term cells have been consumed.\n", hp->size);
-  printf("You should have more term cells with -c option.\n");
-  exit(-1);
-
-#endif
-  
-}
-*/
 
 
 
@@ -903,17 +869,6 @@ VALUE makeName(VirtualMachine *vm) {
   return ptr;
 }
 
-
-/*
-VALUE makeVal_int(VirtualMachine *vm, int num) {
-  VALUE ptr;
-  ptr = myallocVal(&vm->agentHeap);
-  
-  BASIC(ptr)->id = ID_INT;
-  RVAL(ptr)->u.intval = num;
-  return ptr;
-}
-*/
 
 
 /**********************************
@@ -1325,7 +1280,8 @@ void freeName(VALUE ptr) {
 void freeAgentRec(VALUE ptr) {
 
  loop:  
-  if ((IS_FIXNUM(ptr)) || (ptr == (VALUE)NULL)) {
+  if ((IS_FLAG_AVAIL(BASIC(ptr)->id)) ||
+      (IS_FIXNUM(ptr)) || (ptr == (VALUE)NULL)) {
     return;
   } else if (IS_NAMEID(BASIC(ptr)->id)) {
     if (ptr == ShowNameHeap) return;
@@ -6778,7 +6734,7 @@ loop_a2IsAgent:
 	      {
 		// MG(r) ~ (a|b) => *MGp(*r)~a, *MGp(*r)~b
 #ifdef COUNT_INTERACTION
-      vm->NumberOfInteraction++;
+		vm->NumberOfInteraction++;
 #endif
 		BASIC(a1)->id = ID_MERGER_P;
 		AGENT(a1)->port[1] = (VALUE)NULL;
@@ -6798,6 +6754,10 @@ loop_a2IsAgent:
 	    case ID_NIL:
 	      // *MGP(r)~[]
 #ifndef THREAD
+
+#ifdef COUNT_INTERACTION
+		vm->NumberOfInteraction++;
+#endif
 	      if (AGENT(a1)->port[1] == (VALUE)NULL) {
 		AGENT(a1)->port[1] = a2;
 		return;
@@ -6809,6 +6769,7 @@ loop_a2IsAgent:
 		goto loop;
 	      }
 #else
+	      // AGENT(a1)->port[2] is used as a lock for NIL case
 	      if (AGENT(a1)->port[2] == (VALUE)NULL) {
 		if (!(__sync_bool_compare_and_swap(&(AGENT(a1)->port[2]),
 						   NULL, a2))) {
@@ -6821,6 +6782,9 @@ loop_a2IsAgent:
 	      } else if ((AGENT(a1)->port[2] != (VALUE)NULL) &&
 			 (BASIC(AGENT(a1)->port[2])->id == ID_NIL)) {
 	      
+#ifdef COUNT_INTERACTION
+		vm->NumberOfInteraction++;
+#endif
 		VALUE a1p0 = AGENT(a1)->port[0];
 		freeAgent(AGENT(a1)->port[2]);
 		freeAgent(a1);
@@ -6835,6 +6799,10 @@ loop_a2IsAgent:
 	      // *MGP(r)~x:xs => r~x:w, *MGP(w)~xs;
 	      {
 #ifndef THREAD
+
+#ifdef COUNT_INTERACTION
+		vm->NumberOfInteraction++;
+#endif
 		VALUE a1p0 = AGENT(a1)->port[0];
 
 		VALUE w = makeName(vm);
@@ -6845,13 +6813,34 @@ loop_a2IsAgent:
 		a1 = a1p0;
 		goto loop;
 #else
-		if (AGENT(a1)->port[1] == (VALUE)NULL) {
+		// AGENT(a1)->port[1] is used as a lock for CONS case
+		// AGENT(a1)->port[2] is used as a lock for NIL case
+
+		if (AGENT(a1)->port[2] != (VALUE)NULL) {
+		  // The other MGP finished still, so:
+		  // *MGP(r)~x:xs => r~x:xs;
+		  
+#ifdef COUNT_INTERACTION
+		  vm->NumberOfInteraction++;
+#endif
+		  VALUE a1p0 = AGENT(a1)->port[0];
+		  freeAgent(AGENT(a1)->port[2]);   // free the lock for NIL
+		  freeAgent(a1);
+		  a1 = a1p0;
+		  goto loop;
+		  
+		} else if (AGENT(a1)->port[1] == (VALUE)NULL) {
 		  if (!(__sync_bool_compare_and_swap(&(AGENT(a1)->port[1]),
 						     NULL,
 						     a2))) {
+		    // Failure to be locked.
 		    goto loop;
 		  }
-		
+
+		  // Succeed the lock
+#ifdef COUNT_INTERACTION
+		  vm->NumberOfInteraction++;
+#endif
 		  VALUE a1p0 = AGENT(a1)->port[0];
 		  
 		  VALUE w = makeName(vm);
@@ -6866,15 +6855,9 @@ loop_a2IsAgent:
 		  
 		  goto loop;
 		  
-		} else if ((AGENT(a1)->port[2] != (VALUE)NULL) &&
-			   (BASIC(AGENT(a1)->port[2])->id == ID_NIL)) {
-		  freeAgent(AGENT(a1)->port[2]);
-		  VALUE a1p0 = AGENT(a1)->port[0];
-		  freeAgent(a1);
-		  a1 = a1p0;
-		  goto loop;
-		
 		} else {
+		  // MPG works for the other now.
+		  
 		  goto loop;
 		}
 		
