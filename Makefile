@@ -6,7 +6,7 @@ INCLUDE = -I ./src
 SRC_DIR = ./src
 OBJ_DIR = ./build
 TARGET  = inpla
-OBJS    = $(OBJ_DIR)/$(TARGET).tab.c $(OBJ_DIR)/ast.o $(OBJ_DIR)/id_table.o $(OBJ_DIR)/linenoise.o
+OBJS    = $(OBJ_DIR)/inpla.tab.c $(OBJ_DIR)/ast.o $(OBJ_DIR)/id_table.o $(OBJ_DIR)/linenoise.o
 
 #MYOPTION = -DHAND_FIB -DHAND_FIB_INT  -DHAND_I_CONS -DHAND_IS_CONS -DHAND_Apnd_CONS -DHAND_Part_CONS -DHAND_Split_CONS -DHAND_MergeCC_CONS -DHAND_B_CONS -DHAND_DUP_S -DHAND_ADD_S -DHAND_ACK_S
 #MYOPTION = -DHAND_Split_CONS -DHAND_MergeCC_CONS
@@ -28,10 +28,10 @@ $(OBJ_DIR)/linenoise.o: $(SRC_DIR)/linenoise/linenoise.c
 $(OBJ_DIR)/%.o: $(SRC_DIR)/%.c 
 	$(CC) $(CFLAGS) $(INCLUDE) -o $@ -c $< 
 
-$(OBJ_DIR)/$(TARGET).tab.c : $(SRC_DIR)/$(TARGET).y $(OBJ_DIR)/lex.yy.c
+$(OBJ_DIR)/inpla.tab.c : $(SRC_DIR)/inpla.y $(OBJ_DIR)/lex.yy.c
 	bison -o $@ $<
 
-$(OBJ_DIR)/lex.yy.c : $(SRC_DIR)/$(TARGET).l
+$(OBJ_DIR)/lex.yy.c : $(SRC_DIR)/lex.l
 	flex -o $@ $^
 
 $(OBJ_DIR):

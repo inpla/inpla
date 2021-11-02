@@ -1,7 +1,13 @@
-# Changelog
+# Change log
 
-## v0.5.0 (released 28 October 2021)
-### New features:
+### v0.5.1 (released 2 November 2021)
+#### Bug Fix
+- Terms in which the same name occurs twice, such as `A(x,x)`, can be freed safely by the `free` command.
+
+
+
+### v0.5.0 (released 28 October 2021)
+#### New features:
 - **Abbreviation notation**: An abbreviation notation `<<` is introduced. The following description:
 
   ```
@@ -44,27 +50,25 @@
   ```
 
 
-
-- ## v0.4.2 (released 16 October 2021)
-  ### Improved
+### v0.4.2 (released 16 October 2021)
+#### Improved
   - Line edit was improved to support multi-line paste, according to the following suggestion: https://github.com/antirez/linenoise/issues/43
   - History in Line edit becomes available.
 
-  ### Bug Fix
+#### Bug Fix
   - Long length lists are printed out as abbreviation of 14-length lists, though these were printed out as 1-length lists after putting long lists.
 
 
 
-## v0.4.1 (released 24 September 2021)
-
-### Improved
+### v0.4.1 (released 24 September 2021)
+#### Improved
 
 - Line edit is improved so that history can be handled by linenoise:
   https://github.com/antirez/linenoise
 
 - The priority of rules are changed so that user defined rules can be taken before built-in rules.
 
-### Bug Fix
+#### Bug Fix
 
 - Constants were consumed when they are referred to, but these should be kept and it was fixed as so.
 
@@ -74,9 +78,9 @@
 
 
 
-## v0.4.0 (released 17 September 2021)
+### v0.4.0 (released 17 September 2021)
 
-### New Feature: 
+#### New Feature: 
 
 - Nested guards are supported. As shown in below, nested guards are supported now:
 
@@ -103,9 +107,9 @@
 
 
 
-## v0.3.2 (released 3 August 2021)
+### v0.3.2 (released 3 August 2021)
 
-### New Feature: 
+#### New Feature: 
 
 - WHNF strategy is supported with -w option. Weak Head Normal Form strategy is available when the Inpla is invoked with -w option. The following is an execution log:
 
@@ -131,9 +135,9 @@
 
   
 
-## v0.3.1 (released 7 May 2021)
+### v0.3.1 (released 7 May 2021)
 
-### New Feature: 
+#### New Feature: 
 
 - New notation for the built-in Cons agent, h:t. The built-in Cons agent is also written as h:t, besides [h|t]. For instance, a reverse list operation is written as follows:
 
