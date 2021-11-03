@@ -7,7 +7,7 @@
 
 
 ### v0.5.0 (released 28 October 2021)
-#### New features:
+#### New Features:
 - **Abbreviation notation**: An abbreviation notation `<<` is introduced. The following description:
 
   ```

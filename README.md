@@ -113,7 +113,7 @@ Inpla is a multi-threaded parallel interpreter of interaction nets. Once you wri
   
   
 
-## Getting started
+## Getting Started
 - Requirement  
   - gcc (>= 4.0), flex, bison
 
@@ -130,7 +130,7 @@ $ make thread
 
 
 
-## How to execute
+## How to Execute
 
 ### Interactive mode (single-thread version)
 - Inpla starts in the interactive mode by typing the following command (where the symbol `$` is a shell prompt):
@@ -329,7 +329,7 @@ Options:
 
 
 
-# Introduction to programming in Inpla
+# Introduction to Programming in Inpla
 Inpla evaluates *nets*, which are built by *connections between terms*. First, we learn about terms and connections.
 
 ## Terms
@@ -526,7 +526,7 @@ Let's clean the result in case it could be used anywhere:
   
 
 
-## Built-in agents
+## Built-in Agents
 Inpla has built-in agents:
 
 ### Tuples
@@ -835,7 +835,7 @@ fib(result) >< (int n)
 
 
 
-## Feature of Version 0.4
+## Features of Version 0.4
 
 #### Summaries
 - Integer numbers can be written the same as one of the first-class objects.
@@ -931,7 +931,7 @@ Electronic Communications of the EASST, Volume 73: Graph Computation Models - Se
 
 
 
-# Related works
+# Related Works
 
 - [HINet: Interaction Nets in Haskell](http://www.cas.mcmaster.ca/~kahl/Haskell/HINet/)
 
