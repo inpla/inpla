@@ -21,7 +21,7 @@
 //#define COUNT_CNCT    // count of execution of JMP_CNCT
 
 //#define COUNT_MKAGENT // count of execution fo mkagent
-#define CELL_USE_VERBOSE  // count of memory access
+//#define CELL_USE_VERBOSE  // count of memory access
 
 
   
@@ -48,8 +48,8 @@ int ActiveThreadNum=0;
 
 //#define YYDEBUG 1
 
-#define VERSION "0.5.1"
-#define BUILT_DATE  "2 Nov. 2021"
+#define VERSION "0.5.2"
+#define BUILT_DATE  "10 Nov. 2021"
 
 extern FILE *yyin;
 
@@ -1278,12 +1278,18 @@ void freeName(VALUE ptr) {
 
 
 void freeAgentRec(VALUE ptr) {
-
+  
  loop:  
-  if ((IS_FLAG_AVAIL(BASIC(ptr)->id)) ||
-      (IS_FIXNUM(ptr)) || (ptr == (VALUE)NULL)) {
+  if ((IS_FIXNUM(ptr)) || (ptr == (VALUE)NULL)) {
     return;
-  } else if (IS_NAMEID(BASIC(ptr)->id)) {
+  }
+
+  if (IS_FLAG_AVAIL(BASIC(ptr)->id)) {
+    return;
+  }
+
+  
+  if (IS_NAMEID(BASIC(ptr)->id)) {
     if (ptr == ShowNameHeap) return;
 
     if (NAME(ptr)->port != (VALUE)NULL) {

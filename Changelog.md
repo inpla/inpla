@@ -1,12 +1,17 @@
 # Change log
 
-### v0.5.1 (released 2 November 2021)
+### v0.5.2 (released on 10 November 2021)
+#### Bug Fix (minor)
+- `Free` command did not work for integer numbers, due to the change by v0.5.1, but it was fixed.
+
+
+### v0.5.1 (released on 2 November 2021)
 #### Bug Fix
 - Terms in which the same name occurs twice, such as `A(x,x)`, can be freed safely by the `free` command.
 
 
 
-### v0.5.0 (released 28 October 2021)
+### v0.5.0 (released on 28 October 2021)
 #### New Features:
 - **Abbreviation notation**: An abbreviation notation `<<` is introduced. The following description:
 
@@ -50,7 +55,7 @@
   ```
 
 
-### v0.4.2 (released 16 October 2021)
+### v0.4.2 (released on 16 October 2021)
 #### Improved
   - Line edit was improved to support multi-line paste, according to the following suggestion: https://github.com/antirez/linenoise/issues/43
   - History in Line edit becomes available.
@@ -60,7 +65,7 @@
 
 
 
-### v0.4.1 (released 24 September 2021)
+### v0.4.1 (released on 24 September 2021)
 #### Improved
 
 - Line edit is improved so that history can be handled by linenoise:
@@ -78,7 +83,7 @@
 
 
 
-### v0.4.0 (released 17 September 2021)
+### v0.4.0 (released on 17 September 2021)
 
 #### New Feature: 
 
@@ -107,7 +112,7 @@
 
 
 
-### v0.3.2 (released 3 August 2021)
+### v0.3.2 (released on 3 August 2021)
 
 #### New Feature: 
 
@@ -135,7 +140,7 @@
 
   
 
-### v0.3.1 (released 7 May 2021)
+### v0.3.1 (released on 7 May 2021)
 
 #### New Feature: 
 
