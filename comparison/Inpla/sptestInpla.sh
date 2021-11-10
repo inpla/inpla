@@ -5,7 +5,7 @@
 
 
 # repeat and waittime
-ct=1
+ct=10
 waittime=5
 
 max_threads=9
