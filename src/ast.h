@@ -46,11 +46,12 @@ Ast *ast_makeTuple(Ast *tuple);
 Ast *ast_addLast(Ast *l, Ast *p);
 Ast *ast_getNth(Ast *p,int nth);
 Ast *ast_getTail(Ast *p);
-void puts_ast(Ast *p);
+void ast_puts(Ast *p);
 Ast *ast_paramToCons(Ast *ast);
-void ast_recordConst(char *name, int val);
+int ast_recordConst(char *name, int val);
 Ast *ast_remove_tuple1(Ast *p);
 Ast *ast_unfoldABR(Ast *left, char *sym, Ast *paramlist);
+int ast_getRecordedVal(int entry);
 
 #define ast_makeCons(x1,x2) ast_makeAST(AST_LIST,x1,x2)
 #define ast_makeList1(x1) ast_makeAST(AST_LIST,x1,NULL)

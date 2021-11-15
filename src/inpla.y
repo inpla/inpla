@@ -48,8 +48,8 @@ int ActiveThreadNum=0;
 
 //#define YYDEBUG 1
 
-#define VERSION "0.5.2"
-#define BUILT_DATE  "10 Nov. 2021"
+#define VERSION "0.5.3"
+#define BUILT_DATE  "14 Nov. 2021"
 
 extern FILE *yyin;
 
@@ -372,7 +372,13 @@ command:
 
 }
 | DEF AGENT LD INT_LITERAL DELIMITER {
-  ast_recordConst($2,$4);
+  int entry=ast_recordConst($2,$4);
+
+  if (!entry) {
+    printf("`%s' has been already bound to a value '%d' as immutable.\n\n",
+	   $2, ast_getRecordedVal(entry));
+    fflush(stdout);
+  }
  }
 ;
 
@@ -554,8 +560,6 @@ primary_expr
 int yyerror(char *s) {
   extern char *yytext;
   char msg[256];
-  //printf("%s\nSorry, this version does not support error recovery.\n",s);
-  //  printf("%s\n",s);
 
 #ifdef MY_YYLINENO
   if (InfoLineno != NULL) {
@@ -570,7 +574,6 @@ int yyerror(char *s) {
 #endif
 
   Errormsg = strdup(msg);  
-  //  printf("%d: %s near token '%s'\n", yylineno, s, yytext);
 
   if (yyin != stdin) {
     //    puts(Errormsg);
@@ -2816,7 +2819,7 @@ int CompileTermFromAst(Ast *ptr, int target) {
       return result;
     } else {
       puts("ERROR: something strange in CompileTermFromAst.");
-      puts_ast(ptr);
+      ast_puts(ptr);
       exit(1);      
     }
   }
@@ -3131,8 +3134,8 @@ void RewriteEQListOnAST(Ast *eqs) {
     // at : (AST_LIST, x1, (AST_LIST, x2, NULL))    
     target = at->left;
 
-    //        printf("\n[target] "); puts_ast(target);
-    //        printf("\n%dnth in ", nth); puts_ast(eqs); printf("\n\n");
+    //        printf("\n[target] "); ast_puts(target);
+    //        printf("\n%dnth in ", nth); ast_puts(eqs); printf("\n\n");
 
 
     if (target->left->id == AST_NAME) {
@@ -3530,8 +3533,8 @@ int CompileGuardBodiesFromAST(Ast *guard_bodies_top,
 	     IdTable_get_name(CmEnv.idL),
 	     IdTable_get_name(CmEnv.idR));
 
-      //      puts_ast(ruleL); printf("><");
-      //      puts_ast(ruleR); puts("");
+      //      ast_puts(ruleL); printf("><");
+      //      ast_puts(ruleR); puts("");
       return -1;
     }
     guard_bodies = ast_getTail(guard_bodies);
@@ -3691,9 +3694,9 @@ void makeRule(Ast *ast) {
   
     //    #define MYDEBUG1
 #ifdef MYDEBUG1
-  puts_ast(ruleL); puts("");
-  puts_ast(ruleR); puts("");
-  puts_ast(bodies);
+  ast_puts(ruleL); puts("");
+  ast_puts(ruleR); puts("");
+  ast_puts(bodies);
   exit(1);
 #endif
 
@@ -4853,7 +4856,7 @@ void makeRule(Ast *ast) {
 	     IdTable_get_name(idR));
       
       PutsCodeN(&code[2], code_size-2);
-      exit(1);
+      //exit(1);
       
       int i=2;
 
@@ -5465,8 +5468,8 @@ void makeRule(Ast *ast) {
 
 
    
-		    //puts_ast(ruleL); printf("><");
-		    //puts_ast(ruleR); puts("");
+		    //ast_puts(ruleL); printf("><");
+		    //ast_puts(ruleR); puts("");
 
   // Record the rule code for idR >< idL
   RuleTable_record(idL, idR, code_size, code); 
@@ -6269,7 +6272,7 @@ void mark_and_sweep() {
 
 
 // static inline にしないほうが速いようだ
-static inline
+//static inline
 void eval_equation(VirtualMachine *restrict vm, VALUE a1, VALUE a2) {
 
 loop:
@@ -7146,9 +7149,9 @@ int exec(Ast *at) {
   at = at->right;
 
   // for aplists
-  //      puts(""); puts_ast(at); puts("");
+  //      puts(""); ast_puts(at); puts("");
   RewriteEQListOnAST(at);
-  //      puts(""); puts_ast(at); puts("");
+  //      puts(""); ast_puts(at); puts("");
   //      exit(1);
 
   
@@ -7312,7 +7315,7 @@ void *tpool_thread(void *arg) {
     VALUE t1, t2;
     while (!PopEQStack(vm, &t1, &t2)) {
       pthread_mutex_lock(&Sleep_lock);
-      ActiveThreadNum = ActiveThreadNum - 1;
+      ActiveThreadNum--;
 
       if (ActiveThreadNum == 0) {
 	pthread_mutex_lock(&AllSleep_lock);
@@ -7320,11 +7323,11 @@ void *tpool_thread(void *arg) {
 	pthread_mutex_unlock(&AllSleep_lock);
       }
 
-      //      printf("[Thread %d is slept.]\n", vm->id);
+      //            printf("[Thread %d is slept.]\n", vm->id);
       pthread_cond_wait(&EQStack_not_empty, &Sleep_lock);
-      ActiveThreadNum = ActiveThreadNum + 1;
+      ActiveThreadNum++;
       pthread_mutex_unlock(&Sleep_lock);  
-      //      printf("[Thread %d is waked up.]\n", vm->id);
+      //            printf("[Thread %d is waked up.]\n", vm->id);
 
 
     }
@@ -7457,6 +7460,8 @@ int exec(Ast *at) {
 
   ExecCode(1, VMs[0], code);
 
+
+  
   //分散用
   {
     int each_eqsnum = eqsnum / MaxThreadNum;
@@ -7473,13 +7478,15 @@ int exec(Ast *at) {
  endloop:
 
 
+  
   pthread_mutex_lock(&Sleep_lock);
   pthread_cond_broadcast(&EQStack_not_empty);
   pthread_mutex_unlock(&Sleep_lock);
 
-  usleep(100000);
+  usleep(CAS_LOCK_USLEEP);
+  //  usleep(10000);
 
-
+    
   if (ActiveThreadNum != 0) {
     pthread_mutex_lock(&AllSleep_lock);
     pthread_cond_wait(&ActiveThread_all_sleep, &AllSleep_lock);
@@ -7549,7 +7556,8 @@ int main(int argc, char *argv[])
 
 #ifndef MALLOC
     unsigned int max_AgentBuffer=100000;
-    unsigned int min_AgentBuffer=20000;
+    //    unsigned int min_AgentBuffer=20000;
+        unsigned int min_AgentBuffer=0;
 #endif
     unsigned int max_EQStack=10000;
 
@@ -7558,7 +7566,10 @@ int main(int argc, char *argv[])
     Init_WHNFinfo();
 #endif
 
+    ast_heapInit();
 
+
+    
     for (i=1; i<argc; i++) {
       if (*argv[i] == '-') {
 	switch (*(argv[i] +1)) {
@@ -7572,20 +7583,20 @@ int main(int argc, char *argv[])
 	  printf("Inpla version %s\n", VERSION);	  
 	  puts("Usage: inpla [options]\n");
 	  puts("Options:");
-	  printf(" -f <filename>    Set input file name          (Defalut:    STDIN)\n");
+	  printf(" -f <filename>    Set input file name            (Defalut:    STDIN)\n");
 	  
 #ifndef MALLOC
-	  printf(" -c <number>      Set the size of term cells   (Defalut: %8u)\n",
+	  printf(" -c <number>      Set the size of term cells     (Defalut: %8u)\n",
 		 max_AgentBuffer);
 #endif
 	  
-	  printf(" -x <number>      Set the size of the EQ stack (Default: %8u)\n",
+	  printf(" -x <number>      Set the size of the EQ stack   (Default: %8u)\n",
 		 max_EQStack);
 
 
 	  // Extended Options for threads or non-threads
 #ifdef THREAD
-	  printf(" -t <number>      Set the number of threads    (Default: %8d)\n",
+	  printf(" -t <number>      Set the number of threads      (Default: %8d)\n",
 		 MaxThreadNum);
 
 #else
@@ -7595,13 +7606,64 @@ int main(int argc, char *argv[])
 	  
 #endif
 	  
+	  printf(" -d <Name>=<val>  Bind <val> to <Name>\n"
+		 );
 	  
 	  printf(" -h               Print this help message\n\n");
 	  exit(-1);
 	  break;
 	  
+	case 'd':
+	  i++;
+	  if (i < argc) {
+	    char varname[100], val[100];
+	    char *tp;
+	    tp = strtok(argv[i], "=");
+	    snprintf(varname, sizeof(varname)-1, "%s", tp);
+	    
+	    if ((varname == NULL)
+		|| (varname[0] < 'A')
+		|| (varname[0] > 'Z')) {
+	      puts("ERROR: 'id' in the format 'id=value' must start from a capital letter.");
+	      exit(-1);
+	    }
+
+	    
+	    tp = strtok(NULL, "=");
+	    snprintf(val, sizeof(val)-1, "%s", tp);
+	    if (val == NULL) {
+	      puts("ERROR: 'value' in the format 'id=value' must an integer value.");
+	      exit(-1);	      
+	    }
+
+	    int offset = 0;
+	    if (val[0] == '-') {
+	      offset = 1;
+	    }
+	    int valid = 1;
+	    for (int idx = offset; idx < strlen(val); idx++) {
+	      if ((val[idx] < '0') || (val[idx] > '9')) {
+		valid = 0;
+		break;
+	      }
+	    }
+
+	    if (!valid) {
+	      puts("ERROR: 'value' in the format 'id=value' must an integer value.");
+	      exit(-1);	      	      
+	    }
+
+	    ast_recordConst(varname, atoi(val));
+
+	    
+			 
+	  } else {
+	    puts("ERROR: The option switch '-d' needs a string such as VarName=value.");
+	    exit(-1);
+	  }
+	  break;
 	  
-	case 'f' :
+	case 'f':
 	  i++;
 	  if (i < argc) {
 	    fname = argv[i];
@@ -7615,7 +7677,7 @@ int main(int argc, char *argv[])
 	  
 	  
 #ifndef MALLOC
-	case 'c' :
+	case 'c':
 	  i++;
 	  if (i < argc) {
 	    param = atoi(argv[i]);
@@ -7631,7 +7693,7 @@ int main(int argc, char *argv[])
 	  break;
 #endif
 	  
-	case 'x' :
+	case 'x':
 	  i++;
 	  if (i < argc) {
 	    param = atoi(argv[i]);
@@ -7648,7 +7710,7 @@ int main(int argc, char *argv[])
 	  
 	  
 #ifdef THREAD
-        case 't' :
+        case 't':
 	  i++;
 	  if (i < argc) {
 	    param = atoi(argv[i]);
@@ -7664,7 +7726,7 @@ int main(int argc, char *argv[])
 	  MaxThreadNum=param;
 	  break;
 #else
-        case 'w' :
+        case 'w':
 	  WHNFinfo.enabled = 1;
 	  break;	  
 #endif
@@ -7675,6 +7737,10 @@ int main(int argc, char *argv[])
 	  printf("Please use -h option for getting more information.\n\n");
 	  exit(-1);
 	}
+      } else {
+	printf("ERROR: Unrecognized option %s\n", argv[i]);
+	printf("Please use -h option for getting more information.\n\n");
+	exit(-1);
       }
     }
 
@@ -7720,14 +7786,9 @@ int main(int argc, char *argv[])
     GlobalEQStack_Init(max_EQStack);
 #endif
     
-    ast_heapInit();
     
     CmEnv_Init(VM_LOCALVAR_SIZE);
     
-    
-    // builtin agents
-    
-    //  IdTable_set_name(ID_PAIR0, SYM_PAIR0);
     
     
 #ifndef THREAD

@@ -314,14 +314,15 @@ $ make thread
 - When invoking Inpla, you can specify the following options:
 ```
 $ ./inpla -h
+Inpla version 0.5.3
 Usage: inpla [options]
 
 Options:
- -f <filename>    Set input file name          (Defalut is    STDIN)
- -c <number>      Set the size of term cells   (Defalut is   100000)
- -x <number>      Set the size of the AP stack (Default is    10000)
- -t <number>      Set the number of threads    (Default is        1)
- -w               Enable Weak reduction strategy (Default: false)
+ -f <filename>    Set input file name            (Defalut:    STDIN)
+ -c <number>      Set the size of term cells     (Defalut:   100000)
+ -x <number>      Set the size of the EQ stack   (Default:    10000)
+ -t <number>      Set the number of threads      (Default:        1)
+ -d <Name>=<val>  Bind <val> to <Name>
  -h               Print this help message
 ```
 (The option ```-t``` is available for the multi-thread version that is compiled by ```make thread```.)
@@ -832,7 +833,7 @@ fib(result) >< (int n)
 
 - Inpla has the following macro:
   - `const` *NAME*`=` *i* `;`  
-    The *NAME*  is replaced with the integer value *i* in nets and interaction rules.
+    The *NAME*  is bound to the integer value *i* as immutable, and replaced with the value *i* in nets and interaction rules.
 
 
 

@@ -54,7 +54,11 @@
 
 #define ID_NAME NUM_AGENTS // 256
 #define START_ID_OF_GNAME  ID_NAME+1
-#define IS_AGENTID(a) (a < ID_NAME)
+
+//#define IS_AGENTID(a) (a < ID_NAME)
+#define IS_AGENTID(a) (!(a & 0x100)) // less than 256
+
+
 #define IS_NAMEID(a) (a >= ID_NAME)
 #define IS_GNAMEID(a) (a > ID_NAME)
 #define IS_LOCAL_NAMEID(a) (a == ID_NAME)

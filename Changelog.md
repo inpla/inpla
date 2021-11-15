@@ -1,5 +1,13 @@
 # Change log
 
+### v0.5.3 (released on 14 November 2021)
+#### New Features:
+- Constants are also specified by an execution option switch `-d` in the format *NAME*=*i*. For instance, when Inpla is invoked with `-d ELEM=1000`, then the `ELEM` is replaced with `1000` during the execution.
+
+- Constants are defined as immutable, so these values cannot be changed. When a file specified by the `-f` option has constant names specified by the `-d` options, these names are bound to the values in the `-d` options.
+
+  
+
 ### v0.5.2 (released on 10 November 2021)
 #### Bug Fix (minor)
 - `Free` command did not work for integer numbers, due to the change by v0.5.1, but it was fixed.
