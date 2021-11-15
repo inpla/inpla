@@ -66,6 +66,11 @@ int lookupEntry(SymbolTable *table, char *name) {
   return -1;
 }
 
+int ast_getRecordedVal(int entry) {
+  return ConstTable.val[entry];
+}
+
+
 void recordVal(SymbolTable *table, char *name, int val) {
   int i;
 
@@ -145,8 +150,13 @@ Ast *ast_makeInt(int num) {
   return ptr;
 }
 
-void ast_recordConst(char *name, int val) {
-  recordVal(&ConstTable, name, val);
+int ast_recordConst(char *name, int val) {
+  if (lookupEntry(&ConstTable, name) == -1) {
+    recordVal(&ConstTable, name, val);
+    return 1;
+  } else {
+    return 0;
+  }
 }
 
 
@@ -240,7 +250,7 @@ Ast *ast_getTail(Ast *p)
     else return p->right;
 }
 
-void puts_ast(Ast *p) {
+void ast_puts(Ast *p) {
   static char *string_AstID[] = {
     // basic
     "SYM", "NAME", "INTNAME", "AGENT", "CNCT", "RULE",
@@ -274,12 +284,12 @@ void puts_ast(Ast *p) {
     break;
   case AST_TUPLE:
     printf("TUPLE(%d)(", p->intval);
-    puts_ast(p->right);
+    ast_puts(p->right);
     printf(")");
     break;
   case AST_PPAIR:
     printf("PPAIR(");
-    puts_ast(p->right);
+    ast_puts(p->right);
     printf(")");
     break;
   case AST_NIL:
@@ -288,13 +298,13 @@ void puts_ast(Ast *p) {
   case AST_ANNOTATION_L:
   case AST_ANNOTATION_R:
     printf("%s", string_AstID[p->id]);
-    puts_ast(p->left);
+    ast_puts(p->left);
     break;
   default:
     printf("%s(", string_AstID[p->id]);
-    puts_ast(p->left);
+    ast_puts(p->left);
     printf(",");
-    puts_ast(p->right);
+    ast_puts(p->right);
     printf(")");
 
   }
@@ -326,8 +336,8 @@ Ast *ast_unfoldABR(Ast *left, char *sym, Ast *paramlist) {
     return cnct;    
   }
   
-  //puts_ast(left);puts("");
-  //puts_ast(paramlist);puts("");
+  //ast_puts(left);puts("");
+  //ast_puts(paramlist);puts("");
 
   Ast *params, *param, *at;
 
@@ -352,8 +362,8 @@ Ast *ast_unfoldABR(Ast *left, char *sym, Ast *paramlist) {
     }
   }
 
-  //  puts_ast(params);puts("");
-  //  puts_ast(param);puts("");
+  //  ast_puts(params);puts("");
+  //  ast_puts(param);puts("");
 
 
   // make left as left@params
@@ -365,15 +375,15 @@ Ast *ast_unfoldABR(Ast *left, char *sym, Ast *paramlist) {
     }
     at = at->right;
   }
-  //  puts_ast(left);puts("");
+  //  ast_puts(left);puts("");
 
     
   Ast *agent_left = ast_makeAST(AST_AGENT, ast_makeSymbol(sym), left);
   Ast *agent_right = param;
   Ast *cnct = ast_makeAST(AST_CNCT, agent_left, agent_right);
   
-  //puts_ast(agent_left);puts("");
-  //puts_ast(agent_right);puts("");
+  //ast_puts(agent_left);puts("");
+  //ast_puts(agent_right);puts("");
 
   //exit(1);
   return cnct;
