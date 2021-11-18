@@ -1,7 +1,11 @@
 # Change log
 
+### v0.5.4 (released on 18 November 2021)
+#### Bug Fix (minor):
+- A name `x` which occurs as a sub-term will be replaced with a term `s` when there is a connection between `x~s` before all of evaluations, as one of optimisations. It was done only if the `x` occurs not as a sub-term. 
+
 ### v0.5.3 (released on 14 November 2021)
-#### New Features:
+#### New Features (for constants):
 - Constants are also specified by an execution option switch `-d` in the format *NAME*=*i*. For instance, when Inpla is invoked with `-d ELEM=1000`, then the `ELEM` is replaced with `1000` during the execution.
 
 - Constants are defined as immutable, so these values cannot be changed. When a file specified by the `-f` option has constant names specified by the `-d` options, these names are bound to the values in the `-d` options.
@@ -9,12 +13,12 @@
   
 
 ### v0.5.2 (released on 10 November 2021)
-#### Bug Fix (minor)
+#### Bug Fix (minor):
 - `Free` command did not work for integer numbers, due to the change by v0.5.1, but it was fixed.
 
 
 ### v0.5.1 (released on 2 November 2021)
-#### Bug Fix
+#### Bug Fix:
 - Terms in which the same name occurs twice, such as `A(x,x)`, can be freed safely by the `free` command.
 
 
@@ -64,36 +68,33 @@
 
 
 ### v0.4.2 (released on 16 October 2021)
-#### Improved
+#### Improved:
   - Line edit was improved to support multi-line paste, according to the following suggestion: https://github.com/antirez/linenoise/issues/43
   - History in Line edit becomes available.
 
-#### Bug Fix
+#### Bug Fix:
   - Long length lists are printed out as abbreviation of 14-length lists, though these were printed out as 1-length lists after putting long lists.
 
 
 
 ### v0.4.1 (released on 24 September 2021)
-#### Improved
+#### Improved:
 
 - Line edit is improved so that history can be handled by linenoise:
   https://github.com/antirez/linenoise
 
 - The priority of rules are changed so that user defined rules can be taken before built-in rules.
 
-#### Bug Fix
+#### Bug Fix:
 
 - Constants were consumed when they are referred to, but these should be kept and it was fixed as so.
-
-- A global name that has evaluated and occurred twice already was able to be defined. Now it is prevented.
-
 - A global name that has evaluated and occurred twice already was able to be defined. Now it is prevented.
 
 
 
 ### v0.4.0 (released on 17 September 2021)
 
-#### New Feature: 
+#### New Features: 
 
 - Nested guards are supported. As shown in below, nested guards are supported now:
 
@@ -122,7 +123,7 @@
 
 ### v0.3.2 (released on 3 August 2021)
 
-#### New Feature: 
+#### New Features: 
 
 - WHNF strategy is supported with -w option. Weak Head Normal Form strategy is available when the Inpla is invoked with -w option. The following is an execution log:
 
@@ -150,7 +151,7 @@
 
 ### v0.3.1 (released on 7 May 2021)
 
-#### New Feature: 
+#### New Features: 
 
 - New notation for the built-in Cons agent, h:t. The built-in Cons agent is also written as h:t, besides [h|t]. For instance, a reverse list operation is written as follows:
 
