@@ -48,8 +48,8 @@ int ActiveThreadNum=0;
 
 //#define YYDEBUG 1
 
-#define VERSION "0.5.3"
-#define BUILT_DATE  "14 Nov. 2021"
+#define VERSION "0.5.4"
+#define BUILT_DATE  "18 Nov. 2021"
 
 extern FILE *yyin;
 
@@ -3020,12 +3020,13 @@ int CompileStmListFromAst(Ast *at) {
 
 
 // --- RewriteEQListOnAst ---
-
 Ast* SubstAst(char *sym, Ast *aterm, Ast *target, int *result) {
   // target is astterm: (AST asttermL asttermR)
   // this function replaces sym with aterm in target, i.e. tgs[aterm/sym].
   
-  if (target->id == AST_NAME) {
+  switch (target->id) {
+  case AST_NAME:
+    
     if (strcmp(target->left->sym, sym) == 0) {
       *result = 1;
       return aterm;
@@ -3033,12 +3034,13 @@ Ast* SubstAst(char *sym, Ast *aterm, Ast *target, int *result) {
     } else {
       return target;
     }
+    break;
 
-  } else if (target->id == AST_OPCONS) {
+  case AST_OPCONS:
     target->right = SubstAst(sym, aterm, target->right, result);
     return target;
   
-  } else if (target->id == AST_CONS) {
+  case AST_CONS:
     target->left = SubstAst(sym, aterm, target->left, result);
     if (*result) {
       return target;
@@ -3047,34 +3049,51 @@ Ast* SubstAst(char *sym, Ast *aterm, Ast *target, int *result) {
       return target;
     }
 
-  } else if ((target->id == AST_TUPLE) ||
-	     (target->id == AST_AGENT)) {
-    // (AST_AGENT (ID_SYM sym NULL) paramlist)
 
-    Ast *port = target->right;
+  case AST_ANNOTATION_L:
+  case AST_ANNOTATION_R:
+
     
-    for(int i=0; i< MAX_PORT; i++) {
-      if (port == NULL) break;
+  case AST_TUPLE:
+  case AST_AGENT:
+    {
+      Ast *port;
+      if ((target->id == AST_ANNOTATION_L) ||
+	  (target->id == AST_ANNOTATION_R)) {
 
-      port = SubstAst(sym, aterm, port, result);
-      if (*result) break;
+	// (AST_ANNOTATION (AST_AGENT (ID_SYM sym NULL) paramlist) NULL)
+	port = target->left->right;
+      } else {
+	
+	// (AST_AGENT (ID_SYM sym NULL) paramlist)
+	port = target->right;
+      }
       
+      for(int i=0; i< MAX_PORT; i++) {      
+	if (port == NULL) break;
+	
+	port->left = SubstAst(sym, aterm, port->left, result);      
+	if (*result) break;
+	
       port = ast_getTail(port);
+      }
+    }
+    return target;
+    
+  case AST_LIST:
+    {
+      Ast *elem = target->right;
+
+      while (elem != NULL) {
+	elem = SubstAst(sym, aterm, elem, result);
+	if (*result) break;
+	
+	elem = ast_getTail(elem);
+      }
     }
     return target;
 
-  } else if (target->id == AST_LIST) {
-    Ast *elem = target->right;
-
-    while (elem != NULL) {
-      elem = SubstAst(sym, aterm, elem, result);
-      if (*result) break;
-
-      elem = ast_getTail(elem);
-    }
-    return target;
-
-  } else {
+  default:
     return target;
   }
 
@@ -3099,12 +3118,14 @@ int SubstASTList(int nth, char *sym, Ast *aterm, Ast *eqs) {
     
     result=0;
     eq->left = SubstAst(sym, aterm, eq->left, &result);
+    
     if (result) {
       return 1;
     }
     
     result=0;
     eq->right = SubstAst(sym, aterm, eq->right, &result);
+
     if (result) {
       return 1;
     }
@@ -3134,16 +3155,19 @@ void RewriteEQListOnAST(Ast *eqs) {
     // at : (AST_LIST, x1, (AST_LIST, x2, NULL))    
     target = at->left;
 
-    //        printf("\n[target] "); ast_puts(target);
-    //        printf("\n%dnth in ", nth); ast_puts(eqs); printf("\n\n");
+    //            printf("\n[target] "); ast_puts(target);
+    //            printf("\n%dnth in ", nth); ast_puts(eqs); printf("\n\n");
 
 
     if (target->left->id == AST_NAME) {
+      
       sym = target->left->left->sym;
       term = target->right;
 
+      //      printf("%s~",sym); ast_puts(term);
+      
       if (SubstASTList(nth, sym, term, eqs)) {
-	//	 printf("=== hit %dth\n", nth);
+	//		 printf("=== hit %dth\n", nth);
 	
 	if (prev != at) {
 
@@ -3205,6 +3229,8 @@ void RewriteEQListOnAST(Ast *eqs) {
     
   }
 }
+
+
 
 
 
