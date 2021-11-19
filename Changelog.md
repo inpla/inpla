@@ -2,7 +2,8 @@
 
 ### v0.5.4 (released on 18 November 2021)
 #### Bug Fix (minor):
-- A name `x` which occurs as a sub-term will be replaced with a term `s` when there is a connection between `x~s` before all of evaluations, as one of optimisations. It was done only if the `x` occurs not as a sub-term. 
+
+- When a connection `x~s` is given in nets or rules, the other occurrence of the name `x` will be replaced with the `s`, as one of optimisations. It was done when the other one occurred as just a name, that is, not a subterm. 
 
 ### v0.5.3 (released on 14 November 2021)
 #### New Features (for constants):
