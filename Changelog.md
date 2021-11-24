@@ -3,7 +3,7 @@
 ### v0.5.4 (released on 18 November 2021)
 #### Bug Fix (minor):
 
-- When a connection `x~s` is given in nets or rules, the other occurrence of the name `x` will be replaced with the `s`, as one of optimisations. It was done when the other one occurred as just a name, that is, not a subterm. 
+- When a connection `x~s` is given in nets or rules, the other occurrence of the name `x` will be replaced with the `s`, as one of optimisations. It was done only when the other one occurred as just a name, that is, not a subterm. 
 
 ### v0.5.3 (released on 14 November 2021)
 #### New Features (for constants):
@@ -154,7 +154,7 @@
 
 #### New Features: 
 
-- New notation for the built-in Cons agent, h:t. The built-in Cons agent is also written as h:t, besides [h|t]. For instance, a reverse list operation is written as follows:
+- New notation for the built-in `Cons` agent, `h:t`. The built-in Cons agent is also written as `h:t`, besides `[h|t]`. For instance, a reverse list operation is written as follows:
 
   ```
   Rev(ret, acc) >< [] => ret ~ acc;
