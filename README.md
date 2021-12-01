@@ -87,7 +87,7 @@ Inpla is a multi-threaded parallel interpreter of interaction nets. Once you wri
   >>>
   ```
 
-  These are useful to join safely two computational results on two agents in multi-threaded execution regardless of finished status of the two agents, because there rules are written so that the arithmetic operation is invoked after ensuring that every argument modified by `int` has an attribute value as follows:
+  These are useful to join safely two computational results on two agents in multi-threaded execution regardless of finished status of the two agents, because there rules are written so that the arithmetic operation can be invoked after ensuring that every argument modified by `int` has an attribute value as follows:
   
   ```
   Add(ret, b) >< (int a) => _Add(ret, a)~b;
