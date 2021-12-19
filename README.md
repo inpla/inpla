@@ -31,88 +31,22 @@ Inpla is a multi-threaded parallel interpreter of interaction nets. Once you wri
   
     
 
-### Feature of Version 0.5.0 (released on 28 October 2021)
-- **Abbreviation notation**: An abbreviation notation `<<` is introduced. The following description:
+## Contents
 
-  ```
-  a,b,...,z << Agent(aa,bb,...,yy,zz)
-  ```
+- [Getting Started](#getting-started)
 
-  is rewritten internally as follows:
+- [How to Execute](#how-to-execute)
 
-  ```
-  Agent(a,b,...,z,aa,bb,...,yy) ~ zz
-  ```
+  - [Interactive mode (single-thread version)](#interactive-mode-single-thread-version)
+  - [Interactive mode (multi-thread version)](#interactive-mode-multi-thread-version)
+  - [Batch mode and sample files](#batch-mode-and-sample-files)
+  - [Execution Options](#execution-options)
 
-  For instance, `r << Add(1,2)` is rewritten internally as `Add(r,1)~2`. It is handy to denote ports that take computation results. As a special case we prepare a built-in abbreviation for the built-in agent `Append(a,b)` because the order of those arguments `a`, `b` is different from the abbreviation rewriting rule:
-
-  ```
-  ret << Append(a,b)  --- rewritten as ---> Append(ret,b)~a
-  ```
-
-- **Merger agent that merges two lists into one**: Merger agent is implemented, such that it has two principal ports for the two lists, and whose interactions are performed as soon as one of the principal ports is ready for the interaction, that is to say, connected to a list. So, the merged result is decided non-deterministically, especially in multi-threaded execution.
-  
-  ![merger](pic/merger.png)
-  
-  We overload `<<` in order to use the Merger agent naturally as follows:
-
-  ```
-  ret << Merger(alist, blist)
-  ```
-
-  The following is an execution example (the count of interactions is not supported yet):
-  ```
-  >>> r << Merger([0,0,0,0,0,0,0,0,0,0], [1,1,1,1,1,1,1,1,1,1]); 
-  (1 interactions by 4 threads, 0.10 sec)
-  >>> ifce;
-  r 
-  
-  Connections:
-  r ->[0,0,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0]
-  
-  >>> 
-  ```
+- [Introduction to Programming in Inpla](#introduction-to-programming-in-inpla)
+- [Commands](#commands)
+- [Updates](#updates)
 
 
-- **Built-in rules for arithmetic operations between two agents**: These operation, besides `Add`,  are fully implemented and managed by agents `Sub`, `Mul`, `Div`, `Mod`:
-
-  ```
-  >>> r1<<Add(3,5), r2<<Sub(r1,2);
-  >>> ifce;      // put all interface (living names) and connected nets.
-  r2
-  
-  Connections:
-  r2 ->6
-  
-  >>>
-  ```
-
-  These are useful to join safely two computational results on two agents in multi-threaded execution regardless of finished status of the two agents, because there rules are written so that the arithmetic operation can be invoked after ensuring that every argument modified by `int` has an attribute value as follows:
-  
-  ```
-  Add(ret, b) >< (int a) => _Add(ret, a)~b;
-  _Add(ret, int a) >< (int b) => r~(a+b);
-  ```
-  
-  For instance, in the following rules for Fibonacci numbers, we can join two recursively computed results safely:
-  
-  ```
-  // Fibonacci number
-  
-  // Rules
-  fib(ret) >< (int n)
-  | n == 0 => ret~0
-  | n == 1 => ret~1
-  | _ => fib(cnt1)~(n-1), fib(cnt2)~(n-2), Add(ret,cnt1)~cnt2;
-  ```
-  
-  The last line is also written by the abbreviation naturally:
-  
-  ```
-  | _ => cnt1<<fib(n-1), cnt2<<fib(n-2), ret<<Add(cnt1,cnt2);
-  ```
-  
-  
 
 ## Getting Started
 - Requirement  
@@ -265,26 +199,36 @@ $ make thread
     ```
 
     These rules and nets are also written by using abbreviation:
-    ```
-    // Rules
-    qsort(ret) >< [] => ret~[];
-    qsort(ret) >< (int x):xs =>
-    	ret << Append(left, x:right), 
-    	smaller, larger << part(x,xs),
-    	left << qsort(smaller), right << qsort(larger);
-    
-    part(smaller, larger, int x) >< [] => smaller~[], larger~[];
-    part(smaller, larger, int x) >< (int y):ys
-    | y<x => smaller~(y:cnt),  
-             cnt, larger << part(x,ys)
-    | _   => larger~(y:cnt), 
-             smaller, cnt << part(x,ys);
-    
-    // Nets
-    r << isort([3,6,1,9,2]);
-    r;
-    ```
 
+    - Abbreviation notation version: 
+
+      An abbreviation notation `<<` is introduced in v.0.5.0. We can write also as follows by the `<<`:
+      ```
+      a,b,...,z << Agent(aa,bb,...,yy,zz)   == for ==  Agent(a,b,...,z,aa,bb,...,yy) ~ zz 
+      ```
+
+      For instance, `r << Add(1,2)` is rewritten internally as `Add(r,1)~2`. It is handy to denote ports that take computation results. The following is another version by using the abbreviation:
+      
+      ```
+      // Rules
+      qsort(ret) >< [] => ret~[];
+      qsort(ret) >< (int x):xs =>
+      	ret << Append(left, x:right), 
+      	smaller, larger << part(x,xs),
+      	left << qsort(smaller), right << qsort(larger);
+      
+      part(smaller, larger, int x) >< [] => smaller~[], larger~[];
+      part(smaller, larger, int x) >< (int y):ys
+      | y<x => smaller~(y:cnt),  
+               cnt, larger << part(x,ys)
+      | _   => larger~(y:cnt), 
+               smaller, cnt << part(x,ys);
+      
+      // Nets
+      r << isort([3,6,1,9,2]);
+      r;
+      ```
+    
   - Execution:
 
     ```
@@ -332,9 +276,26 @@ Options:
 
 
 # Introduction to Programming in Inpla
-Inpla evaluates *nets*, which are built by *connections between terms*. First, we learn about terms and connections.
+#### Contents
+- [Nets: terms and connections](#nets-terms-and-connections)
+- [Interaction rules](#interaction-rules)
+  - [Example: Operations on unary natural numbers](#example-operations-on-unary-natural-numbers)
+- [Built-in Agents](#built-in-agents)
+- [Attributes (integers)](#attributes-integers)
+  - [Arithmetic expressions on attributes](#arithmetic-expressions-on-attributes)
+  - [Interaction rules with expressions on attributes](#interaction-rules-with-expressions-on-attributes)
+  - [Built-in rules of attributes in the anonymous agents](#built-in-rules-of-attributes-in-the-anonymous-agents)
+  - [Interaction rules with conditions on attributes](#interaction-rules-with-conditions-on-attributes)
 
-## Terms
+
+
+
+## Nets: terms and connections
+
+Inpla evaluates *nets*, which are built by *connections between terms*. First, we start learning about terms and connections.
+
+### Terms
+
 **Terms** are built on *names* and *agents* as follows:
 
 ```
@@ -363,11 +324,12 @@ Inpla evaluates *nets*, which are built by *connections between terms*. First, w
 
   
 
-## Connections
+### Connections
 
 A **connection** is a relation between two terms, and it is expressed with the symbol `~`. For instance, a connection between a name `x` and an agent `A` (whose arity is 0) is denoted as `x~A`. There is no order in the left-hand and the right-hand side terms, thus `x~A` and `A~x` are identified as the same one.
 
 - **Connections between a name and an agent** are evaluated that the agent is connected from the name. For instance, `x~A` is evaluated that the `A` is connected from the `x`.   Here, as an example, type `x~A` with the termination symbol `;` as follows:
+  
   ```
   >>> x~A;
   (0 interactions, 0.00 sec)
@@ -441,7 +403,7 @@ Connections between agents are re-written according to **interaction rules**:
 
 Something complicated? No problem! Let's us learn how to define the rules with some example!
 
-### Example: Operations on unary natural numbers.
+### Example: Operations on unary natural numbers
 
 Unary natural numbers are built by Z and S. For instance, 0, 1, 2, 3 are expressed as Z, S(Z), S(S(Z)), S(S(S(Z))). Here, let's think about an increment operation `inc` such that inc(n) = S(n). This is written as rules for Z and S(x) as follows:
 
@@ -745,18 +707,17 @@ _Add(result, int x)><(int y) => result~(x+y);
 
 - Example:
 
-```
->>> Add(r,3)~5;   // Add is already defined as a bulit-in
->>> r;
-8
->>> r1 << Sub(r,2), r2 << Mul(r1,10)  // These are also written as an abbreviation form.
->>> r2;
-60
->>>
-```
+  ```
+  >>> Add(r,3)~5;   // Add is already defined as a bulit-in
+  >>> r;
+  8
+  >>> r1 << Sub(r,2), r2 << Mul(r1,10)  // These are also written as an abbreviation form.
+  >>> r2;
+  60
+  >>>
+  ```
 
-
-
+  
 
 ### Interaction rules with conditions on attributes
 In interaction rules, conditional rewritings on attributes are available. The following is a general form:  
@@ -775,47 +736,53 @@ In interaction rules, conditional rewritings on attributes are available. The fo
 The sequence of `<condition-on-attributes> ` must be finished with the otherwise case `_`.
 
 - Example: The following shows rules to obtain a list that contains only even numbers:
-```
-// Rules
-evenList(result) >< [] => r~[];
-evenList(result) >< (int x):xs
-| x%2==0 => result~(x:cnt), evenList(cnt)~xs
-| _      => evenList(result)~xs;
-```
 
-```
->>> evenList(r)~[1,3,7,5,3,4,9,10];
->>> r;
-[4,10]
->>> free r;
->>>
-```
+  ```
+  // Rules
+  evenList(result) >< [] => r~[];
+  evenList(result) >< (int x):xs
+  | x%2==0 => result~(x:cnt), evenList(cnt)~xs
+  | _      => evenList(result)~xs;
+  ```
+
+  ```
+  >>> evenList(r)~[1,3,7,5,3,4,9,10];
+  >>> r;
+  [4,10]
+  >>> free r;
+  >>>
+  ```
+
+
 
 - Example: Fibonacci number:
-```
-fib(result) >< (int n)
-| n == 0 => result~0
-| n == 1 => result~1
-| _ => fib(r1)~(n-1), fib(r2)~(n-2), Add(result, r2)~r1;
 
-// * We cannot write result~(r1+r2)
-// because r1, r2 may be not connected to attributes in the anonymous agents,
-// thus we have to leave the addition until fib(r1) and fib(r2) are finished.
-// For this purpose we must use addition operation between agents as 
-// Add(result, r2)~r1. 
-// In this case, after r1,r2 are connected to (int y), (int x),
-// y+x is executed and the addition result is connected to the result.
-```
-
-```
->>> fib(r)~39;
->>> r;
-63245986
->>> free r;
->>>
-```
-
-
+  ```
+  fib(result) >< (int n)
+  | n == 0 => result~0
+  | n == 1 => result~1
+  | _ => fib(r1)~(n-1), fib(r2)~(n-2), Add(result, r2)~r1;
+  
+  // * We cannot write result~(r1+r2) for Add(resut, r2)~r1
+  // because r1, r2 may have not been connected to attributes in the anonymous agents,
+  // thus we have to leave the addition until fib(r1)~(n-1), fib(r2)~(n-2) are finished.
+  // For this purpose we must use the addition operation between agents defined as 
+  //   Add(result, y)><(int x) => _Add(result, x)~y;
+  //   _Add(result, int x)><(int y) => result~(x+y);
+  // By using this as Add(result, r2)~r1, 
+  // after r1,r2 have been connected to (int x), (int y), respectively, 
+  // x+y is executed and the calculation result is connected to the result safely.
+  ```
+  
+  ```
+  >>> fib(r)~39;
+  >>> r;
+  63245986
+  >>> free r;
+  >>>
+  ```
+  
+  
 
 ## Commands
 
@@ -837,7 +804,92 @@ fib(result) >< (int n)
 
 
 
-## Features of Version 0.4
+## Updates
+
+### Feature of Version 0.5.0 (released on 28 October 2021)
+- **Abbreviation notation**: An abbreviation notation `<<` is introduced. The following description:
+
+  ```
+  a,b,...,z << Agent(aa,bb,...,yy,zz)
+  ```
+
+  is rewritten internally as follows:
+
+  ```
+  Agent(a,b,...,z,aa,bb,...,yy) ~ zz
+  ```
+
+  For instance, `r << Add(1,2)` is rewritten internally as `Add(r,1)~2`. It is handy to denote ports that take computation results. As a special case we prepare a built-in abbreviation for the built-in agent `Append(a,b)` because the order of those arguments `a`, `b` is different from the abbreviation rewriting rule:
+
+  ```
+  ret << Append(a,b)  --- rewritten as ---> Append(ret,b)~a
+  ```
+
+- **Merger agent that merges two lists into one**: Merger agent is implemented, such that it has two principal ports for the two lists, and whose interactions are performed as soon as one of the principal ports is ready for the interaction, that is to say, connected to a list. So, the merged result is decided non-deterministically, especially in multi-threaded execution.
+  
+  ![merger](pic/merger.png)
+  
+  We overload `<<` in order to use the Merger agent naturally as follows:
+
+  ```
+  ret << Merger(alist, blist)
+  ```
+
+  The following is an execution example (the count of interactions is not supported yet):
+  ```
+  >>> r << Merger([0,0,0,0,0,0,0,0,0,0], [1,1,1,1,1,1,1,1,1,1]); 
+  (1 interactions by 4 threads, 0.10 sec)
+  >>> ifce;
+  r 
+  
+  Connections:
+  r ->[0,0,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0]
+  
+  >>> 
+  ```
+
+
+- **Built-in rules for arithmetic operations between two agents**: These operation, besides `Add`,  are fully implemented and managed by agents `Sub`, `Mul`, `Div`, `Mod`:
+
+  ```
+  >>> r1<<Add(3,5), r2<<Sub(r1,2);
+  >>> ifce;      // put all interface (living names) and connected nets.
+  r2
+  
+  Connections:
+  r2 ->6
+  
+  >>>
+  ```
+
+  These are useful to join safely two computational results on two agents in multi-threaded execution regardless of finished status of the two agents, because there rules are written so that the arithmetic operation can be invoked after ensuring that every argument modified by `int` has an attribute value as follows:
+  
+  ```
+  Add(ret, b) >< (int a) => _Add(ret, a)~b;
+  _Add(ret, int a) >< (int b) => r~(a+b);
+  ```
+  
+  For instance, in the following rules for Fibonacci numbers, we can join two recursively computed results safely:
+  
+  ```
+  // Fibonacci number
+  
+  // Rules
+  fib(ret) >< (int n)
+  | n == 0 => ret~0
+  | n == 1 => ret~1
+  | _ => fib(cnt1)~(n-1), fib(cnt2)~(n-2), Add(ret,cnt1)~cnt2;
+  ```
+  
+  The last line is also written by the abbreviation naturally:
+  
+  ```
+  | _ => cnt1<<fib(n-1), cnt2<<fib(n-2), ret<<Add(cnt1,cnt2);
+  ```
+  
+  
+
+### Features of Version 0.4
 
 #### Summaries
 - Integer numbers can be written the same as one of the first-class objects.
