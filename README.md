@@ -45,26 +45,28 @@ Inpla is a multi-threaded parallel interpreter of interaction nets. Once you wri
 
 
 ## Getting Started
-- Requirement  
+* Requirement  
   - gcc (>= 4.0), flex, bison
 
-- Build  
+* Build  
   - Single-thread version: Use `make` command as follows (the symbol `$` means a shell prompt):
-```
-$ make
-```
+  
+    ```
+    $ make
+    ```
 
   - Multi-thread version: Use `make` with `thread` option (it may also need `make clear` before that):  
-```
-$ make thread
-```
+  
+    ```
+    $ make thread
+    ```
 
 
 
 ## How to Execute
 
 ### Interactive mode (single-thread version)
-- Inpla starts in the interactive mode by typing the following command (where the symbol `$` is a shell prompt):
+* Inpla starts in the interactive mode by typing the following command (where the symbol `$` is a shell prompt):
 	
 	```
 	$ ./inpla
@@ -73,7 +75,7 @@ $ make thread
 	```
 
 
-- The symbol `>>>` is a prompt of Inpla. After the prompt you can write rules and nets. For instance, the following is a rule for incrementation `inc`  and a net to bind the increment result of `10` to a name `r`  (where `//` is a comment):
+* The symbol `>>>` is a prompt of Inpla. After the prompt you can write rules and nets. For instance, the following is a rule for incrementation `inc`  and a net to bind the increment result of `10` to a name `r`  (where `//` is a comment):
 
   ```
   >>> inc(ret) >< (int i) => ret~(i+1);   // a rule for inc >< (int i)
@@ -84,14 +86,14 @@ $ make thread
   >>> 
   ```
 
-- To quit this system, use `exit` command:
+* To quit this system, use `exit` command:
 
   ```
   >>> exit;
   ```
 
 ### Interactive mode (multi-thread version)
-- There is an execution option `-t` in order to specify the number of threads in a thread pool. For instance, by invoking with `-t 4` Inpla starts with 4 threads in the pool:
+* There is an execution option `-t` in order to specify the number of threads in a thread pool. For instance, by invoking with `-t 4` Inpla starts with 4 threads in the pool:
 
   ```
   $ ./inpla -t 4
@@ -100,12 +102,11 @@ $ make thread
 
 
 ### Batch mode and sample files
-
-- Inpla has also the batch mode in which a file is evaluated. This is available when invoked with an execution option `-f`  *filename*. There are sample files in the `sample` folder. Here we introduce some of ones:
+* Inpla has also the batch mode in which a file is evaluated. This is available when invoked with an execution option `-f`  *filename*. There are sample files in the `sample` folder. Here we introduce some of ones:
 
 #### Greatest common divisor
 
-  - Sample file: `sample/gcd.in`
+* Sample file: `sample/gcd.in`
 
     ```
     // Example program in Python
@@ -117,13 +118,13 @@ $ make thread
     | b==0 => ret ~ a
     | _ => gcd(ret) ~ (b, a%b);
     
-    // Nets
-    gcd(r) ~ (14,21);
-    r; // it should be 7
-    ```
-
+  // Nets
+  gcd(r) ~ (14,21);
+  r; // it should be 7
+  ```
+  
   - Execution:
-
+  
     ```
     $ ./inpla -f sample/gcd.in
     Inpla 0.5.0 : Interaction nets as a programming language [built: 28 Oct. 2021]
@@ -132,12 +133,12 @@ $ make thread
     
     $
     ```
-
+  
   
 
 #### Insertion sort
 ![insertion sort](pic/isort.png)
-  - Sample file: `sample/isort.in`
+* Sample file: `sample/isort.in`
 
     ```
     // Rules
@@ -168,7 +169,7 @@ $ make thread
 
 #### Quick sort
 ![quick sort](pic/qsort.png)
-  - Sample file: `sample/qsort.in`
+* Sample file: `sample/qsort.in`
 
     ```
     // Rules
@@ -204,7 +205,7 @@ $ make thread
       ```
 
       For instance, `r << Add(1,2)` is rewritten internally as `Add(r,1)~2`. It is handy to denote ports that take computation results. The following is another version by using the abbreviation:
-      
+    
       ```
       // Rules
       qsort(ret) >< [] => ret~[];
@@ -225,25 +226,25 @@ $ make thread
       r;
       ```
     
-  - Execution:
+    - Execution:
 
-    ```
-    $ ./inpla -f sample/qsort.in
-    Inpla 0.5.0 : Interaction nets as a programming language [built: 28 Oct. 2021]
-    (22 interactions, 0.00 sec)
-    [1,2,3,6,9]
-    
-    $
-    ```
+      ```
+      $ ./inpla -f sample/qsort.in
+      Inpla 0.5.0 : Interaction nets as a programming language [built: 28 Oct. 2021]
+      (22 interactions, 0.00 sec)
+      [1,2,3,6,9]
+      
+      $
+      ```
 
 
 #### Other samples
-- Evaluation of a lambda term `245II` in [YALE encoding](http://dl.acm.org/citation.cfm?id=289434), where `2`, `4`, `5` mean church numbers of lambda terms, and  `I` is a lambda term $\lambda x.x$:
+* Evaluation of a lambda term `245II` in [YALE encoding](http://dl.acm.org/citation.cfm?id=289434), where `2`, `4`, `5` mean church numbers of lambda terms, and  `I` is a lambda term $\lambda x.x$:
   
       $ ./inpla -f sample/245II.in
 
 
-- Samples of linear systemT encoding (see [our paper](http://link.springer.com/chapter/10.1007%2F978-3-319-29604-3_6) presented at [FLOPS 2016](http://www.info.kochi-tech.ac.jp/FLOPS2016/)).
+* Samples of linear systemT encoding (see [our paper](http://link.springer.com/chapter/10.1007%2F978-3-319-29604-3_6) presented at [FLOPS 2016](http://www.info.kochi-tech.ac.jp/FLOPS2016/)).
   
       $ ./inpla -f sample/linear-systemT.in
   
@@ -251,33 +252,33 @@ $ make thread
 
 ### Execution Options
 
-- When invoking Inpla, you can specify the following options:
-```
-$ ./inpla -h
-Inpla version 0.5.3
-Usage: inpla [options]
+* When invoking Inpla, you can specify the following options:
 
-Options:
- -f <filename>    Set input file name            (Defalut:    STDIN)
- -c <number>      Set the size of term cells     (Defalut:   100000)
- -x <number>      Set the size of the EQ stack   (Default:    10000)
- -t <number>      Set the number of threads      (Default:        1)
- -d <Name>=<val>  Bind <val> to <Name>
- -h               Print this help message
-```
-(The option ```-t``` is available for the multi-thread version that is compiled by ```make thread```.)
+  ```
+  $ ./inpla -h
+  Inpla version 0.5.3
+  Usage: inpla [options]
+  
+  Options:
+   -f <filename>    Set input file name            (Defalut:    STDIN)
+   -c <number>      Set the size of term cells     (Defalut:   100000)
+   -x <number>      Set the size of the EQ stack   (Default:    10000)
+   -t <number>      Set the number of threads      (Default:        1)
+   -d <Name>=<val>  Bind <val> to <Name>
+   -h               Print this help message
+  ```
 
-
+  (The option ```-t``` is available for the multi-thread version that is compiled by ```make thread```.)
 
 
 
 # Introduction to Programming in Inpla
 #### Contents
-- [Nets: terms and connections](#nets-terms-and-connections)
-- [Interaction rules](#interaction-rules)
+* [Nets: terms and connections](#nets-terms-and-connections)
+* [Interaction rules](#interaction-rules)
   - [Example: Operations on unary natural numbers](#example-operations-on-unary-natural-numbers)
-- [Built-in Agents](#built-in-agents)
-- [Attributes (integers)](#attributes-integers)
+* [Built-in Agents](#built-in-agents)
+* [Attributes (integers)](#attributes-integers)
   - [Arithmetic expressions on attributes](#arithmetic-expressions-on-attributes)
   - [Interaction rules with expressions on attributes](#interaction-rules-with-expressions-on-attributes)
   - [Built-in rules of attributes in the anonymous agents](#built-in-rules-of-attributes-in-the-anonymous-agents)
@@ -300,7 +301,7 @@ Inpla evaluates *nets*, which are built by *connections between terms*. First, w
 <agent> ::= <agentID>
           | <agentID> ['(' <term> ',' ... ',' <term> ')']     
 ```
-- **Name**: It works a buffer between terms and **the same name must occur at most twice in order to ensure one-to-one connections between terms**. The ```<nameID>``` is defined as strings start with a small letter, e.g. ```x``` and ```y```. To show connected terms from names, type the names. For instance, type just `x` to show a term connected from the 'x':
+* **Name**: It works a buffer between terms and **the same name must occur at most twice in order to ensure one-to-one connections between terms**. The ```<nameID>``` is defined as strings start with a small letter, e.g. ```x``` and ```y```. To show connected terms from names, type the names. For instance, type just `x` to show a term connected from the 'x':
 
   ```
   >>> x;
@@ -312,7 +313,7 @@ Inpla evaluates *nets*, which are built by *connections between terms*. First, w
 
   
 
-- **Agent**: It works constructors and de-constructors (defined functions). Generally agents have one *principal port* and *n*-fixed *auxiliary ports*. The fixed number of auxiliary ports is called *arity*, and it is determined according to each agents. In graphical representation an agent term `A(x1,...,xn)`, whose arity is *n*, is drawn as the following picture, where its auxiliary ports and the principal port correspond to the occurrences of the `x1`,...`xn`, and `A(x1,...,xn)`, respectively: 
+* **Agent**: It works constructors and de-constructors (defined functions). Generally agents have one *principal port* and *n*-fixed *auxiliary ports*. The fixed number of auxiliary ports is called *arity*, and it is determined according to each agents. In graphical representation an agent term `A(x1,...,xn)`, whose arity is *n*, is drawn as the following picture, where its auxiliary ports and the principal port correspond to the occurrences of the `x1`,...`xn`, and `A(x1,...,xn)`, respectively: 
   
   ![agent](pic/agent.png)
   
@@ -324,7 +325,7 @@ Inpla evaluates *nets*, which are built by *connections between terms*. First, w
 
 A **connection** is a relation between two terms, and it is expressed with the symbol `~`. For instance, a connection between a name `x` and an agent `A` (whose arity is 0) is denoted as `x~A`. There is no order in the left-hand and the right-hand side terms, thus `x~A` and `A~x` are identified as the same one.
 
-- **Connections between a name and an agent** are evaluated that the agent is connected from the name. For instance, `x~A` is evaluated that the `A` is connected from the `x`.   Here, as an example, type `x~A` with the termination symbol `;` as follows:
+* **Connections between a name and an agent** are evaluated that the agent is connected from the name. For instance, `x~A` is evaluated that the `A` is connected from the `x`.   Here, as an example, type `x~A` with the termination symbol `;` as follows:
   
   ```
   >>> x~A;
@@ -348,7 +349,7 @@ A **connection** is a relation between two terms, and it is expressed with the s
   ```
 
 
-- **Connections between names** are evaluated that these names are connected mutually in interaction nets. However, in Inpla, these are evaluated that the left-hand side name connects to the right-hand side name, thus only one way. For instance, `x~y` is evaluated that the `y` is connected from the `x`:
+* **Connections between names** are evaluated that these names are connected mutually in interaction nets. However, in Inpla, these are evaluated that the left-hand side name connects to the right-hand side name, thus only one way. For instance, `x~y` is evaluated that the `y` is connected from the `x`:
 
   ```
   >>> x~y;
@@ -359,7 +360,7 @@ A **connection** is a relation between two terms, and it is expressed with the s
   >>>
   ```
 
-- **Connections between agents** are evaluated according to *interaction rules* explained later. 
+* **Connections between agents** are evaluated according to *interaction rules* explained later. 
 
 One more connections are also evaluated. Connections whose the left-hand side is a name, such as `x~t`,  are disposed and the occurrence `x` in other connections is replaced with the `t`.  For instance, `x~A, x~y` are evaluated as `A~y` by replacing `x` with `A`, or possibly `y~A` by replacing the `x` with `y` when the second connection `x~y` is used.  **We note** that the `x` is disposed because it is consumed by the substitution. Thus, **every connection is one-to-one via names, cannot be one-to-many**.
 ```
@@ -394,8 +395,8 @@ Connections between agents are re-written according to **interaction rules**:
 ```
   with the **priviso** that:
 
-  - each name that occur in `<rule-agent>` must be **distinct**
-  - (**Linearity restriction**): every name in `<interaction-rule>` must **occur twice**.
+  * each name that occur in `<rule-agent>` must be **distinct**
+  * (**Linearity restriction**): every name in `<interaction-rule>` must **occur twice**.
 
 Something complicated? No problem! Let's us learn how to define the rules with some example!
 
@@ -439,7 +440,7 @@ Let's clean the result in case it could be used anywhere:
 >>>
 ```
 
-- **Exercise**: Addition on unary natural numbers.
+* **Exercise**: Addition on unary natural numbers.
 
   It is defined recursively in term rewriting systems as follows:
 
@@ -466,7 +467,7 @@ Let's clean the result in case it could be used anywhere:
   >>>
   ```
   
-- **Exercise**: Another version of the addition.
+* **Exercise**: Another version of the addition.
 
   There is another version defined as follows in term rewriting system:
 
@@ -491,19 +492,19 @@ Inpla has built-in agents:
 
 ### Tuples
 
-- `Tuple0`,  `Tuple2(x1,x2)`,  `Tuple3(x1,x2,x2)`,  `Tuple4(x1,x2,x3,x4)`,  `Tuple5(x1,x2,x3,x4,x5)`, 
+* `Tuple0`,  `Tuple2(x1,x2)`,  `Tuple3(x1,x2,x2)`,  `Tuple4(x1,x2,x3,x4)`,  `Tuple5(x1,x2,x3,x4,x5)`, 
   are written as  
   `()`,  `(x1,x2)`,  `(x1,x2,x3)`, `(x1,x2,x3,x4)`, `(x1,x2,x3,x4,x5)`.
   
-- There is no Tuple1, and so `(x)` is evaluated as just `x`.
+* There is no Tuple1, and so `(x)` is evaluated as just `x`.
 
 
 ### Lists
 
-- `Nil`, `Cons(x,xs)`  
+* `Nil`, `Cons(x,xs)`  
   are written as  
   `[]` and `x:xs`, respectively. 
-- A nested `Cons` that terminated at `Nil` is written as a list notation using brackets `[` and `]`.  For instance,  
+* A nested `Cons` that terminated at `Nil` is written as a list notation using brackets `[` and `]`.  For instance,  
   `x1 : x2: x3 : Nil`  
   is written as  
   `[x1,x2,x3]` .  
@@ -524,49 +525,49 @@ We also have a built-in agent `Append` to append two lists as shown in the follo
 Append(r, listB) ~ listA --> r ~ (listA ++ listB)  // pseudo code
 ```
 
-- The following is an example of built-in agents:
+* The following is an example of built-in agents:
 
-```
->>> (x1,x2)~(Z, S(Z));
-(1 interactions, 0.00 sec)
->>> x1 x2;
-Z S(Z)
->>>
-```
+  ```
+  >>> (x1,x2)~(Z, S(Z));
+  (1 interactions, 0.00 sec)
+  >>> x1 x2;
+  Z S(Z)
+  >>>
+  ```
 
-```
->>> [y1, y2, y3]~[Z, S(Z), S(S(Z))];
-(1 interactions, 0.00 sec)
->>> y1 y2 y3;
-Z S(Z) S(S(Z))
->>>
-```
+  ```
+  >>> [y1, y2, y3]~[Z, S(Z), S(S(Z))];
+  (1 interactions, 0.00 sec)
+  >>> y1 y2 y3;
+  Z S(Z) S(S(Z))
+  >>>
+  ```
 
-```
->>> Append(r, [Z, S(Z)]) ~ [A,B,C];
-(4 interactions, 0.00 sec)
->>> r;
-[A,B,C,Z,S(Z)]
->>> free x1 x2 y1 y2 y3 r;
->>>
-```
+  ```
+  >>> Append(r, [Z, S(Z)]) ~ [A,B,C];
+  (4 interactions, 0.00 sec)
+  >>> r;
+  [A,B,C,Z,S(Z)]
+  >>> free x1 x2 y1 y2 y3 r;
+  >>>
+  ```
 
-
-
+  
 ## Attributes (integers)
 
 Agents can have integers as their ports. These integers are called *attributes*. 
 
-- For instance, `A(100)` is evaluated as an agent `A` that holds an attribute of an integer value 100.
+* For instance, `A(100)` is evaluated as an agent `A` that holds an attribute of an integer value 100.
 
-```
->>> x~A(100);
-(0 interactions, 0.01 sec)
->>> x;
-A(100);
->>> free x;
->>>
-```
+  ```
+  >>> x~A(100);
+  (0 interactions, 0.01 sec)
+  >>> x;
+  A(100);
+  >>> free x;
+  >>>
+  ```
+
 It is possible to use integers the same as agents, but these are recognised as attributes of an anonymous built-in agent in Inpla:
 ```
 >>> x~100;
@@ -592,44 +593,44 @@ Attributes can be given as the results of arithmetic operation using `where` sta
 
 The symbol of addition, subtraction, multiplication, division and modulo are `+`, `-`, `*`, `/` and `%`, respectively.
 
-- For instance, the following is an expression using `where`:
+* For instance, the following is an expression using `where`:
 
-```
->>> x~A(a) where a=3+5;
-(0 interactions, 0.00 sec)
->>> x;
-A(8)
->>> free x;
->>>
-```
+  ```
+  >>> x~A(a) where a=3+5;
+  (0 interactions, 0.00 sec)
+  >>> x;
+  A(8)
+  >>> free x;
+  >>>
+  ```
 
-- Arithmetic expressions can be written in arguments directly without using `where`:
+* Arithmetic expressions can be written in arguments directly without using `where`:
 
-```
->>> x~A(3+5);
-(0 interactions, 0.00 sec)
->>> x;
-A(8)
->>> free x;
->>>
-```
+  ```
+  >>> x~A(3+5);
+  (0 interactions, 0.00 sec)
+  >>> x;
+  A(8)
+  >>> free x;
+  >>>
+  ```
 
-- Arithmetic expressions are also available for the anonymous agent:
 
-```
->>> x~(3+5);  // this is also written without brackets as x~3+5;
-(0 interactions, 0.00 sec)
->>> x;
-8
->>> free x;
->>>
-```
+* Arithmetic expressions are also available for the anonymous agent:
 
+  ```
+  >>> x~(3+5);  // this is also written without brackets as x~3+5;
+  (0 interactions, 0.00 sec)
+  >>> x;
+  8
+  >>> free x;
+  >>>
+  ```
 
 
 ### Interaction rules with expressions on attributes
 In interaction rules, attributes can be recognised by the modifier `int` in order to apply arithmetic expressions. **We can use the same variable with the modifier `int` many times (of course, zero times is also OK) in the connection parts of interaction rules**.
-- Example: Incrementor on an attribute:
+* Example: Incrementor on an attribute:
 
   ```
   >>> inc(result) >< (int a) => result~(a+1);
@@ -701,7 +702,7 @@ Add(result, y)><(int x) => _Add(result, x)~y;
 _Add(result, int x)><(int y) => result~(x+y);
 ```
 
-- Example:
+* Example:
 
   ```
   >>> Add(r,3)~5;   // Add is already defined as a bulit-in
@@ -731,7 +732,7 @@ In interaction rules, conditional rewritings on attributes are available. The fo
 
 The sequence of `<condition-on-attributes> ` must be finished with the otherwise case `_`.
 
-- Example: The following shows rules to obtain a list that contains only even numbers:
+* Example: The following shows rules to obtain a list that contains only even numbers:
 
   ```
   // Rules
@@ -782,20 +783,20 @@ The sequence of `<condition-on-attributes> ` must be finished with the otherwise
 
 ## Commands
 
-- Inpla has the following commands:
-  - `free` *name1* ... *name_n* `;`     
+Inpla has the following commands:
+* `free` *name1* ... *name_n* `;`     
   The *name1* ... *name_n* and connected terms from these are disposed. To dispose every living name and term connected from those, type `free ifce;`, where the `ifce` is an abbreviation of *interface* that is called for the set of names that live and occur once.
-  - *name1* ... *name_n* `;`  
+* *name1* ... *name_n* `;`  
   Put terms connected from the *name1* ... *name_n*.  To put every term connected from the interface, type `ifce;`.
-  - `prnat` *name*`;`    
+* `prnat` *name*`;`    
   Put a term connected from the *name* as a natural number.
-  - `use` `"`filename`";`  
+* `use` `"`filename`";`  
   Read the file named as "filename". 
-   - `exit;`            
+* `exit;`            
   Quit the system.
 
-- Inpla has the following macro:
-  - `const` *NAME*`=` *i* `;`  
+Inpla has the following macro:
+* `const` *NAME*`=` *i* `;`  
     The *NAME*  is bound to the integer value *i* as immutable, and replaced with the value *i* in nets and interaction rules.
 
 
@@ -803,7 +804,7 @@ The sequence of `<condition-on-attributes> ` must be finished with the otherwise
 ## Updates
 
 ### Feature of Version 0.5.0 (released on 28 October 2021)
-- **Abbreviation notation**: An abbreviation notation `<<` is introduced. The following description:
+* **Abbreviation notation**: An abbreviation notation `<<` is introduced. The following description:
 
   ```
   a,b,...,z << Agent(aa,bb,...,yy,zz)
@@ -821,7 +822,7 @@ The sequence of `<condition-on-attributes> ` must be finished with the otherwise
   ret << Append(a,b)  --- rewritten as ---> Append(ret,b)~a
   ```
 
-- **Merger agent that merges two lists into one**: Merger agent is implemented, such that it has two principal ports for the two lists, and whose interactions are performed as soon as one of the principal ports is ready for the interaction, that is to say, connected to a list. So, the merged result is decided non-deterministically, especially in multi-threaded execution.
+* **Merger agent that merges two lists into one**: Merger agent is implemented, such that it has two principal ports for the two lists, and whose interactions are performed as soon as one of the principal ports is ready for the interaction, that is to say, connected to a list. So, the merged result is decided non-deterministically, especially in multi-threaded execution.
   
   ![merger](pic/merger.png)
   
@@ -845,7 +846,7 @@ The sequence of `<condition-on-attributes> ` must be finished with the otherwise
   ```
 
 
-- **Built-in rules for arithmetic operations between two agents**: These operation, besides `Add`,  are fully implemented and managed by agents `Sub`, `Mul`, `Div`, `Mod`:
+* **Built-in rules for arithmetic operations between two agents**: These operation, besides `Add`,  are fully implemented and managed by agents `Sub`, `Mul`, `Div`, `Mod`:
 
   ```
   >>> r1<<Add(3,5), r2<<Sub(r1,2);
@@ -888,11 +889,11 @@ The sequence of `<condition-on-attributes> ` must be finished with the otherwise
 ### Features of Version 0.4
 
 #### Summaries
-- Integer numbers can be written the same as one of the first-class objects.
-- Interaction rules can re-allocate heaps of the rule agents to agents in nets. This re-allocation is specified by modifications such as `(*L)`, `(*R)`, called reuse annotation [1], in front of agents in nets, such as `(*L)Add(r,a)`. This re-allocation can improve performance in multi-threaded execution. This is experimental, thus in future version these can be decided automatically, so please do not care so much.
-- Weak reduction strategy is supported. It turns on by invoked with ```-w``` option, and then only connections that have living names are evaluated.
-- Nested guards in conditional rules are supporeted.
-- Line edit supports multi-line inputs.
+* Integer numbers can be written the same as one of the first-class objects.
+* Interaction rules can re-allocate heaps of the rule agents to agents in nets. This re-allocation is specified by modifications such as `(*L)`, `(*R)`, called reuse annotation [1], in front of agents in nets, such as `(*L)Add(r,a)`. This re-allocation can improve performance in multi-threaded execution. This is experimental, thus in future version these can be decided automatically, so please do not care so much.
+* Weak reduction strategy is supported. It turns on by invoked with ```-w``` option, and then only connections that have living names are evaluated.
+* Nested guards in conditional rules are supporeted.
+* Line edit supports multi-line inputs.
 
 
 
@@ -900,7 +901,7 @@ The sequence of `<condition-on-attributes> ` must be finished with the otherwise
 
 In interaction rule definitions, we can specify which agent is reused in the nets again by annotations `(*L)` and `(*R)`,  which means the left-hand side and the right-hand side agents in the rule. This annotations promote in-place computing, and as the result performance in parallel execution can be improved well.
 
-- For instance, in the rule `gcd(ret) >< (int a, int b)`, we can reuse the `gcd` and `Tuple2` in nets as follows:
+* For instance, in the rule `gcd(ret) >< (int a, int b)`, we can reuse the `gcd` and `Tuple2` in nets as follows:
 
   ```
   gcd(ret) >< (int a, int b)
@@ -914,7 +915,7 @@ In interaction rule definitions, we can specify which agent is reused in the net
 
 In this reduction strategy, only connections that have interface names (thus, live and occur once) are evaluated. This is taken for non-terminate computation such as fixed point combinator and process networks.
 
-- Example: We have a sample net in `sample/processnet1.in` that keep producing natural numbers from 1 and output these to the port `r`:
+* Example: We have a sample net in `sample/processnet1.in` that keep producing natural numbers from 1 and output these to the port `r`:
 
   ```
   // Rules
@@ -967,15 +968,15 @@ In this reduction strategy, only connections that have interface names (thus, li
 
 
 # Publications
-- [1] Ian Mackie, Shinya Sato, 
+* [1] Ian Mackie, Shinya Sato, 
 [*In-place Graph Rewriting with Interaction Nets*](https://arxiv.org/abs/1609.03641), TERMGRAPH 2016, EPTCS 225, pp.15-24, 2016.
-- [2] Shinya Sato,
+* [2] Shinya Sato,
 [*Design and implementation of a low-level language for interaction nets*](http://sro.sussex.ac.uk/54469/),
 PhD Thesis, University of Sussex, September 2014. 
-- [3] Abubakar Hassan, Ian Mackie and Shinya Sato,
+* [3] Abubakar Hassan, Ian Mackie and Shinya Sato,
 [*An implementation model for interaction nets*](http://arxiv.org/abs/1505.07164),
 Proceedings 8th International Workshop on Computing with Terms and Graphs, TERMGRAPH 2014, EPTCS 183, May 2015. 
-- [4] Ian Mackie and Shinya Sato,
+* [4] Ian Mackie and Shinya Sato,
 [*Parallel Evaluation of Interaction Nets: Case Studies and Experiments*](http://journal.ub.tu-berlin.de/eceasst/article/view/1034),
 Electronic Communications of the EASST, Volume 73: Graph Computation Models - Selected Revised Papers from GCM 2015, March 2016. 
 
@@ -983,7 +984,7 @@ Electronic Communications of the EASST, Volume 73: Graph Computation Models - Se
 
 # Related Works
 
-- [HINet: Interaction Nets in Haskell](http://www.cas.mcmaster.ca/~kahl/Haskell/HINet/)
+* [HINet: Interaction Nets in Haskell](http://www.cas.mcmaster.ca/~kahl/Haskell/HINet/)
 
 
 
