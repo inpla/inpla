@@ -60,7 +60,6 @@ Inpla is a multi-threaded parallel interpreter of interaction nets. Once you wri
     ```
     $ make thread
     ```
-    
      To get the single-thread version again, use `make clean; make`.
 
 ## How to Execute
