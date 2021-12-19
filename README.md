@@ -277,11 +277,11 @@ Options:
 
 # Introduction to Programming in Inpla
 #### Contents
-- [Nets: terms and connections](#nets:-terms-and-connections)
+- [Nets: terms and connections](#nets-terms-and-connections)
 - [Interaction rules](#interaction-rules)
-  - [Example: Operations on unary natural numbers](#example:-operations-on-unary-natural-numbers)
+  - [Example: Operations on unary natural numbers](#example-operations-on-unary-natural-numbers)
 - [Built-in Agents](#built-in-agents)
-- [Attributes (integers)](#attributes-(integers))
+- [Attributes (integers)](#attributes-integers)
   - [Arithmetic expressions on attributes](#arithmetic-expressions-on-attributes)
   - [Interaction rules with expressions on attributes](#interaction-rules-with-expressions-on-attributes)
   - [Built-in rules of attributes in the anonymous agents](#built-in-rules-of-attributes-in-the-anonymous-agents)
