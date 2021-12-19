@@ -31,7 +31,7 @@ Inpla is a multi-threaded parallel interpreter of interaction nets. Once you wri
   
     
 
-### Contents
+## Contents
 
 - [Getting Started](#getting-started)
 
