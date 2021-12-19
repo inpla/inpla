@@ -5,12 +5,12 @@
 
 
 // Rule
-gcd(ret, int a) >< (int b)
+gcd(ret) >< (int a, int b)
 | b==0 => ret ~ a
-| _ => gcd(ret, b) ~ a%b;
+| _ => gcd(ret) ~ (b, a%b);
 
 // Net
-gcd(r, 14) ~ 21;
+gcd(r) ~ (14,21);
 r; // it should be 7
 
 

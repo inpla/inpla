@@ -49,11 +49,14 @@ Lam(x,t,c) >< AppTo(result,s) => result~t, x~s, c~D;
 // We can write this avtive pair in nets as
 //   result << AppTo(s, lam_term)  for  AppTo(result, s)~ lam_term.
 
-// If the `<<' is defined as user macro, then it becomes more readable:
+// If the `<<' could be defined as user macro in future, 
+// then it becomes more readable:
 //   result << App(lam_term, s)  =def=  lam_term ~ App(result, s)
 
 
 // Nets
+
+// lam x.x
 id1 ~ Lam(x,x,V);
 id2 ~ Lam(x,x,V);
 

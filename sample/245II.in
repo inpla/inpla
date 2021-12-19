@@ -44,16 +44,23 @@ Eps >< B(t,s,u) => t~Eps,s~Eps,u~Eps;
 Eps >< CB(t,s,u) => t~Eps,s~Eps,u~Eps;
 
 
-// Execution
+// Nets
+// lam x.x
 id1 ~ Lam(i,i,V);
 id2 ~ Lam(i2,i2,V);
-two1 ~ Lam(Lam(a,b,c),B(c,C(App(a,d),App(d,b)),V),V);
-four1 ~ Lam(Lam(dz4, dx2, da1), B(da1, C(App(dz4, dz3), C(App(dz3, dz2), C(App(dz2, dz1), App(dz1, dx2)))), V), V);
-five3 ~ Lam(Lam(z53, x23, a13), B(a13, C(App(z53, z43), C(App(z43, z33), C(App(z33,z23), C(App(z23, z13), App(z13, x23))))), V), V);
+
+// lam f. lam x. f(fx)
+two ~ Lam(Lam(a,b,c),B(c,C(App(a,d),App(d,b)),V),V);
+
+// lam f. lam x. f(fx)
+four ~ Lam(Lam(dz4, dx2, da1), B(da1, C(App(dz4, dz3), C(App(dz3, dz2), C(App(dz2, dz1), App(dz1, dx2)))), V), V);
+
+// lam f. lam x. f(fx)
+five ~ Lam(Lam(z53, x23, a13), B(a13, C(App(z53, z43), C(App(z43, z33), C(App(z33,z23), C(App(z23, z13), App(z13, x23))))), V), V);
 
 // 245II
-two1 ~ App(aux1, four1);
-aux1 ~ App(aux2, five3);
+two  ~ App(aux1, four);
+aux1 ~ App(aux2, five);
 aux2 ~ App(aux3, id1);
 aux3 ~ App(aux4, id2);
 aux4;

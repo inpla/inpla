@@ -1,9 +1,14 @@
 # Change log
 
+### v0.5.5 (released on 19 December 2021)
+#### Bug Fix (minor):
+
+- The name `x` in a connection `x~s` should be substituted if the `x` occurs on a term in other connections, but it should be done if the `x` is specified by `int` modification. But every name has been a target of the substitution, so it is fixed now.
+
 ### v0.5.4 (released on 18 November 2021)
 #### Bug Fix (minor):
 
-- When a connection `x~s` is given in nets or rules, the other occurrence of the name `x` will be replaced with the `s`, as one of optimisations. It was done only when the other one occurred as just a name, that is, not a subterm. 
+- When there is a connection `x~s` in nets or rules, the other occurrence of the name `x` will be replaced with the `s`, as one of optimisations. It was done only when the other is just a name, that is, not a subterm, so it is fixed now.
 
 ### v0.5.3 (released on 14 November 2021)
 #### New Features (for constants):

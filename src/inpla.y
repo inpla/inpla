@@ -48,18 +48,11 @@ int ActiveThreadNum=0;
 
 //#define YYDEBUG 1
 
-#define VERSION "0.5.4"
-#define BUILT_DATE  "18 Nov. 2021"
+#define VERSION "0.5.5"
+#define BUILT_DATE  "19 Dec. 2021"
 
+ 
 extern FILE *yyin;
-
-
-
-// It means 'available' when its on 31bit flag is '1'
-#define FLAG_AVAIL 0x01 << 31 
-#define IS_FLAG_AVAIL(a) ((a) & FLAG_AVAIL)
-#define SET_FLAG_AVAIL(a) ((a) = ((a) | FLAG_AVAIL))
-#define TOGGLE_FLAG_AVAIL(a) ((a) = ((a) ^ FLAG_AVAIL))
 
 
 #include "mytype.h"
@@ -80,7 +73,7 @@ typedef struct EQList_tag {
 
 
 
-void makeRule(Ast *ast);
+int makeRule(Ast *ast);
 void freeAgentRec(VALUE ptr);
 
 //static inline void freeName(VALUE ptr);
@@ -89,8 +82,6 @@ void freeName(VALUE ptr);
 //static inline void freeAgent(VALUE ptr);
 void freeAgent(VALUE ptr);
 
-//void puts_name_port0(VALUE ptr);
-//void flush_name_port0(VALUE ptr);
 void puts_names_ast(Ast *ast);
 void free_names_ast(Ast *ast);
 void puts_name_port0_nat(VALUE ptr);
@@ -112,7 +103,8 @@ int yyerror();
 #define YY_NO_INPUT
 extern int yylineno;
 
-#define MY_YYLINENO    // For error message when nested source files are used.
+// For error message when nested source files are specified.
+#define MY_YYLINENO 
 #ifdef MY_YYLINENO
  typedef struct InfoLinenoType_tag {
    char *fname;
@@ -159,7 +151,9 @@ extern void pushFP(FILE *fp);
 extern int popFP();
 
 
-static char *Errormsg = NULL;  // yyerror でメッセージが出ないように、ここに格納する
+// In order to prevent from putting yyerror message,
+// the message will be stored here.
+static char *Errormsg = NULL;
 
 
 //#define YYDEBUG			1
@@ -244,9 +238,13 @@ s
   YYACCEPT;
 }
 | rule DELIMITER { 
-  makeRule($1); 
-  if (yyin == stdin) yylineno=0;
-  YYACCEPT;
+  if (makeRule($1)) {
+    if (yyin == stdin) yylineno=0;
+    YYACCEPT;
+  } else {
+    if (yyin == stdin) yylineno=0;
+    YYABORT;
+  }
 }
 | command {
   if (yyin == stdin) yylineno=0;
@@ -256,8 +254,8 @@ s
 
 
 
-// body は [stmlist, aplist] というリスト
-// ==> (AST_BODY stmlist aplist) に変更
+// body is a list such as [stmlist, aplist] 
+// ==> changed into (AST_BODY stmlist aplist)
 body
 : aplist { $$ = ast_makeAST(AST_BODY, NULL, $1); }
 | aplist WHERE stmlist_nondelimiter { $$ = ast_makeAST(AST_BODY, $3, $1);}
@@ -269,7 +267,7 @@ body
 | LC stmlist DELIMITER RC aplist { $$ = ast_makeAST(AST_BODY, $2, $5);}
 ;
 
-// rule は下記に変更
+// rule is changed as follows:
 //    (ASTRULE (AST_CNCT agentL agentR)
 //      <if-sentence>)
 //
@@ -619,8 +617,7 @@ typedef struct Heap_tag {
 
 
 typedef struct {
-  // AgentHeap, nameHeap, valHeap
-  //  Heap agentHeap, nameHeap, valHeap;
+  // Heaps for agents and names
   Heap agentHeap, nameHeap;
 
   // EQStack
@@ -655,6 +652,15 @@ static VirtualMachine VM;
 **************************************/
 
 //#define MALLOC
+
+// Heap cells whose 31bit is '0' means that these are available,
+// that is, ready for use.
+// '0' means that these are occupied, that is, using now.
+#define FLAG_AVAIL 0x01 << 31 
+#define IS_FLAG_AVAIL(a) ((a) & FLAG_AVAIL)
+#define SET_FLAG_AVAIL(a) ((a) = ((a) | FLAG_AVAIL))
+#define TOGGLE_FLAG_AVAIL(a) ((a) = ((a) ^ FLAG_AVAIL))
+
 
 
 
@@ -695,19 +701,6 @@ void VM_InitBuffer(VirtualMachine *vm, int size) {
     //    ((Name *)(vm->nameHeap.heap))[i].name = NULL;
   }
 
-
-  /*
-  vm->valHeap.lastAlloc = VAL_HEAP_SIZE-1;
-  vm->valHeap.heap = (VALUE *)malloc(sizeof(Agent)*VAL_HEAP_SIZE);
-  vm->valHeap.size = VAL_HEAP_SIZE;
-  if (vm->valHeap.heap == (VALUE *)NULL) {
-      printf("[Val]Malloc error\n");
-      exit(-1);
-  }
-  for (i=0; i<VAL_HEAP_SIZE; i++) {
-    SET_FLAG_AVAIL(((Val *)(vm->valHeap.heap))[i].basic.id);
-  }
-  */
 
 #endif
 }  
@@ -1004,8 +997,8 @@ char *Pretty_Name(VALUE a) {
 static int Puts_list_element=0;
 
 
-
-static int PutIndirection = 1;       // put t for x->t when it is 1
+// put an indirected term t for x such as x->t when `PutIndireaction' is 1
+static int PutIndirection = 1;       
 void puts_term(VALUE ptr) {
   if (IS_FIXNUM(ptr)) {
     printf("%d", FIX2INT(ptr));
@@ -1160,8 +1153,10 @@ void flush_name_port0(VALUE ptr) {
   if (IS_FIXNUM(ptr)) {
     return;
   }
-  
-  // 使っている name を管理する Hash に記録があるなら flush しない
+
+  // When the given name nodes (ptr) occurs somewhere also,
+  // these are not freed.
+  // JAPANESE: ptr の name nodes が他の場所で出現するなら flush しない。
   VALUE connected_from;
   if (keynode_exists_in_another_term(ptr, &connected_from) >= 1) {
     printf("Error: '%s' cannot be freed because it is referred to by '%s'.\n", 
@@ -1257,14 +1252,20 @@ void puts_eqlist(EQList *at) {
 //static inline
 void freeAgent(VALUE ptr) {
   
-  if (ptr == (VALUE)NULL) {puts("ERROR: NULL is applied to freeAgent."); return;}
+  if (ptr == (VALUE)NULL) {
+    puts("ERROR: NULL is applied to freeAgent.");
+    return;
+  }
 
   myfree(ptr);
 }
 
 //static inline
 void freeName(VALUE ptr) {
-  if (ptr == (VALUE)NULL) {puts("ERROR: NULL is applied to freeName."); return;}
+  if (ptr == (VALUE)NULL) {
+    puts("ERROR: NULL is applied to freeName.");
+    return;
+  }
 
   if (IS_LOCAL_NAMEID(BASIC(ptr)->id)) {
     myfree(ptr);
@@ -1343,7 +1344,7 @@ void freeAgentRec(VALUE ptr) {
  NAME TABLE
 **************************************/
 //#include "name_table.h"
-// Just include it, because the bbject file version causes *inefficiency* !
+// Just include it, because the object file version causes *inefficiency* !
 #include "name_table.c"  
 
 
@@ -1418,10 +1419,10 @@ void VM_PushEQStack(VirtualMachine *vm, VALUE l, VALUE r) {
   puts("      ><");
   printf("      ");puts_term(r);
   puts("");
+  //  printf("VM%d:pushed\n", vm->id);
 #endif
 
 
-  //  printf("VM%d:pushed\n", vm->id);
 }
 
 int VM_PopEQStack(VirtualMachine *vm, VALUE *l, VALUE *r) {
@@ -1495,7 +1496,7 @@ int PopEQStack(VirtualMachine *vm, VALUE *l, VALUE *r) {
   lock(&GlobalEQS.lock);
 
   if (GlobalEQS.nextPtr  < 0) {
-    // GlobalEQStack is empty
+    // When GlobalEQStack is empty
     unlock(&GlobalEQS.lock);
     return 0;
   }
@@ -1526,183 +1527,10 @@ void VM_EQStack_allputs(VirtualMachine *vm) {
 #endif
 
 
-/* --------------------
-// Linearity check
-
-#ifdef DEBUG
-int VM_EQStack_name_occur(VALUE a, VALUE t) {
-  if (IS_NAMEID(BASIC(t)->id)) {
-    if (a == t) {
-      //      puts_term(a); printf(" occurs in "); puts_term(t);puts("");
-      return 1;
-    }
-    return 0;
-  } else {
-    // Agent
-    int i, arity;
-
-    arity = IdTable_get_arity(AGENT(t)->basic.id);
-    for (i=0; i<arity; i++) {
-      if (VM_EQStack_name_occur(a, AGENT(t)->port[i])) {
-	//	puts_term(a); printf(" occurs in the term "); puts_term(t);puts("");
-	return 1;
-      }
-    }
-    return 0;
-  }
-}
-
-int VM_EQStack_has_name(VALUE l, VALUE r) {
-
-  if (IS_FIXNUM(l)) {
-    return 1;
-  } else if (BASIC(l) == NULL) {
-    puts("has_name ERROR");
-    exit(-1);
-  }
-  if (IS_NAMEID(BASIC(l)->id)) {
-    if (NAME(l)->port == (VALUE)NULL) {
-      return VM_EQStack_name_occur(l, r);
-    } else {
-      return 0;
-    }
-  } else {
-    // Agent
-    int i, arity;
-    int success = 0;
-    arity = IdTable_get_arity(AGENT(l)->basic.id);
-    for (i=0; i<arity; i++) {
-      if (VM_EQStack_has_name(AGENT(l)->port[i],r)) {
-	success++;
-      } else {
-	//	printf("?:");
-	//	puts_term(AGENT(l)->port[i]);
-	//	puts("");
-      }
-    }
-		printf("??:");
-		puts_term(l);
-		printf("\n    ");
-		puts_term(r);
-		puts("");
-    return success;
-  }
-}
-
-int VM_EQStack_has_name_own(VALUE l) {
-  if (IS_FIXNUM(l)) {
-    return 0;
-  }
-  if (IS_NAMEID(BASIC(l)->id)) {
-    if (NAME(l)->port == (VALUE)NULL) {
-      return 0;
-    } else {
-      printf("!");puts_term(l);printf("->");
-      puts_term(NAME(l)->port); puts(""); puts("");
-      printf("id=%d\n", BASIC(l)->id);
-      return 1; //VM_EQStack_has_name_own(NAME(l)->port);
-    }
-  } else {
-    // Agent
-    int i, arity;
-    int success = 0;
-
-    arity = IdTable_get_arity(AGENT(l)->basic.id);
-    printf("Arity of "); puts_term(l); 
-    printf(" is %d\n", arity);
-    for (i=0; i<arity; i++) {
-      int j;
-      for (j=0; j<arity; j++) {
-	if (j==i) {
-		printf("* :");
-		puts_term(AGENT(l)->port[j]);
-		puts("");
-	  success+=VM_EQStack_has_name_own(AGENT(l)->port[j]);
-	  continue;
-	}
-		printf("**:");
-		puts_term(AGENT(l)->port[i]);
-		puts("");
-		puts_term(AGENT(l)->port[j]);
-		puts("");
-	success+=VM_EQStack_has_name(AGENT(l)->port[i], AGENT(l)->port[j]);
-
-      }
-    }	
-
-		printf("? :");
-		puts_term(l);
-		puts("");
-
-    return success;
-  }
-}  
-
-
-
-int VM_EQStack_check_linearity(VirtualMachine *vm) {
-  int i,j;
-  VALUE l,r;
-  if (vm->nextPtr_eqStack == -1) return 1;
-  for (i=0; i<=vm->nextPtr_eqStack+1; i++) {
-
-    int success = 0;
-    int arity;
-
-    l = vm->eqStack[i].l;
-    r = vm->eqStack[i].r;
-    arity = IdTable_get_arity(AGENT(l)->basic.id);
-    success+=VM_EQStack_has_name_own(l);
-    printf("score=%d\n\n", success);
-
-    success+=VM_EQStack_has_name(l,r);
-    printf("score=%d\n\n", success);
-
-    success+=VM_EQStack_has_name_own(r);
-    printf("score=%d\n\n", success);
-    
-    success+=VM_EQStack_has_name(r,l);
-    printf("score=%d\n\n", success);
-
-    if (success == 2) return 1;
-
-    success = 0;
-    for (j=0; j<=vm->nextPtr_eqStack+1; j++) {
-      if (i==j) continue;
-      success +=VM_EQStack_has_name(l, vm->eqStack[j].l);
-    printf("score=%d\n\n", success);
-      success +=VM_EQStack_has_name(l, vm->eqStack[j].r);
-    printf("score=%d\n\n", success);
-
-      success += VM_EQStack_has_name(r, vm->eqStack[j].l);
-    printf("score=%d\n\n", success);
-      success += VM_EQStack_has_name(r, vm->eqStack[j].r);
-    printf("score=%d\n\n", success);
-    }
-
-    printf("score=%d\n\n", success);
-
-    if (success == IdTable_get_arity(AGENT(l)->basic.id) +
-	IdTable_get_arity(AGENT(r)->basic.id)) {
-      return 1;
-    }
-    puts("Linearty ERROR:");
-    puts_term(l);
-    puts("");
-    puts_term(r);
-    puts("");
-    puts("");
-    //    VM_EQStack_allputs(vm);
-    return 0;   
-  }
-  return 0;
-}
-#endif
-*/
 
 
 /**************************************
- CODE
+ BYTECODE
 **************************************/
 // *** The occurrence order must be the same in labels in ExecCode. ***
 typedef enum {
@@ -2212,44 +2040,6 @@ void CopyCode(int byte, void **source, void **target) {
 }
 
 
-/*
-void EnvPutsCode() {
-  int i,j,arity;
-  for (i=0; i<CmEnv.localNamePtr; i++) {
-    printf("var%d=mkName\n", i);
-  }
-  for (i=0; i<CmEnv.codeptr; i++) {
-    switch (CmEnv.code[i]) {
-    case RET:
-      puts("ret");
-      break;
-    case PUSH:
-      printf("push var%d var%d\n", CmEnv.code[i+1], CmEnv.code[i+2]);
-      i +=2;
-      break;
-    case MKNAME:
-      printf("var%d=mkname\n", CmEnv.code[i+1]);
-      i +=1;
-      break;
-    case MKAGENT:
-      printf("var%d=mkagent %d %d", 
-	     CmEnv.code[i+1], CmEnv.code[i+2], CmEnv.code[i+3]);
-      arity = CmEnv.code[i+3];
-      i +=3;
-      for(j=0; j<arity; j++) {
-	i++;
-	printf(" var%d", CmEnv.code[i]);
-      }
-      puts("");
-      break;
-    default:
-      printf("CODE %d\n", CmEnv.code[i]);
-      
-    }
-  }
-}
-
-*/
 
 
 void PutsCodeN(void **code, int n) {
@@ -3145,7 +2935,8 @@ void RewriteEQListOnAST(Ast *eqs) {
   
   Ast *at, *prev, *target, *term;
   char *sym;
-  int nth = 0;
+  int nth=0, exists_in_table;
+  NB_TYPE type = NB_NAME;
 
   at = prev = eqs;
   
@@ -3159,68 +2950,80 @@ void RewriteEQListOnAST(Ast *eqs) {
     //            printf("\n%dnth in ", nth); ast_puts(eqs); printf("\n\n");
 
 
+    //      NB_NAME=0,
+    //  NB_META,
+    //  NB_INTVAR,
+
     if (target->left->id == AST_NAME) {
-      
+
       sym = target->left->left->sym;
-      term = target->right;
-
-      //      printf("%s~",sym); ast_puts(term);
+      exists_in_table=CmEnv_gettype_forname(sym, &type);
       
-      if (SubstASTList(nth, sym, term, eqs)) {
-	//		 printf("=== hit %dth\n", nth);
+      if ((!exists_in_table) ||
+	  (type == NB_NAME)){
+	// When no entry in CmEnv table or its type is NB_NAME
 	
-	if (prev != at) {
-
-	  // 前のリストの接続先を、現在地を省いて、その次の要素に変更。
-	  prev->right = at->right;  
-	  at = at->right;
-	  
-	} else {
-	  // 先頭の要素が代入に使われたので、
-	  // body 内の eqs から先頭を削除
-	  // (AST_LIST, x1, (AST_LIST, x2, *next)) ==> (AST_LIST, x2, *next)  
-	  eqs->left = eqs->right->left;
-	  eqs->right = eqs->right->right;
-	  eqs = eqs->right;
-	  // 対象 at を次の要素に更新し、prev も at とする
-	  prev = at = at->right;
+	term = target->right;
+	//	printf("%s~",sym); ast_puts(term); puts("");
+      
+	if (SubstASTList(nth, sym, term, eqs)) {
+	  //		 printf("=== hit %dth\n", nth);
+	
+	  if (prev != at) {
+	    // 前のリストの接続先を、現在地を省いて、その次の要素に変更。
+	    prev->right = at->right;  
+	    at = at->right;	  
+	  } else {
+	    // 先頭の要素が代入に使われたので、
+	    // body 内の eqs から先頭を削除
+	    // (AST_LIST, x1, (AST_LIST, x2, *next)) ==> (AST_LIST, x2, *next)  
+	    eqs->left = eqs->right->left;
+	    eqs->right = eqs->right->right;
+	    eqs = eqs->right;
+	    // 対象 at を次の要素に更新し、prev も at とする
+	    prev = at = at->right;
+	  }
+	
+	  continue;
 	}
-	
-	continue;
       }
+      
     }
-
 
       
     if (target->right->id == AST_NAME) {
       sym = target->right->left->sym;
-      term = target->left;
+      exists_in_table=CmEnv_gettype_forname(sym, &type);      
 
-
-      if (SubstASTList(nth, sym, term, eqs)) {
-	//	 printf("=== hit %dth\n", nth);
+      if ((!exists_in_table) ||
+	  (type == NB_NAME)){
+	// When no entry in CmEnv table or its type is NB_NAME
 	
-	if (prev != at) {
+	term = target->left;
+	//	ast_puts(term); printf("~%s",sym);puts("");
 
-	  // 前のリストの接続先を、現在地を省いて、その次の要素に変更。
-	  prev->right = at->right;  
-	  at = at->right;
-	  
-	} else {
-	  // 先頭の要素が代入に使われたので、
-	  // body 内の eqs から先頭を削除
-	  // (AST_LIST, x1, (AST_LIST, x2, *next)) ==> (AST_LIST, x2, *next)  
-	  eqs->left = eqs->right->left;
-	  eqs->right = eqs->right->right;
-	  eqs = eqs->right;
-	  // 対象 at を次の要素に更新し、prev も at とする
-	  prev = at = at->right;
+	if (SubstASTList(nth, sym, term, eqs)) {
+	  //	 printf("=== hit %dth\n", nth);
+	
+	  if (prev != at) {
+	    // 前のリストの接続先を、現在地を省いて、その次の要素に変更。
+	    prev->right = at->right;  
+	    at = at->right;	  
+	  } else {
+	    // 先頭の要素が代入に使われたので、
+	    // body 内の eqs から先頭を削除
+	    // (AST_LIST, x1, (AST_LIST, x2, *next)) ==> (AST_LIST, x2, *next)  
+	    eqs->left = eqs->right->left;
+	    eqs->right = eqs->right->right;
+	    eqs = eqs->right;
+	    // 対象 at を次の要素に更新し、prev も at とする
+	    prev = at = at->right;
+	  }
+
+	  continue;      
+
 	}
-
-	continue;      
-
       }
-
     }
 
     nth++;
@@ -3473,105 +3276,6 @@ int getRuleAgentID(Ast *ruleAgent) {
 
 
 
-int CompileGuardBodiesFromAST(Ast *guard_bodies_top,
-			      void **code, int offset_code) {
-  // return codesize
-  //  -1 : compile error
-  Ast *guard_bodies, *guard_body, *body, *guard;
-  int code_size = offset_code;
-  
-  int generated_codesize; // コンパイルで生成されたコード数保存用
-
-  guard_bodies = guard_bodies_top;
-  
-  do {
-
-    guard_body = guard_bodies->left;
-
-    guard = guard_body->left;
-    body = guard_body->right;
-
-    CmEnv_clear_keeping_rule_properties();
-
-    
-    if (guard != NULL) {      
-      int label;  // 飛び先指定用
-
-      // Gurad のコンパイル
-      int newreg = CmEnv_newreg();
-      if (!CompileExprFromAst(newreg, guard)) return -1;
-      generated_codesize = CmEnv_generate_code(code,code_size);
-      code_size+=generated_codesize;
-
-      //JMPEQ0 用コードを作成
-      code[code_size++] = CodeAddr[OP_JMPEQ0];
-      code[code_size++] = (void *)(unsigned long)newreg;
-      label = code_size++;  // 飛び先を格納するアドレスを記憶しておく
-
-      // stms と eqs のコンパイル
-      EnvCodeClear();
-      CmEnv_clear_localnamePtr();  // 局所変数としての reg番号を初期化
-
-      if (!CompileBodyFromAst(body)) return -1;
-      Compile_Put_Ret_ForRuleBody();
-      
-      generated_codesize = CmEnv_generate_code_with_nameinfo(code,code_size);
-      if (generated_codesize < 0) {
-	puts("System ERROR: Generated codes were too big.");
-	return -1;
-      }
-
-      // 次の guard コンパイルで &code[code_size] にて指定できるように
-      // code_size を更新しておく。
-      code_size += generated_codesize;
-      if (code_size > MAX_CODE_SIZE) {
-	puts("System ERROR: Generated codes were too big.");
-	return -1;
-      }
-
-      // JMPEQ0 のとび先を格納
-      code[label]=(void *)(unsigned long)generated_codesize;
-
-      
-      //      puts("");
-      //      PutsCodeN(code, code_size);
-      //      puts("");
-      
-    } else {
-      // 通常コンパイル
-      if (!CompileBodyFromAst(body)) return -1;
-      Compile_Put_Ret_ForRuleBody();
-      
-      generated_codesize = CmEnv_generate_code_with_nameinfo(code,code_size);
-      
-      code_size += generated_codesize;
-      if (generated_codesize < 0) {
-	puts("System ERROR: Generated codes were too long.");
-	return -1;
-      }
-
-    } 
-
-
-    
-    if (!CmEnv_check_meta_occur_once()) {
-      printf("in the rule:\n  %s >< %s.\n", 
-	     IdTable_get_name(CmEnv.idL),
-	     IdTable_get_name(CmEnv.idR));
-
-      //      ast_puts(ruleL); printf("><");
-      //      ast_puts(ruleR); puts("");
-      return -1;
-    }
-    guard_bodies = ast_getTail(guard_bodies);
-  } while (guard_bodies != NULL);
-  
-
-  return code_size;
-
-  
-}
-
 
 
 int CompileIfSentenceFromAST(Ast *if_sentence_top,
@@ -3603,7 +3307,6 @@ int CompileIfSentenceFromAST(Ast *if_sentence_top,
       
     generated_codesize = CmEnv_generate_code_with_nameinfo(code, offset_code);
       
-    //code_size += generated_codesize;
     if (generated_codesize < 0) {
       puts("System ERROR: Generated codes were too long.");
       return -1;
@@ -3682,7 +3385,7 @@ int CompileIfSentenceFromAST(Ast *if_sentence_top,
 
 
 
-void makeRule(Ast *ast) {
+int makeRule(Ast *ast) {
   //    (ASTRULE (AST_CNCT agentL agentR)
   //      <if-sentence>)
   //
@@ -3704,11 +3407,11 @@ void makeRule(Ast *ast) {
 
   if (ruleL->id == AST_NAME) {
     printf("ERROR: The name '%s' was specified as the left-hand side of rule agents. It should be an agent.\n", ruleL->left->sym);
-    return;
+    return 0;
   }
   if (ruleR->id == AST_NAME) {
     printf("ERROR: The name '%s' was specified as the right-hand side of rule agents. It should be an agent.\n", ruleR->left->sym);
-    return;
+    return 0;
   }
   
   
@@ -3843,23 +3546,23 @@ void makeRule(Ast *ast) {
   CmEnv.idR = idR;
 
 
-  
-  code_size += CompileIfSentenceFromAST(if_sentence, code, code_size);
-  if (code_size < 0)
-    return;
-  
+  {
+    int generated_codesize = CompileIfSentenceFromAST(if_sentence, code, code_size);
+    if (generated_codesize < 0) {
+      return 0;
+    }
+    code_size += generated_codesize;
+  }  
 
 #ifdef MYDEBUG
     PutsCodeN(code, code_size); exit(1);
 #endif
 
-    /*
-    printf("Rule: %s(id:%d) >< %s(id:%d).\n", 
-	   IdTable_get_name(idL), idL,
-	   IdTable_get_name(idR), idR);
-    PutsCodeN(&code[2], code_size-2);
-    //exit(1);
-    */
+    //    printf("Rule: %s(id:%d) >< %s(id:%d).\n", 
+    //	   IdTable_get_name(idL), idL,
+    //	   IdTable_get_name(idR), idR);
+    //    PutsCodeN(&code[2], code_size-2);
+    //    exit(1);
     
     
 // --------------------------------------------------------------
@@ -5506,6 +5209,8 @@ void makeRule(Ast *ast) {
     RuleTable_delete(idR, idL);
     
   }
+
+  return 1;
 }
 
 
@@ -7822,14 +7527,14 @@ int main(int argc, char *argv[])
 #else
     tpool_init(max_AgentBuffer, max_EQStack);
 #endif    
-    
     /*
-      printf("Name size=%d\n", sizeof(Name));
-      printf("Basic size=%d\n", sizeof(Basic));
-      printf("VALUE size=%d\n", sizeof(VALUE));
-      printf("IDTYPE size=%d\n", sizeof(IDTYPE));
+      printf("Basic size=%ld\n", sizeof(Basic));
+      printf("Name size=%ld\n", sizeof(Name));
+      printf("Agent size=%ld\n", sizeof(Agent));
+      printf("VALUE size=%ld\n", sizeof(VALUE));
+      printf("IDTYPE size=%ld\n", sizeof(IDTYPE));
+      exit(1);
     */
-    
   }
   
 
