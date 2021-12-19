@@ -32,19 +32,15 @@ Inpla is a multi-threaded parallel interpreter of interaction nets. Once you wri
     
 
 ## Contents
-
-- [Getting Started](#getting-started)
-
-- [How to Execute](#how-to-execute)
-
-  - [Interactive mode (single-thread version)](#interactive-mode-single-thread-version)
-  - [Interactive mode (multi-thread version)](#interactive-mode-multi-thread-version)
-  - [Batch mode and sample files](#batch-mode-and-sample-files)
-  - [Execution Options](#execution-options)
-
-- [Introduction to Programming in Inpla](#introduction-to-programming-in-inpla)
-- [Commands](#commands)
-- [Updates](#updates)
+* [Getting Started](#getting-started)
+* [How to Execute](#how-to-execute)
+      [Interactive mode (single-thread version)](#interactive-mode-single-thread-version)
+      [Interactive mode (multi-thread version)](#interactive-mode-multi-thread-version)
+      [Batch mode and sample files](#batch-mode-and-sample-files)
+      [Execution Options](#execution-options)
+* [Introduction to Programming in Inpla](#introduction-to-programming-in-inpla)
+* [Commands](#commands)
+* [Updates](#updates)
 
 
 
