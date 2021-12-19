@@ -45,10 +45,10 @@ Inpla is a multi-threaded parallel interpreter of interaction nets. Once you wri
 
 
 ## Getting Started
-* Requirement  
+* Requirement 
   - gcc (>= 4.0), flex, bison
 
-* Build  
+* Build 
   - Single-thread version: Use `make` command as follows (the symbol `$` means a shell prompt):
   
     ```
