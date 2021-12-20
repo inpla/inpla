@@ -650,10 +650,12 @@ In interaction rules, attributes are recognised by a modifier `int` in order to 
   ```
 
 
-- Example: Duplicator of integer lists. We note that, at the first line of the below example, the rule is allowed to have more than twice occurrences of *i* (here, it is three times) because the *i* is a variable for attributes:
+- Example: Duplicator of integer lists. 
   
-  ![dup_list](pic/dup_list.png)
+  We note that, at the first line of the below example, the rule is allowed to have not twice occurrences of *i* (here, it is three times) because the *i* is a variable for attributes:
 
+  ![dup_list](pic/dup_list.png)
+  
   
   ```
   >>> dup(a1,a2) >< (int i):xs => a1~(i:xs1), a2~(i:xs2), dup(xs1,xs2)~xs;
@@ -665,7 +667,7 @@ In interaction rules, attributes are recognised by a modifier `int` in order to 
   >>> free a b;
   >>>
   ```
-
+  
   
 
 **We have to be careful for operations of two attributes on distinct agents**. For instance, we take the following rule of an `add` agent:
