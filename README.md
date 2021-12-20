@@ -41,7 +41,9 @@ Inpla is a multi-threaded parallel interpreter of interaction nets. Once you wri
 * [Introduction to Programming in Inpla](#introduction-to-programming-in-inpla)
 * [Commands](#commands)
 * [Updates](#updates)
-
+* [Publications](#publications)
+* [Related Works](#related-works)
+* [License](#license)
 
 
 ## Getting Started
@@ -272,9 +274,9 @@ Inpla is a multi-threaded parallel interpreter of interaction nets. Once you wri
 
 
 # Introduction to Programming in Inpla
-#### Contents
+#### Contents in this section
 * [Nets: terms and connections](#nets-terms-and-connections)
-* [Interaction rules](#interaction-rules)
+* [Interaction rules: rewriting rules for nets](#interaction-rules-rewriting-rules-for-nets)
   - [Example: Operations on unary natural numbers](#example-operations-on-unary-natural-numbers)
 * [Built-in Agents](#built-in-agents)
 * [Attributes (integers)](#attributes-integers)
@@ -383,7 +385,7 @@ Just in case for other examples, let the `y` disposed:
 
 
 
-## Interaction rules
+## Interaction rules: rewriting rules for nets
 
 Connections between agents are re-written according to **interaction rules**:
 
