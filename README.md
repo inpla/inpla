@@ -650,7 +650,7 @@ In interaction rules, attributes are recognised by a modifier `int` in order to 
   ```
 
 
-- Example: Duplicator of integer lists. We note that, at the first line of the below example, the rule is allowed to have more than twice (here, it is three times) occurrences of *i* because the *i* is a variable for attributes:
+- Example: Duplicator of integer lists. We note that, at the first line of the below example, the rule is allowed to have more than twice occurrences of *i* (here, it is three times) because the *i* is a variable for attributes:
   
   ![dup_list](pic/dup_list.png)
 
