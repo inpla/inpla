@@ -280,6 +280,7 @@ Inpla is a multi-threaded parallel interpreter of interaction nets. Once you wri
   - [Example: Operations on unary natural numbers](#example-operations-on-unary-natural-numbers)
 * [Built-in Agents](#built-in-agents)
 * [Attributes (integers)](#attributes-integers)
+  - [Built-in anonymous agent for attributes](#built-in-anonymous-agent-for-attributes)
   - [Arithmetic expressions on attributes](#arithmetic-expressions-on-attributes)
   - [Interaction rules with expressions on attributes](#interaction-rules-with-expressions-on-attributes)
   - [Built-in rules of attributes in the anonymous agents](#built-in-rules-of-attributes-in-the-anonymous-agents)
@@ -556,9 +557,9 @@ Append(r, listB) ~ listA --> r ~ (listA ++ listB)  // pseudo code
   
 ## Attributes (integers)
 
-Agents can have integers as their ports. These integers are called *attributes*. 
+Agents can be extended so that these can have integers as their ports. These integers are called *attributes*. 
 
-* For instance, `A(100)` is evaluated as an agent `A` that holds an attribute of an integer value 100.
+* For instance, `A(100)` is evaluated as an agent `A` that holds an attribute of an integer value `100`.
 
   ```
   >>> x~A(100);
@@ -569,15 +570,20 @@ Agents can have integers as their ports. These integers are called *attributes*.
   >>>
   ```
 
-It is possible to use integers the same as agents, but these are recognised as attributes of an anonymous built-in agent in Inpla:
-```
->>> x~100;
-(0 interactions, 0.00 sec)
->>> x;
-100
->>> free x;
->>>
-```
+
+### Built-in anonymous agent for attributes
+It is possible to use integers the same as agents, but these are recognised as attributes of a built-in *anonymous agent* in Inpla. For instance, when we write just `x~100`, then the `100` is regarded as an attribute of the anonymous agent. 
+
+* The following is another version of the above example in the case of using the anonymous agent:
+
+  ```
+  >>> x~100;    // The `100' is regarded as an attribute of an anonymous agent
+  (0 interactions, 0.00 sec)
+  >>> x;
+  100
+  >>> free x;
+  >>>
+  ```
 
 
 
@@ -630,7 +636,7 @@ The symbol of addition, subtraction, multiplication, division and modulo are `+`
 
 
 ### Interaction rules with expressions on attributes
-In interaction rules, attributes can be recognised by the modifier `int` in order to apply arithmetic expressions. **We can use the same variable with the modifier `int` many times (of course, zero times is also OK) in the connection parts of interaction rules**.
+In interaction rules, attributes are recognised by a modifier `int` in order to apply arithmetic expressions. **We can use the same variable with the modifier `int` many times (of course, zero times is also OK) in the connection parts of interaction rules**.
 * Example: Incrementor on an attribute:
 
   ```
@@ -644,10 +650,12 @@ In interaction rules, attributes can be recognised by the modifier `int` in orde
   ```
 
 
-- Example: Duplicator of integer lists:
+- Example: Duplicator of integer lists. 
   
-  ![dup_list](pic/dup_list.png)
+  We note that, at the first line of the below example, the rule is allowed to have not twice occurrences of *i* (here, it is three times) because the *i* is a variable for attributes:
 
+  ![dup_list](pic/dup_list.png)
+  
   
   ```
   >>> dup(a1,a2) >< (int i):xs => a1~(i:xs1), a2~(i:xs2), dup(xs1,xs2)~xs;
@@ -659,7 +667,7 @@ In interaction rules, attributes can be recognised by the modifier `int` in orde
   >>> free a b;
   >>>
   ```
-
+  
   
 
 **We have to be careful for operations of two attributes on distinct agents**. For instance, we take the following rule of an `add` agent:
