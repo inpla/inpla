@@ -687,13 +687,13 @@ Of course, it works as an addition operation on two attributes:
 >>>
 ```
 
-However, it can cause runtime error because the argument `b` of `add` can be not connected to an attribute when the rule is invoked. For instance, we take the following computation:
+However, it can cause runtime error because the second argument `int b` of `add` can haven't been connected to an attribute when the rule is invoked. For instance, we take the following computation:
 
 ```
 >>> add(r, b)~3, add(b, 10)~20;
 ```
 
-If the `add(r, b)~3` is operated first, it causes runtime error because the `b` is not connected to an attribute, though it is OK if the `add(b, 10)~20` is operated first. To prevent this fragile situation, **we have to have extra rules to ensure that every port with the modifier `int` connects to an attribute**. For the rule of the `add` agent, the following is a **solution** to have the extra rule where `addn` is introduced as an extra agent:
+If the `add(r, b)~3` is operated first, it causes runtime error because the `b` has not been connected to an attribute, whereas it is OK if the `add(b, 10)~20` is operated first. To prevent this fragile situation, **we have to have extra rules to ensure that every port with the modifier `int` has been connected to an attribute**. For the rule of the `add` agent, the following is a **solution** to have the extra rule (the `addn` is introduced as the extra agent):
 
 ```
 >>> add(result, b) >< (int a) => addn(result, a) ~ b;
