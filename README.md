@@ -451,7 +451,9 @@ Let's clean the result in case it could be used anywhere:
   
   This is written in interaction nets as follows: ![add1](pic/add1.png)
   
-  In Inpla, each agent is expressed as a term. For instance, after putting distinct names on auxiliary ports, the `add` agent is written as a term `add(ret,x)`. Every computation is performed on connections between principal ports (drawn as arrows) according to interaction rules. These rules are written textually as follows:
+  In Inpla (and textual notation in interaction nets also), each agent is expressed as a term whose arguments correspond to its auxiliary ports. For instance, the `add` agent in the most left-hand side of the above figure, after putting distinct names on auxiliary ports such as `ret` and `x`, is written as a term `add(ret,x)` by assembling these names anti-clockwise from the principal port (drawn as an arrow). 
+  
+  Every computation is performed on connections between principal ports according to interaction rules. These rules are written textually as follows:
   
   ```
   add(ret, x) >< Z => ret~x;
@@ -476,9 +478,9 @@ Let's clean the result in case it could be used anywhere:
   - add(x,Z) = x,
   - add(x, S(y)) = S(add(x,y)).
 
-  This is written in interaction nets: ![add2](pic/add2.png)
+  These are written in interaction nets: ![add2](pic/add2.png)
   
-   In Inpla, putting distinct names also on connections between auxiliary ports, these rules are written textually as follows:
+  and written textually as follows:
   
   ```
   add(ret,x) >< Z => ret~x;
