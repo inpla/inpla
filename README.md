@@ -311,11 +311,11 @@ Inpla evaluates *nets*, which are built by *connections between terms*. First, w
   >>>
   ```
 
-  Nothing is connected from the `x` yet, of course.
+  This means that nothing has not been connected from the `x` yet, of course.
 
   
 
-* **Agent**: It works constructors and de-constructors (defined functions). Generally agents have one *principal port* and *n*-fixed *auxiliary ports*. The fixed number of auxiliary ports is called *arity*, and it is determined according to each agents. In graphical representation an agent term `A(x1,...,xn)`, whose arity is *n*, is drawn as the following picture, where its auxiliary ports and the principal port correspond to the occurrences of the `x1`,...`xn`, and `A(x1,...,xn)`, respectively: 
+* **Agent**: It works constructors and de-constructors (defined functions). Generally agents have one *principal port* and *n*-fixed *auxiliary ports*. The fixed number of auxiliary ports is called *arity*, and it is determined according to each agent sort. In graphical representation an agent term `A(x1,...,xn)`, whose arity is *n*, is drawn as the following picture, where its auxiliary ports and the principal port (drawn as an arrow) correspond to the occurrences of the `x1`,...`xn`, and `A(x1,...,xn)`, respectively: 
   
   ![agent](pic/agent.png)
   
@@ -325,9 +325,9 @@ Inpla evaluates *nets*, which are built by *connections between terms*. First, w
 
 ### Connections
 
-A **connection** is a relation between two terms, and it is expressed with the symbol `~`. For instance, a connection between a name `x` and an agent `A` (whose arity is 0) is denoted as `x~A`. There is no order in the left-hand and the right-hand side terms, thus `x~A` and `A~x` are identified as the same one.
+A **connection** is a relation between two terms, that means the two term are connected, and it is expressed with the symbol `~`. For instance, a connection between a name `x` and an agent `A` (whose arity is 0) is denoted as `x~A`. There is no order in the left-hand and the right-hand side terms, thus `x~A` and `A~x` are identified as the same one.
 
-* **Connections between a name and an agent** are evaluated that the agent is connected from the name. For instance, `x~A` is evaluated that the `A` is connected from the `x`.   Here, as an example, type `x~A` with the termination symbol `;` as follows:
+* **Connections between a name and an agent** are evaluated as that the agent is connected from the name. For instance, `x~A` is evaluated as that the `A` is connected from the `x`.   Here, as an example, type `x~A` with the termination symbol `;` as follows:
   
   ```
   >>> x~A;
@@ -351,7 +351,7 @@ A **connection** is a relation between two terms, and it is expressed with the s
   ```
 
 
-* **Connections between names** are evaluated that these names are connected mutually in interaction nets. However, in Inpla, these are evaluated that the left-hand side name connects to the right-hand side name, thus only one way. For instance, `x~y` is evaluated that the `y` is connected from the `x`:
+* **Connections between names** are evaluated as that ports corresponding to these names are connected mutually in interaction nets frameworks. However, in Inpla, these are evaluated as that, for the connections, the left-hand side name connects to the right-hand side name, thus only one way. For instance, `x~y` is evaluated that the `x` connects to the `x` (not that the `y` connects to `x`):
 
   ```
   >>> x~y;
@@ -364,7 +364,7 @@ A **connection** is a relation between two terms, and it is expressed with the s
 
 * **Connections between agents** are evaluated according to *interaction rules* explained later. 
 
-One more connections are also evaluated. Connections whose the left-hand side is a name, such as `x~t`,  are disposed and the occurrence `x` in other connections is replaced with the `t`.  For instance, `x~A, x~y` are evaluated as `A~y` by replacing `x` with `A`, or possibly `y~A` by replacing the `x` with `y` when the second connection `x~y` is used.  **We note** that the `x` is disposed because it is consumed by the substitution. Thus, **every connection is one-to-one via names, cannot be one-to-many**.
+One more connections are also evaluated. Connections whose the left-hand side is a name, such as `x~t`,  are disposed and another occurrence `x` in other connections, if exists, is replaced with the `t`.  For instance, `x~A, x~y` are evaluated as `A~y` by replacing `x` with `A`, or possibly `y~A` by replacing the `x` with `y` when the second connection `x~y` is used.  **We note** that the `x` is disposed because it is consumed by the substitution. Thus, **every connection is kept one-to-one via names, cannot be one-to-many**.
 ```
 >>> x~A, x~y;
 (0 interactions, 0.00 sec)
@@ -415,7 +415,7 @@ In the first rule, the name `ret` occurs twice, so it satisfies the rule proviso
 
 When agents works can be separated into constructors and de-constructors, it could be good to use strings of all small letters for de-constructors such as `inc` , and for constructors ones start from a capital letter such as `Z` and `S`.
 
-Let's have the result of the increment operation for `S(S(Z))`:
+Let's take the result of the increment operation for `S(S(Z))`:
 
 ```
 >>> inc(r)~S(S(Z));         // This is also written as:  r << inc(S(S(Z)))
@@ -453,7 +453,7 @@ Let's clean the result in case it could be used anywhere:
   
   In Inpla (and textual notation in interaction nets also), each agent is expressed as a term whose arguments correspond to its auxiliary ports. For instance, the `add` agent in the most left-hand side of the above figure, after putting distinct names on auxiliary ports such as `ret` and `x`, is written as a term `add(ret,x)` by assembling these names anti-clockwise from the principal port (drawn as an arrow). 
   
-  Every computation is performed on connections between principal ports according to interaction rules. These rules are written textually as follows:
+  Every computation is performed on connections between principal ports according to interaction rules. The rules shown in avobe figure are written textually as follows:
   
   ```
   add(ret, x) >< Z => ret~x;
@@ -473,7 +473,7 @@ Let's clean the result in case it could be used anywhere:
   
 * **Exercise**: Another version of the addition.
 
-  There is another version defined as follows in term rewriting system:
+  There is another version defined in term rewriting system as follows:
 
   - add(x,Z) = x,
   - add(x, S(y)) = S(add(x,y)).
@@ -486,7 +486,7 @@ Let's clean the result in case it could be used anywhere:
   add(ret,x) >< Z => ret~x;
   add(ret,x) >< S(y) => ret~S(cnt), add(cnt, x)~y;
   ```
-  In comparison with the previous example such that calculation results are stored until every computation finishes, the results can be sent partially as `S(cnt)` to other soon. So, **this version is suitable for parallel execution**.
+  In comparison with the previous example, whereas those calculation results are stored until every computation finishes, these results can be sent partially as `S(cnt)` to other soon. So, **this version is suitable for parallel execution**.
   
   
 
@@ -559,7 +559,7 @@ Append(r, listB) ~ listA --> r ~ (listA ++ listB)  // pseudo code
   
 ## Attributes (integers)
 
-Agents can be extended so that these can have integers as their ports. These integers are called *attributes*. 
+Agents can be extended so that these can have integers in their ports. These integers are called *attributes*. 
 
 * For instance, `A(100)` is evaluated as an agent `A` that holds an attribute of an integer value `100`.
 
@@ -638,7 +638,7 @@ The symbol of addition, subtraction, multiplication, division and modulo are `+`
 
 
 ### Interaction rules with expressions on attributes
-In interaction rules, attributes are recognised by a modifier `int` in order to apply arithmetic expressions. **We can use the same variable with the modifier `int` many times (of course, zero times is also OK) in the connection parts of interaction rules**.
+In interaction rules, attributes are recognised by a modifier `int` in order to apply arithmetic expressions. **We can use the same variable with the modifier `int` many times (of course, zero times is also OK) in the connection parts of interaction rules**. This is because these does not affect keeping the one-to-one connection among agent ports.
 * Example: Incrementor on an attribute:
 
   ```
@@ -656,7 +656,7 @@ In interaction rules, attributes are recognised by a modifier `int` in order to 
 
   ![dup_list](pic/dup_list.png)
   
-  We note that, in the first line from the top of the following execution example, there is a rule allowed to have not twice occurrences of *i* (here, it is three times, that is, once as `(int i):xs` in left-hand side, and twice as `(i:xs1)` and `(i:xs2)` in the right-hand side). This is because the *i* is a variable for attributes.
+  We note that, in the first line from the top of the following execution example, there is a rule allowed to have not twice occurrences of *i* (here, it is three times, that is, once as `(int i):xs` in left-hand side, and twice as `(i:xs1)` and `(i:xs2)` in the right-hand side). This is possible because the *i* is a variable for attributes.
 
   ```
   >>> dup(a1,a2) >< (int i):xs => a1~(i:xs1), a2~(i:xs2), dup(xs1,xs2)~xs;
@@ -688,7 +688,7 @@ Of course, it works as an addition operation on two attributes:
 >>>
 ```
 
-However, it can cause runtime error because the second argument `int b` of `add` can haven't been connected to an attribute when the rule is invoked. For instance, we take the following computation:
+However, it causes runtime error if the second argument `int b` for the `add` rule can haven't been connected to an attribute when the rule is invoked. For instance, we take the following computation:
 
 ```
 >>> add(r, b)~3, add(b, 10)~20;
@@ -813,7 +813,10 @@ Inpla has the following macro:
 
 ## Updates
 
+See [Changelog.md](Changelog.md) for details.
+
 ### Feature of Version 0.5.0 (released on 28 October 2021)
+
 * **Abbreviation notation**: An abbreviation notation `<<` is introduced. The following description:
 
   ```
