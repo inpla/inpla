@@ -980,7 +980,7 @@ In this reduction strategy, only connections that have interface names (thus, li
 
 
 
-# Publications
+## Publications
 * [1] Ian Mackie, Shinya Sato, 
 [*In-place Graph Rewriting with Interaction Nets*](https://arxiv.org/abs/1609.03641), TERMGRAPH 2016, EPTCS 225, pp.15-24, 2016.
 * [2] Shinya Sato,
@@ -995,13 +995,13 @@ Electronic Communications of the EASST, Volume 73: Graph Computation Models - Se
 
 
 
-# Related Works
+## Related Works
 
 * [HINet: Interaction Nets in Haskell](http://www.cas.mcmaster.ca/~kahl/Haskell/HINet/)
 
 
 
-# License
+## License
 
 Copyright (c) 2021 [Shinya SATO](http://satolab.com/)  
  Released under the MIT license  
