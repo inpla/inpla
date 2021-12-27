@@ -1,6 +1,13 @@
 # Change log
 
+### Logo of Inpla (released on 27 December 2021)
+
+- A logo is released as an idea:
+![inpla-logo](pic/inpla-logo.png)
+
+
 ### v0.5.5 (released on 19 December 2021)
+
 #### Bug Fix (minor):
 
 - The name `x` in a connection `x~s` should be substituted if the `x` occurs on a term in other connections, but it should be done if the `x` is specified by `int` modification. But every name has been a target of the substitution, so it is fixed now.
