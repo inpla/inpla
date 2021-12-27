@@ -1,4 +1,4 @@
-# Inpla: Interaction nets as a programming language
+# Inpla: Interaction nets as a programming language 
 
 
 
