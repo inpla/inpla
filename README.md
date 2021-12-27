@@ -817,8 +817,10 @@ See [Changelog.md](Changelog.md) for details.
 
 ### Logo of Inpla (relased on 27 December 2021)
 
-- A logo is relased as an idea:
-![inpla-logo](pic/inpla-logo.png)
+- A logo is released as an idea:
+
+  ![inpla-logo](pic/inpla-logo.png)
+
 
 ### Feature of Version 0.5.0 (released on 28 October 2021)
 

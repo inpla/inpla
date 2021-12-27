@@ -3,7 +3,9 @@
 ### Logo of Inpla (released on 27 December 2021)
 
 - A logo is released as an idea:
-![inpla-logo](pic/inpla-logo.png)
+
+  ![inpla-logo](pic/inpla-logo.png)
+
 
 
 ### v0.5.5 (released on 19 December 2021)
