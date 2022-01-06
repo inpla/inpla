@@ -1,4 +1,5 @@
 %{
+%{
 #define _GNU_SOURCE
 #include <stdio.h>
 #include <stdlib.h>
@@ -33,13 +34,13 @@
 
 // ----------------------------------------------
 
-int MaxThreadNum=1;
+int MaxThreadsNum=1;
 
 #ifdef THREAD
 #include <pthread.h>
 extern int pthread_setconcurrency(int concurrency); 
 
-int ActiveThreadNum=0;
+int SleepingThreadsNum=0;
 
 // for cas spinlock
 #include "cas_spinlock.h"
@@ -671,8 +672,7 @@ void VM_InitBuffer(VirtualMachine *vm, int size) {
 
   // Agent Heap
   
-  //vm->agentHeap.lastAlloc = size-1;
-  vm->agentHeap.lastAlloc = 0;
+  vm->agentHeap.lastAlloc = size-1;
   vm->agentHeap.heap = (VALUE *)malloc(sizeof(Agent)*size);
   vm->agentHeap.size = size;
   if (vm->agentHeap.heap == (VALUE *)NULL) {
@@ -688,7 +688,6 @@ void VM_InitBuffer(VirtualMachine *vm, int size) {
 
   //size = size/2;
   vm->nameHeap.lastAlloc = size-1;
-  //vm->nameHeap.lastAlloc = 0;
   vm->nameHeap.heap = (VALUE *)malloc(sizeof(Name)*size);
   vm->nameHeap.size = size;
   if (vm->nameHeap.heap == (VALUE *)NULL) {
@@ -1455,7 +1454,7 @@ void PushEQStack(VALUE l, VALUE r) {
 
   unlock(&GlobalEQS.lock);
 
-  if (ActiveThreadNum < MaxThreadNum) {
+  if (SleepingThreadsNum > 0) {
     pthread_mutex_lock(&Sleep_lock);
     pthread_cond_signal(&EQStack_not_empty);
     pthread_mutex_unlock(&Sleep_lock);
@@ -5406,7 +5405,7 @@ void *ExecCode(int mode, VirtualMachine *restrict vm, void *restrict *code) {
   if ((!IS_FIXNUM(a1)) && (IS_NAMEID(BASIC(a1)->id)) &&	\
       (NAME(a1)->port == (VALUE)NULL)) {				\
     if (!(__sync_bool_compare_and_swap(&(NAME(a1)->port), NULL, a2))) { \
-      if (MaxThreadNum - ActiveThreadNum > 0) {			\
+      if (SleepingThreadsNum > 0) {			\
 	PushEQStack(NAME(a1)->port,a2);					\
 	freeName(a1);							\
       } else {								\
@@ -5417,7 +5416,7 @@ void *ExecCode(int mode, VirtualMachine *restrict vm, void *restrict *code) {
   } else if ((!IS_FIXNUM(a2)) && (IS_NAMEID(BASIC(a2)->id)) && \
 	     (NAME(a2)->port == (VALUE)NULL)) {			\
     if (!(__sync_bool_compare_and_swap(&(NAME(a2)->port), NULL, a1))) { \
-      if (MaxThreadNum - ActiveThreadNum > 0) {			\
+      if (SleepingThreadsNum > 0) {			\
 	PushEQStack(a1,NAME(a2)->port);					\
 	freeName(a2);							\
       } else {								\
@@ -5426,7 +5425,7 @@ void *ExecCode(int mode, VirtualMachine *restrict vm, void *restrict *code) {
       }									\
     }									\
   } else {								\
-    if (MaxThreadNum - ActiveThreadNum > 0) {				\
+    if (SleepingThreadsNum > 0) {				\
       PushEQStack(a1,a2);						\
     } else {								\
       VM_PushEQStack(vm, a1,a2);					\
@@ -7046,9 +7045,9 @@ void *tpool_thread(void *arg) {
     VALUE t1, t2;
     while (!PopEQStack(vm, &t1, &t2)) {
       pthread_mutex_lock(&Sleep_lock);
-      ActiveThreadNum--;
-
-      if (ActiveThreadNum == 0) {
+      SleepingThreadsNum++;
+      
+      if (SleepingThreadsNum == MaxThreadsNum) {
 	pthread_mutex_lock(&AllSleep_lock);
 	pthread_cond_signal(&ActiveThread_all_sleep);
 	pthread_mutex_unlock(&AllSleep_lock);
@@ -7056,7 +7055,7 @@ void *tpool_thread(void *arg) {
 
       //            printf("[Thread %d is slept.]\n", vm->id);
       pthread_cond_wait(&EQStack_not_empty, &Sleep_lock);
-      ActiveThreadNum++;
+      SleepingThreadsNum--;
       pthread_mutex_unlock(&Sleep_lock);  
       //            printf("[Thread %d is waked up.]\n", vm->id);
 
@@ -7087,21 +7086,21 @@ void tpool_init(unsigned int agentBufferSize, unsigned int eqstack_size) {
   pthread_setconcurrency(CpuNum);
 
 
-  Threads = (pthread_t *)malloc(sizeof(pthread_t)*MaxThreadNum);
+  SleepingThreadsNum = 0;
+  Threads = (pthread_t *)malloc(sizeof(pthread_t)*MaxThreadsNum);
   if (Threads == NULL) {
     printf("the thread pool could not be created.");
     exit(-1);
   }
-  ActiveThreadNum = MaxThreadNum;
 
-  VMs = malloc(sizeof(VirtualMachine*)*MaxThreadNum);
+  VMs = malloc(sizeof(VirtualMachine*)*MaxThreadsNum);
   if (VMs == NULL) {
     printf("the thread pool could not be created.");
     exit(-1);
   }
 
 
-  for (i=0; i<MaxThreadNum; i++) {
+  for (i=0; i<MaxThreadsNum; i++) {
     VMs[i] = malloc(sizeof(VirtualMachine));
     VMs[i]->id = i;
     Init_VM(VMs[i], agentBufferSize, eqstack_size);
@@ -7118,7 +7117,7 @@ void tpool_init(unsigned int agentBufferSize, unsigned int eqstack_size) {
 
 void tpool_destroy() {
   int i;
-  for (i=0; i<MaxThreadNum; i++) {
+  for (i=0; i<MaxThreadsNum; i++) {
     pthread_join( Threads[i],
 		  NULL);
   }
@@ -7135,7 +7134,7 @@ int exec(Ast *at) {
   int i;
 
 #ifdef COUNT_INTERACTION
-  for (i=0; i<MaxThreadNum; i++) {
+  for (i=0; i<MaxThreadsNum; i++) {
     VM_ClearInteractionNum(VMs[i]);
   }
 #endif
@@ -7195,9 +7194,9 @@ int exec(Ast *at) {
   
   //分散用
   {
-    int each_eqsnum = eqsnum / MaxThreadNum;
+    int each_eqsnum = eqsnum / MaxThreadsNum;
     if (each_eqsnum == 0) each_eqsnum = 1;
-    for (i=1; i<MaxThreadNum; i++) {
+    for (i=1; i<MaxThreadsNum; i++) {
       VALUE t1, t2;
       int j;
       for (j=0; j<each_eqsnum; j++) {
@@ -7217,8 +7216,9 @@ int exec(Ast *at) {
   usleep(CAS_LOCK_USLEEP);
   //  usleep(10000);
 
-    
-  if (ActiveThreadNum != 0) {
+
+  // if some threads are working, wait for all of these to sleep.
+  if (SleepingThreadsNum < MaxThreadsNum) {
     pthread_mutex_lock(&AllSleep_lock);
     pthread_cond_wait(&ActiveThread_all_sleep, &AllSleep_lock);
     pthread_mutex_unlock(&AllSleep_lock);
@@ -7228,17 +7228,17 @@ int exec(Ast *at) {
 
 #ifdef COUNT_INTERACTION
   unsigned long total=0;
-  for (i=0; i<MaxThreadNum; i++) {
+  for (i=0; i<MaxThreadsNum; i++) {
     total += VM_GetInteractionNum(VMs[i]);
   }
   printf("(%lu interactions by %d threads, %.2f sec)\n", 
 	 total,
-	 MaxThreadNum,
+	 MaxThreadsNum,
 	 (double)(time)/1000000.0);
 
   /*
   printf("[");
-  for (i=0; i<MaxThreadNum-1; i++) {
+  for (i=0; i<MaxThreadsNum-1; i++) {
     printf("%.1f%%, ", VM_GetInteractionNum(VMs[i])/(double)total*100.0);
   }
   printf("%.1f%%] (CPUNUM=%d)\n", VM_GetInteractionNum(VMs[i])/(double)total*100.0, CpuNum);
@@ -7247,7 +7247,7 @@ int exec(Ast *at) {
 #else
   printf("(%.2f sec by %d threads)\n", 	
           (double)(time)/1000000.0,
-          MaxThreadNum);
+          MaxThreadsNum);
 #endif
 
 
@@ -7328,7 +7328,7 @@ int main(int argc, char *argv[])
 	  // Extended Options for threads or non-threads
 #ifdef THREAD
 	  printf(" -t <number>      Set the number of threads      (Default: %8d)\n",
-		 MaxThreadNum);
+		 MaxThreadsNum);
 
 #else
 	  printf(" -w               Enable Weak Reduction strategy (Default: false)\n"
@@ -7454,7 +7454,7 @@ int main(int argc, char *argv[])
 	    exit(-1);
 	  }
 	  
-	  MaxThreadNum=param;
+	  MaxThreadsNum=param;
 	  break;
 #else
         case 'w':
@@ -7506,7 +7506,7 @@ int main(int argc, char *argv[])
 
 
     
-    max_AgentBuffer = min_AgentBuffer + max_AgentBuffer/MaxThreadNum;
+    max_AgentBuffer = min_AgentBuffer + max_AgentBuffer/MaxThreadsNum;
     //printf("max_AgentBuffer:%d\n", max_AgentBuffer);
     
     IdTable_init();    

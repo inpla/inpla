@@ -1,4 +1,10 @@
 # Change log
+### v0.5.6 (released on 6 January 2022)
+
+#### Bug Fix:
+
+- The index of the ring buffer for agents had not been correctly initialised. It was fixed the same as the way of the ring buffer for names.
+
 
 ### Logo of Inpla (released on 27 December 2021)
 
@@ -12,12 +18,12 @@
 
 #### Bug Fix (minor):
 
-- The name `x` in a connection `x~s` should be substituted if the `x` occurs on a term in other connections, but it should be done if the `x` is specified by `int` modification. But every name has been a target of the substitution, so it is fixed now.
+- The name `x` in a connection `x~s` is substituted if the `x` occurs on a term in other connections, but it should not be done if the `x` is specified by `int` modification. Any names had been targets of the substitution, so it was fixed.
 
 ### v0.5.4 (released on 18 November 2021)
 #### Bug Fix (minor):
 
-- When there is a connection `x~s` in nets or rules, the other occurrence of the name `x` will be replaced with the `s`, as one of optimisations. It was done only when the other is just a name, that is, not a subterm, so it is fixed now.
+- When there is a connection `x~s` in nets or rules, the other occurrence of the name `x` will be replaced with the `s`, as one of optimisations. It had been done only when the other was just a name, that is, not a subterm, so it was fixed.
 
 ### v0.5.3 (released on 14 November 2021)
 #### New Features (for constants):
@@ -29,7 +35,7 @@
 
 ### v0.5.2 (released on 10 November 2021)
 #### Bug Fix (minor):
-- `Free` command did not work for integer numbers, due to the change by v0.5.1, but it was fixed.
+- `Free` command did not work for integer numbers, due to the change by v0.5.1. It was fixed.
 
 
 ### v0.5.1 (released on 2 November 2021)
