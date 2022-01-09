@@ -8,7 +8,7 @@ MS_tail(ret, int n) >< x:xs =>
 	MS(a)~left, MS(b)~right, Merge(ret,b)~a;
 
 Merge(ret, snd) >< [] => ret~snd;
-Merge(ret, snd) >< x:xs => MergeC(ret, x, xs)~snd;
+Merge(ret, snd) >< x:xs => MergeCC(ret, x, xs)~snd;
 
 MergeCC(ret, int y, ys) >< [] => ret~(y:ys);
 MergeCC(ret, int y, ys) >< (int x):xs
