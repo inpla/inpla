@@ -4,18 +4,20 @@
 
 ## What is Inpla
 
-Inpla is a multi-threaded parallel interpreter of interaction nets. Once you write programs for sequential execution, it works also in multi-threaded parallel execution. Each thread is managed on each CPU-core with POSIX-thread library.
+Inpla is a multi-threaded parallel interpreter of interaction nets. Once you write programs for sequential execution, it works also in multi-threaded parallel execution. Each thread is managed on each CPU-core with POSIX-thread library. 
 
-![speedup-ratio](pic/benchmark_reuse.png)
+* The current version is 0.6.0 released on **9 January 2022**. (See [Changelog.md](Changelog.md) for details.)
+
+![speedup-ratio](pic/benchmark_reuse_v0.6.0.png)
 
 |                | Haskell  |   SML    | Python | Inpla1 | Inpla1_r | Inpla7 | Inpla7_r |
 | -------------- | :------: | :------: | :----: | :----: | :------: | :----: | :------: |
-| ack(3,11)    |   2.31   | **0.41** |   -    |  4.76  |   4.36   |  0.98  |   0.88   |
-| fib 38       |   1.60   | **0.26** |  8.49  |  3.59  |   3.56   |  0.56  |   0.54   |
-| bsort 40000  |  34.81   |  11.17   | 76.72  | 22.85  |  18.40   |  5.53  | **2.94** |
-| isort 40000  | **0.02** |   2.97   | 36.63  | 10.59  |   8.74   |  2.59  |   1.43   |
-| qsort 800000 | **0.15** |   1.16   | 97.30  |  1.85  |   1.55   |  0.76  |   0.41   |
-| msort 800000 | **0.46** |   1.00   | 98.27  |  1.18  |   1.34   |  0.65  |   0.49   |
+| ack(3,11)    |   2.31   | **0.41** |   -    |  5.54  |   4.57   |  1.58  |   0.92   |
+| fib 38       |   1.60   | **0.26** |  8.49  |  3.96  |   3.83   |  0.67  |   0.62   |
+| bsort 40000  |  34.81   |  11.17   | 76.72  | 26.31 | 21.07 |  7.39  | **3.41** |
+| isort 40000  | **0.02** |   2.97   | 36.63  | 12.59 |   10.03   |  3.65  |   1.63   |
+| qsort 800000 | **0.15** |   1.16   | 97.30  |  3.79  |   2.04   |  0.77  |   0.37   |
+| msort 800000 | 0.46 |   1.00   | 98.27  |  2.50  |   1.45   |  0.64  |   **0.39**   |
 
 - **Comparison in execution time** with other implementations: **Haskell** (GHC version 8.10.7), **Standard ML of New Jersey** v110.74 (interpreter mode) and **Python** 3.8.5 in execution time.
   
@@ -71,7 +73,7 @@ Inpla is a multi-threaded parallel interpreter of interaction nets. Once you wri
 	
 	```
 	$ ./inpla
-	Inpla 0.5.0 : Interaction nets as a programming language [built: 28 Oct. 2021]
+	Inpla 0.6.0 : Interaction nets as a programming language [built: 9 Jan. 2022]
 	>>> 
 	```
 
@@ -128,7 +130,7 @@ Inpla is a multi-threaded parallel interpreter of interaction nets. Once you wri
   
     ```
     $ ./inpla -f sample/gcd.in
-    Inpla 0.5.0 : Interaction nets as a programming language [built: 28 Oct. 2021]
+    Inpla 0.6.0 : Interaction nets as a programming language [built: 9 Jan. 2022]
     (4 interactions, 0.00 sec)
     7
     
@@ -161,7 +163,7 @@ Inpla is a multi-threaded parallel interpreter of interaction nets. Once you wri
 
     ```
     $ ./inpla -f sample/isort.in
-    Inpla 0.5.0 : Interaction nets as a programming language [built: 28 Oct. 2021]
+    Inpla 0.6.0 : Interaction nets as a programming language [built: 9 Jan. 2022]
     (16 interactions, 0.00 sec)
     [1,2,3,6,9]
     
@@ -231,7 +233,7 @@ Inpla is a multi-threaded parallel interpreter of interaction nets. Once you wri
 
       ```
       $ ./inpla -f sample/qsort.in
-      Inpla 0.5.0 : Interaction nets as a programming language [built: 28 Oct. 2021]
+      Inpla 0.6.0 : Interaction nets as a programming language [built: 9 Jan. 2022]
       (22 interactions, 0.00 sec)
       [1,2,3,6,9]
       
@@ -257,19 +259,18 @@ Inpla is a multi-threaded parallel interpreter of interaction nets. Once you wri
 
   ```
   $ ./inpla -h
-  Inpla version 0.5.3
+  Inpla version 0.6.0
   Usage: inpla [options]
   
   Options:
    -f <filename>    Set input file name            (Defalut:    STDIN)
-   -c <number>      Set the size of term cells     (Defalut:   100000)
    -x <number>      Set the size of the EQ stack   (Default:    10000)
    -t <number>      Set the number of threads      (Default:        1)
    -d <Name>=<val>  Bind <val> to <Name>
    -h               Print this help message
   ```
 
-  (The option ```-t``` is available for the multi-thread version that is compiled by ```make thread```.)
+(The option ```-t``` is available for the multi-thread version that is compiled by ```make thread```.)
 
 
 
@@ -815,6 +816,18 @@ Inpla has the following macro:
 
 See [Changelog.md](Changelog.md) for details.
 
+### v0.6.0 (released on 9 January 2022)
+
+#### New Features:
+
+- Introduced new data structure for ring buffers for agents and names: The ring buffers are automatically expanded when all elements of these are used up. Each size starts from 2^18 (=262144), and it will be twice, triple and so on as needed. To adjust the unit size, change the following definition in `src/inpla.y`:
+
+  ```
+  #define HOOP_SIZE (1 << 18)
+  ```
+
+- Deleted the execution option `-c` that specifies the size of these ring buffers: This execution option is deleted because these buffers are expanded as needed.
+
 ### Logo of Inpla (relased on 27 December 2021)
 
 - A logo is released as an idea:
@@ -1010,6 +1023,6 @@ Electronic Communications of the EASST, Volume 73: Graph Computation Models - Se
 
 ## License
 
-Copyright (c) 2021 [Shinya SATO](http://satolab.com/)  
- Released under the MIT license  
+Copyright (c) 2022 [Shinya SATO](http://satolab.com/) 
+ Released under the MIT license 
  http://opensource.org/licenses/mit-license.php
