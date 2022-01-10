@@ -50,8 +50,8 @@ int SleepingThreadsNum=0;
 
 //#define YYDEBUG 1
 
-#define VERSION "0.6.0"
-#define BUILT_DATE  "9 Jan. 2022"
+#define VERSION "0.7.0(dev)"
+#define BUILT_DATE  "10 Jan. 2022"
 
  
 extern FILE *yyin;
@@ -707,7 +707,7 @@ HoopList *HoopList_New_forName(void) {
 
 
 
-HoopList *HoopList_New_forAgent() {
+HoopList *HoopList_New_forAgent(void) {
   int i;
   HoopList *hp_list;
 
@@ -1853,7 +1853,7 @@ static CmEnvironment CmEnv;
 void *ExecCode(int mode, VirtualMachine *restrict vm, void *restrict *code);
 
 
-void CmEnv_clear_all();
+void CmEnv_clear_all(void);
 
 
 void CmEnv_Init(int vm_heapsize) {
@@ -1870,7 +1870,7 @@ void CmEnv_Init(int vm_heapsize) {
 
 
 static inline
-void CmEnv_clear_localnamePtr() {
+void CmEnv_clear_localnamePtr(void) {
   CmEnv.localNamePtr = VM_OFFSET_LOCALVAR;
 }
 
@@ -1892,7 +1892,7 @@ void CmEnv_clear_bind(int preserve_idx) {
 }
 
 
-void CmEnv_clear_all() 
+void CmEnv_clear_all(void) 
 {
   // clear all the information of names.
   CmEnv_clear_bind(-1);
@@ -1909,7 +1909,7 @@ void CmEnv_clear_all()
   IMCode_Init();
 }
 
-void CmEnv_clear_keeping_rule_properties() 
+void CmEnv_clear_keeping_rule_properties(void) 
 {
   // clear the information of names EXCEPT meta ones.
   CmEnv_clear_bind(CmEnv.bindPtr_metanames);
@@ -2036,7 +2036,7 @@ int CmEnv_gettype_forname(char *key, NB_TYPE *type) {
 // Agent用の RegNo を取得する (just for newreg)
 //（これらは、Envコンパイル時に mkName、mkGname の対象にならないため
 // 一時的な変数として使われる）
-int CmEnv_newreg() {
+int CmEnv_newreg(void) {
 
   int result;
   result = CmEnv.localNamePtr;
@@ -2051,7 +2051,7 @@ int CmEnv_newreg() {
 
 
 
-int CmEnv_check_meta_occur_once() {
+int CmEnv_check_meta_occur_once(void) {
   int i;
 
   for (i=0; i<CmEnv.bindPtr; i++) {
@@ -2074,7 +2074,7 @@ int CmEnv_check_meta_occur_once() {
 }
 
 
-int CmEnv_check_name_reference_times() {
+int CmEnv_check_name_reference_times(void) {
   int i;
   for (i=0; i<CmEnv.bindPtr; i++) {
     if (CmEnv.bind[i].type == NB_NAME) {
@@ -2089,7 +2089,7 @@ int CmEnv_check_name_reference_times() {
 }
 
 
-void CmEnv_Retrieve_GNAME() {
+void CmEnv_Retrieve_GNAME(void) {
   int reg_name;
 
   for (int i=0; i<IMCode_n; i++) {
@@ -3485,7 +3485,7 @@ int CompileEQListFromAst(Ast *at) {
   return 1;
 }
 
-void Compile_Put_Ret_ForRuleBody() {
+void Compile_Put_Ret_ForRuleBody(void) {
   
   if ((CmEnv.annotateL == ANNOTATE_NOTHING) &&
       (CmEnv.annotateR == ANNOTATE_NOTHING)) {
@@ -3840,7 +3840,7 @@ typedef struct RuleList {
   struct RuleList *next;
 } RuleList;
 
-RuleList *RuleList_new() {
+RuleList *RuleList_new(void) {
   RuleList *alist;
   alist = malloc(sizeof(RuleList));
   if (alist == NULL) {
@@ -3866,7 +3866,7 @@ void RuleList_inavailable(RuleList *at) {
 #define RULEHASH_SIZE NUM_AGENTS
 static RuleList *RuleTable[RULEHASH_SIZE];
 
-void RuleTable_init() {
+void RuleTable_init(void) {
   int i;
   for (i=0; i<RULEHASH_SIZE; i++) {
     RuleTable[i] = NULL;
@@ -4339,7 +4339,7 @@ int makeRule(Ast *ast) {
 #ifdef MYDEBUG
   PutsCodeN(code, code_offset); exit(1);
 #endif
-  PutsCodeN(code, code_offset); exit(1);
+  //  PutsCodeN(code, code_offset); exit(1);
 
   //    printf("Rule: %s(id:%d) >< %s(id:%d).\n", 
   //	   IdTable_get_name(idL), idL,
@@ -5201,7 +5201,7 @@ void mark_name_port0(VALUE ptr) {
 }
 
 
-void mark_allHash() {
+void mark_allHash(void) {
   int i;
   NameList *at;
 
@@ -5260,7 +5260,7 @@ void sweep_NameHeap(Heap *hp) {
 
 
 
-void mark_and_sweep() {
+void mark_and_sweep(void) {
 
   mark_allHash();  
   sweep_AgentHeap(&(VM.agentHeap));  
@@ -6059,7 +6059,7 @@ typedef struct {
 } WHNF_Info; 
 WHNF_Info WHNFinfo;
 
-void Init_WHNFinfo() {
+void Init_WHNFinfo(void) {
   WHNFinfo.eqs_index = 0;
   WHNFinfo.size = WHNF_UNUSED_STACK_SIZE;
   WHNFinfo.enabled = 0;  // not Enabled
@@ -6082,7 +6082,7 @@ void WHNFInfo_push_equation(VALUE t1, VALUE t2) {
 }
   
 
-void WHNF_execution_loop() {
+void WHNF_execution_loop(void) {
   VALUE t1, t2;
 
   while (EQStack_Pop(&VM, &t1, &t2)) {
@@ -6361,7 +6361,7 @@ void tpool_init(unsigned int eqstack_size) {
   }
 }
 
-void tpool_destroy() {
+void tpool_destroy(void) {
   int i;
   for (i=0; i<MaxThreadsNum; i++) {
     pthread_join( Threads[i],
