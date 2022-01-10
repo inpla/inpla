@@ -1656,8 +1656,21 @@ typedef enum {
   PUSHI,
   MKNAME,
   MKGNAME,
-  MKAGENT,
-  REUSEAGENT,
+  
+  MKAGENT0,
+  MKAGENT1,
+  MKAGENT2,
+  MKAGENT3,
+  MKAGENT4,
+  MKAGENT5,
+  
+  REUSEAGENT0,
+  REUSEAGENT1,
+  REUSEAGENT2,
+  REUSEAGENT3,
+  REUSEAGENT4,
+  REUSEAGENT5,
+  
   MYPUSH,
 
   RET,
@@ -1724,6 +1737,86 @@ typedef struct {
 } NameBind;
 
 
+//http://www.hpcs.cs.tsukuba.ac.jp/~msato/lecture-note/comp-lecture/note10.html
+#define MAX_IMCODE 1024
+struct IMCode_tag {
+  int opcode;
+  int operand1, operand2, operand3, operand4, operand5, operand6, operand7;
+} IMCode[MAX_IMCODE];
+
+int IMCode_n;
+
+void IMCode_Init(void) {
+  IMCode_n = 0;
+}
+
+#define IMCODE_OVERFLOW_CHECK if(IMCode_n>MAX_IMCODE) {puts("IMCODE overflow");exit(1);}
+
+void IMCode_genCode0(int opcode) {
+  IMCode[IMCode_n++].opcode = opcode;
+  IMCODE_OVERFLOW_CHECK
+}
+void IMCode_genCode1(int opcode, int operand1) {
+  IMCode[IMCode_n].operand1 = operand1;
+  IMCode[IMCode_n++].opcode = opcode;
+  IMCODE_OVERFLOW_CHECK
+}
+void IMCode_genCode2(int opcode, int operand1, int operand2) {
+  IMCode[IMCode_n].operand1 = operand1;
+  IMCode[IMCode_n].operand2 = operand2;
+  IMCode[IMCode_n++].opcode = opcode;  
+  IMCODE_OVERFLOW_CHECK
+}
+void IMCode_genCode3(int opcode, int operand1, int operand2, int operand3) {
+  IMCode[IMCode_n].operand1 = operand1;
+  IMCode[IMCode_n].operand2 = operand2;
+  IMCode[IMCode_n].operand3 = operand3;
+  IMCode[IMCode_n++].opcode = opcode;  
+  IMCODE_OVERFLOW_CHECK
+}
+void IMCode_genCode4(int opcode, int operand1, int operand2, int operand3,
+		     int operand4) {
+  IMCode[IMCode_n].operand1 = operand1;
+  IMCode[IMCode_n].operand2 = operand2;
+  IMCode[IMCode_n].operand3 = operand3;
+  IMCode[IMCode_n].operand4 = operand4;
+  IMCode[IMCode_n++].opcode = opcode;  
+  IMCODE_OVERFLOW_CHECK
+}
+void IMCode_genCode5(int opcode, int operand1, int operand2, int operand3,
+		     int operand4, int operand5) {
+  IMCode[IMCode_n].operand1 = operand1;
+  IMCode[IMCode_n].operand2 = operand2;
+  IMCode[IMCode_n].operand3 = operand3;
+  IMCode[IMCode_n].operand4 = operand4;
+  IMCode[IMCode_n].operand5 = operand5;
+  IMCode[IMCode_n++].opcode = opcode;  
+  IMCODE_OVERFLOW_CHECK
+}
+void IMCode_genCode6(int opcode, int operand1, int operand2, int operand3,
+		     int operand4, int operand5, int operand6) {
+  IMCode[IMCode_n].operand1 = operand1;
+  IMCode[IMCode_n].operand2 = operand2;
+  IMCode[IMCode_n].operand3 = operand3;
+  IMCode[IMCode_n].operand4 = operand4;
+  IMCode[IMCode_n].operand5 = operand5;
+  IMCode[IMCode_n].operand6 = operand6;
+  IMCode[IMCode_n++].opcode = opcode;  
+  IMCODE_OVERFLOW_CHECK
+}
+void IMCode_genCode7(int opcode, int operand1, int operand2, int operand3,
+		     int operand4, int operand5, int operand6, int operand7) {
+  IMCode[IMCode_n].operand1 = operand1;
+  IMCode[IMCode_n].operand2 = operand2;
+  IMCode[IMCode_n].operand3 = operand3;
+  IMCode[IMCode_n].operand4 = operand4;
+  IMCode[IMCode_n].operand5 = operand5;
+  IMCode[IMCode_n].operand6 = operand6;
+  IMCode[IMCode_n].operand7 = operand7;
+  IMCode[IMCode_n++].opcode = opcode;  
+  IMCODE_OVERFLOW_CHECK
+}
+
 
 #define MAX_CODE_SIZE 1024
 typedef struct {
@@ -1738,11 +1831,6 @@ typedef struct {
   // Index for local and global names in Regs
   int localNamePtr;           // It starts from VM_OFFSET_LOCALVAR
   int vmStackSize;            // the array size of the Regs.
-                              
-
-  // Compiled code and its index
-  void *code[MAX_CODE_SIZE];
-  int codeptr;              
 
   
   // For rule agents
@@ -1817,9 +1905,8 @@ void CmEnv_clear_all()
   // reset the beginning number for local vars.  
   CmEnv_clear_localnamePtr();  
 
-  // reset the index of code array in CmEnv.  
-  CmEnv.codeptr = 0;  
-
+  // reset the index of storage for imtermediate codes.
+  IMCode_Init();
 }
 
 void CmEnv_clear_keeping_rule_properties() 
@@ -1838,9 +1925,8 @@ void CmEnv_clear_keeping_rule_properties()
   // reset the beginning number for local vars.  
   CmEnv_clear_localnamePtr();  
 
-  // reset the index of code array in CmEnv.  
-  CmEnv.codeptr = 0;  
-
+  // reset the index of storage for imtermediate codes.
+  IMCode_Init();
 }
 
 
@@ -1965,88 +2051,6 @@ int CmEnv_newreg() {
 
 
 
-#define EnvAddCode(c)\
-  if (CmEnv.codeptr >= MAX_CODE_SIZE) {\
-  puts("SYSTEM ERROR: The codeptr exceeded MAX_CODE_SIZE");\
-  exit(-1);\
-  }\
-  CmEnv.code[CmEnv.codeptr] = c;\
-  CmEnv.codeptr++;
-
-#define EnvAddCode2(c1,c2)			\
-  if (CmEnv.codeptr+1 >= MAX_CODE_SIZE) {\
-  puts("SYSTEM ERROR: The codeptr exceeded MAX_CODE_SIZE");\
-  exit(-1);\
-  }\
-  CmEnv.code[CmEnv.codeptr++] = c1;\
-  CmEnv.code[CmEnv.codeptr++] = c2;
-
-#define EnvAddCode3(c1,c2,c3)			\
-  if (CmEnv.codeptr+2 >= MAX_CODE_SIZE) {\
-  puts("SYSTEM ERROR: The codeptr exceeded MAX_CODE_SIZE");\
-  exit(-1);\
-  }\
-  CmEnv.code[CmEnv.codeptr++] = c1;\
-  CmEnv.code[CmEnv.codeptr++] = c2;\
-  CmEnv.code[CmEnv.codeptr++] = c3;
-
-#define EnvAddCode4(c1,c2,c3,c4)			\
-  if (CmEnv.codeptr+3 >= MAX_CODE_SIZE) {\
-  puts("SYSTEM ERROR: The codeptr exceeded MAX_CODE_SIZE");\
-  exit(-1);\
-  }\
-  CmEnv.code[CmEnv.codeptr++] = c1;\
-  CmEnv.code[CmEnv.codeptr++] = c2;\
-  CmEnv.code[CmEnv.codeptr++] = c3;\
-  CmEnv.code[CmEnv.codeptr++] = c4;
-
-#define EnvAddCode5(c1,c2,c3,c4,c5)		\
-  if (CmEnv.codeptr+4 >= MAX_CODE_SIZE) {\
-  puts("SYSTEM ERROR: The codeptr exceeded MAX_CODE_SIZE");\
-  exit(-1);\
-  }\
-  CmEnv.code[CmEnv.codeptr++] = c1;\
-  CmEnv.code[CmEnv.codeptr++] = c2;\
-  CmEnv.code[CmEnv.codeptr++] = c3;\
-  CmEnv.code[CmEnv.codeptr++] = c4;\
-  CmEnv.code[CmEnv.codeptr++] = c5;
-
-
-#define EnvAddCode6(c1,c2,c3,c4,c5,c6)		\
-  if (CmEnv.codeptr+5 >= MAX_CODE_SIZE) {\
-  puts("SYSTEM ERROR: The codeptr exceeded MAX_CODE_SIZE");\
-  exit(-1);\
-  }\
-  CmEnv.code[CmEnv.codeptr++] = c1;\
-  CmEnv.code[CmEnv.codeptr++] = c2;\
-  CmEnv.code[CmEnv.codeptr++] = c3;\
-  CmEnv.code[CmEnv.codeptr++] = c4;\
-  CmEnv.code[CmEnv.codeptr++] = c5;\
-  CmEnv.code[CmEnv.codeptr++] = c6;
-
-
-
-#define EnvCodeClear() CmEnv.codeptr=0
-  
-
-void EnvAddCodePUSH(void* c1, void* c2) {
-  EnvAddCode3(CodeAddr[PUSH],c1,c2);
-}
-
-
-void EnvAddCodeMYPUSH(void* c1, void* c2) {
-  EnvAddCode3(CodeAddr[MYPUSH],c1,c2);
-}
-
-void EnvAddCodeCNCTGN(void* c1, void* c2) {
-  EnvAddCode3(CodeAddr[CNCTGN],c1,c2);
-}
-
-void EnvAddCodeSUBSTGN(void* c1, void* c2) {
-  EnvAddCode3(CodeAddr[SUBSTGN],c1,c2);
-}
-
-
 int CmEnv_check_meta_occur_once() {
   int i;
 
@@ -2084,69 +2088,237 @@ int CmEnv_check_name_reference_times() {
   return 1;
 }
 
-int CmEnv_generate_code_with_nameinfo(void **code, int offset) {
-  // return: the number of produced codes
 
-  int i;
+void CmEnv_Retrieve_GNAME() {
+  int reg_name;
 
-  /*
-  // check whether the code size estimation is exceeded.
-  { 
-    int count_names=0;
-    for (i=0; i<CmEnv.bindPtr; i++) {
-      if (CmEnv.bind[i].type == NB_NAME) {
-	count_names++;
+  for (int i=0; i<IMCode_n; i++) {
+    if (IMCode[i].opcode != MKNAME) {
+      continue;
+    }
+
+    reg_name = IMCode[i].operand1;
+
+    for (int j=0; j<CmEnv.bindPtr; j++) {
+      if ((CmEnv.bind[j].type == NB_NAME) &&
+	  (CmEnv.bind[j].reg == reg_name) &&
+	  (CmEnv.bind[j].refnum  == 0)) {
+	    IMCode[i].opcode = MKGNAME;
+	    IMCode[i].operand2 = j;
       }
     }
-    if (offset + count_names*3 > MAX_CODE_SIZE) {
-      puts("System ERROR: Generated codes were too big.");
-      return -1;
-    }
-  }
-  */
-
-  
-  { 
-    int ptr=offset;
-    
-    for (i=0; i<CmEnv.bindPtr; i++) {
-      
-      if (CmEnv.bind[i].type == NB_NAME) {
-	
-	if (CmEnv.bind[i].refnum > 0) {
-	  code[ptr++] = CodeAddr[MKNAME];
-	  
-	} else {
-	  code[ptr++] = CodeAddr[MKGNAME];
-	  code[ptr++] = CmEnv.bind[i].name;
-	}
-	code[ptr++] = (void *)(unsigned long)CmEnv.bind[i].reg;
-      }
-    }
-    
-    if (ptr + CmEnv.codeptr > MAX_CODE_SIZE) {
-      puts("System ERROR: Generated codes were too big.");
-      return -1;
-    }
-    
-    for (i=0; i<CmEnv.codeptr; i++) {
-      code[ptr++] = CmEnv.code[i];
-    }
-    
-    return (ptr-offset);
-  }
+  }      
 }
 
 
-int CmEnv_generate_code(void **code, int offset) {
-  int ptr=offset;
-  int i;
-  for (i=0; i<CmEnv.codeptr; i++) {
-    code[ptr] = CmEnv.code[i];
-    ptr++;
+int CmEnv_Generate_VMCode(void **code, int offset) {
+  int ptr = offset;
+  struct IMCode_tag *imcode;
+
+
+  for (int i=0; i<IMCode_n; i++) {
+    imcode = &IMCode[i];    
+    
+    switch (imcode->opcode) {
+    case MKNAME:
+      //      printf("MKNAME var%d\n", imcode->operand1);
+      code[ptr++] = CodeAddr[imcode->opcode];
+      code[ptr++] = (void *)(unsigned long)imcode->operand1;      
+      break;
+
+    case MKGNAME:
+      //      printf("MKGNAME var%d sym:%d (as `%s')\n",
+      //	     imcode->operand1, imcode->operand2,
+      //	     CmEnv.bind[imcode->operand2].name);
+      code[ptr++] = CodeAddr[imcode->opcode];
+      code[ptr++] = (void *)(unsigned long)imcode->operand1;      
+      code[ptr++] = CmEnv.bind[imcode->operand2].name;      
+      break;
+
+    case MKAGENT0:
+    case REUSEAGENT0:
+      //      printf("MKAGENT0 var%d id:%d\n", 
+      //	     imcode->operand1, imcode->operand2);
+      code[ptr++] = CodeAddr[imcode->opcode];
+      code[ptr++] = (void *)(unsigned long)imcode->operand1;      
+      code[ptr++] = (void *)(unsigned long)imcode->operand2;      
+      break;
+
+    case MKAGENT1:
+    case REUSEAGENT1:
+      //      printf("MKAGENT1 var%d id:%d var%d\n", 
+      //	     imcode->operand1, imcode->operand2, imcode->operand3);
+      code[ptr++] = CodeAddr[imcode->opcode];
+      code[ptr++] = (void *)(unsigned long)imcode->operand1;      
+      code[ptr++] = (void *)(unsigned long)imcode->operand2;      
+      code[ptr++] = (void *)(unsigned long)imcode->operand3;      
+      break;
+
+    case MKAGENT2:
+    case REUSEAGENT2:
+      //      printf("MKAGENT2 var%d id:%d var%d var%d\n", 
+      //	     imcode->operand1, imcode->operand2,
+      //	     imcode->operand3, imcode->operand4);
+      code[ptr++] = CodeAddr[imcode->opcode];
+      code[ptr++] = (void *)(unsigned long)imcode->operand1;      
+      code[ptr++] = (void *)(unsigned long)imcode->operand2;      
+      code[ptr++] = (void *)(unsigned long)imcode->operand3;      
+      code[ptr++] = (void *)(unsigned long)imcode->operand4;            
+      break;
+
+    case MKAGENT3:
+    case REUSEAGENT3:
+      //      printf("MKAGENT3 var%d id:%d var%d var%d var%d\n", 
+      //	     imcode->operand1, imcode->operand2,
+      //	     imcode->operand3, imcode->operand4, imcode->operand5);
+      code[ptr++] = CodeAddr[imcode->opcode];
+      code[ptr++] = (void *)(unsigned long)imcode->operand1;      
+      code[ptr++] = (void *)(unsigned long)imcode->operand2;      
+      code[ptr++] = (void *)(unsigned long)imcode->operand3;      
+      code[ptr++] = (void *)(unsigned long)imcode->operand4;                  
+      code[ptr++] = (void *)(unsigned long)imcode->operand5;                  
+      break;
+
+    case MKAGENT4:
+    case REUSEAGENT4:
+      //      printf("MKAGENT3 var%d id:%d var%d var%d var%d\n", 
+      //	     imcode->operand1, imcode->operand2,
+      //	     imcode->operand3, imcode->operand4, imcode->operand5);
+      code[ptr++] = CodeAddr[imcode->opcode];
+      code[ptr++] = (void *)(unsigned long)imcode->operand1;      
+      code[ptr++] = (void *)(unsigned long)imcode->operand2;      
+      code[ptr++] = (void *)(unsigned long)imcode->operand3;      
+      code[ptr++] = (void *)(unsigned long)imcode->operand4;                  
+      code[ptr++] = (void *)(unsigned long)imcode->operand5;                  
+      code[ptr++] = (void *)(unsigned long)imcode->operand6;                  
+      break;
+      
+    case MKAGENT5:
+    case REUSEAGENT5:
+      //      printf("MKAGENT3 var%d id:%d var%d var%d var%d\n", 
+      //	     imcode->operand1, imcode->operand2,
+      //	     imcode->operand3, imcode->operand4, imcode->operand5);
+      code[ptr++] = CodeAddr[imcode->opcode];
+      code[ptr++] = (void *)(unsigned long)imcode->operand1;      
+      code[ptr++] = (void *)(unsigned long)imcode->operand2;      
+      code[ptr++] = (void *)(unsigned long)imcode->operand3;      
+      code[ptr++] = (void *)(unsigned long)imcode->operand4;                  
+      code[ptr++] = (void *)(unsigned long)imcode->operand5;                  
+      code[ptr++] = (void *)(unsigned long)imcode->operand6;                  
+      code[ptr++] = (void *)(unsigned long)imcode->operand7;                  
+      break;
+      
+            
+    case PUSH:
+    case MYPUSH:
+    case LOAD:
+    case OP_JMPEQ0:
+    case OP_JMPCNCT_CONS:
+      //      printf("PUSH var%d var%d\n",
+      //	     imcode->operand1, imcode->operand2);
+      code[ptr++] = CodeAddr[imcode->opcode];
+      code[ptr++] = (void *)(unsigned long)imcode->operand1;      
+      code[ptr++] = (void *)(unsigned long)imcode->operand2;      
+      break;
+
+    case OP_ADD:
+    case OP_SUB:
+    case OP_MUL:
+    case OP_DIV:
+    case OP_MOD:
+    case OP_LT:
+    case OP_LE:
+    case OP_EQ:
+    case OP_NE:
+    case OP_SUBI:
+    case OP_EQI:
+      code[ptr++] = CodeAddr[imcode->opcode];
+      code[ptr++] = (void *)(unsigned long)imcode->operand1;      
+      code[ptr++] = (void *)(unsigned long)imcode->operand2;      
+      code[ptr++] = (void *)(unsigned long)imcode->operand3;      
+      break;
+
+      
+    case PUSHI:
+      //      printf("PUSH var%d $%d\n",
+      //	     imcode->operand1, imcode->operand2);
+      code[ptr++] = CodeAddr[imcode->opcode];
+      code[ptr++] = (void *)(unsigned long)imcode->operand1;      
+      code[ptr++] = (void *)INT2FIX(imcode->operand2);      
+      
+      break;
+
+    case RET:
+    case RET_FREE_L:
+    case RET_FREE_R:
+    case RET_FREE_LR:
+    case LOOP:
+    case NOP:
+      code[ptr++] = CodeAddr[imcode->opcode];
+      break;
+      
+            
+    case LOADI:
+      //      printf("LOADI var%d $%d\n",
+      //	     imcode->operand1, imcode->operand2);
+      code[ptr++] = CodeAddr[imcode->opcode];
+      code[ptr++] = (void *)(unsigned long)imcode->operand1;      
+      code[ptr++] = (void *)(unsigned long)imcode->operand2;                  
+      break;
+
+
+    case LOOP_RREC1:
+    case LOOP_RREC2:
+      //      printf("LOOP_RREC1 var%d\n",
+      //	     imcode->operand1);
+      code[ptr++] = CodeAddr[imcode->opcode];
+      code[ptr++] = (void *)(unsigned long)imcode->operand1;      
+      break;
+
+    case LOADP:
+    case OP_JMPCNCT:
+      //      printf("LOADP var%d var%d[%d]\n",
+      //	     imcode->operand1, imcode->operand2, imcode->operand3);
+      code[ptr++] = CodeAddr[imcode->opcode];
+      code[ptr++] = (void *)(unsigned long)imcode->operand1;      
+      code[ptr++] = (void *)(unsigned long)imcode->operand2;                  
+      code[ptr++] = (void *)(unsigned long)imcode->operand3;
+      break;
+
+      
+    case OP_JMP:
+      //      printf("JMP $%d\n",
+      //	     imcode->operand1);
+      code[ptr++] = CodeAddr[imcode->opcode];
+      code[ptr++] = (void *)(unsigned long)imcode->operand1;            
+      break;
+      
+    case OP_UNM:
+    case OP_RAND:
+      //      printf("UNM var%d $%d\n",
+      //	     imcode->operand1, imcode->operand2);
+      code[ptr++] = CodeAddr[imcode->opcode];
+      code[ptr++] = (void *)(unsigned long)imcode->operand1;            
+      code[ptr++] = (void *)(unsigned long)imcode->operand2;            
+      break;
+      
+    case CNCTGN:
+    case SUBSTGN:
+      //      printf("CNCTGN var%d $%d\n",
+      //	     imcode->operand1, imcode->operand2);
+      code[ptr++] = CodeAddr[imcode->opcode];
+      code[ptr++] = (void *)(unsigned long)imcode->operand1;            
+      code[ptr++] = (void *)(unsigned long)imcode->operand2;            
+      break;
+      
+    default:
+      printf("Error[CmEnv_Generate_VMCode]: %d does not match any opcode\n",
+	     imcode->opcode);
+      exit(-1);
+    }
   }
 
-  return CmEnv.codeptr;
+  return (ptr-offset);
 }
 
 
@@ -2157,173 +2329,605 @@ void CopyCode(int byte, void **source, void **target) {
   }
 }
 
+void IMCode_Puts(int n) {
+  int i;
+  struct IMCode_tag *imcode;
+  
+  puts("[IMCode_Puts]");
+  if (n==-1) return;
+
+  for (i=n; i<IMCode_n; i++) {
+    imcode = &IMCode[i];    
+    printf("%2d: ", i);
+    
+    switch (imcode->opcode) {
+    case MKNAME:
+      printf("MKNAME var%d\n", imcode->operand1);
+      break;
+
+    case MKGNAME:
+      printf("MKGNAME var%d sym:%d (as `%s')\n",
+	     imcode->operand1, imcode->operand2,
+	     CmEnv.bind[imcode->operand2].name);
+      break;
+
+    case MKAGENT0:
+      printf("MKAGENT0 var%d id:%d\n", 
+	     imcode->operand1, imcode->operand2);
+      break;
+
+    case MKAGENT1:
+      printf("MKAGENT1 var%d id:%d var%d\n", 
+	     imcode->operand1, imcode->operand2, imcode->operand3);
+      break;
+
+    case MKAGENT2:
+      printf("MKAGENT2 var%d id:%d var%d var%d\n", 
+	     imcode->operand1, imcode->operand2,
+	     imcode->operand3, imcode->operand4);
+      break;
+
+    case MKAGENT3:
+      printf("MKAGENT3 var%d id:%d var%d var%d var%d\n", 
+	     imcode->operand1, imcode->operand2,
+	     imcode->operand3, imcode->operand4, imcode->operand5);
+      break;
+
+    case MKAGENT4:
+      printf("MKAGENT4 var%d id:%d var%d var%d var%d var%d\n", 
+	     imcode->operand1, imcode->operand2,
+	     imcode->operand3, imcode->operand4, imcode->operand5,
+	     imcode->operand6);
+      break;
+
+    case MKAGENT5:
+      printf("MKAGENT5 var%d id:%d var%d var%d var%d var%d var%d\n", 
+	     imcode->operand1, imcode->operand2,
+	     imcode->operand3, imcode->operand4, imcode->operand5,
+	     imcode->operand6, imcode->operand7);
+      break;
+
+      
+    case REUSEAGENT0:
+      printf("REUSEAGENT0 var%d id:%d\n", 
+	     imcode->operand1, imcode->operand2);
+      break;
+
+    case REUSEAGENT1:
+      printf("REUSEAGENT1 var%d id:%d var%d\n", 
+	     imcode->operand1, imcode->operand2, imcode->operand3);
+      break;
+
+    case REUSEAGENT2:
+      printf("REUSEAGENT2 var%d id:%d var%d var%d\n", 
+	     imcode->operand1, imcode->operand2,
+	     imcode->operand3, imcode->operand4);
+      break;
+
+    case REUSEAGENT3:
+      printf("REUSEAGENT3 var%d id:%d var%d var%d var%d\n", 
+	     imcode->operand1, imcode->operand2,
+	     imcode->operand3, imcode->operand4, imcode->operand5);
+      break;
+
+    case REUSEAGENT4:
+      printf("REUSEAGENT4 var%d id:%d var%d var%d var%d var%d\n", 
+	     imcode->operand1, imcode->operand2,
+	     imcode->operand3, imcode->operand4, imcode->operand5,
+	     imcode->operand6);
+      break;
+
+    case REUSEAGENT5:
+      printf("REUSEAGENT5 var%d id:%d var%d var%d var%d var%d var%d\n", 
+	     imcode->operand1, imcode->operand2,
+	     imcode->operand3, imcode->operand4, imcode->operand5,
+	     imcode->operand6, imcode->operand7);
+      break;
+
+      
+    case PUSH:
+      printf("PUSH var%d var%d\n",
+	     imcode->operand1, imcode->operand2);
+      break;
+
+    case PUSHI:
+      printf("PUSH var%d $%d\n",
+	     imcode->operand1, imcode->operand2);
+      break;
+
+    case MYPUSH:
+      printf("MYPUSH var%d var%d\n",
+	     imcode->operand1, imcode->operand2);
+      break;
+
+    case RET:
+      puts("RET");
+      break;
+      
+    case RET_FREE_L:
+      puts("RET_FREE_L");
+      break;
+      
+    case RET_FREE_R:
+      puts("RET_FREE_R");
+      break;
+      
+    case RET_FREE_LR:
+      puts("RET_FREE_LR");
+      break;
+      
+    case LOADI:
+      printf("LOADI var%d $%d\n",
+	     imcode->operand1, imcode->operand2);
+      break;
+
+    case LOOP:
+      printf("LOOP\n");
+      break;
+
+    case LOOP_RREC:
+      printf("LOOP_RREC var%d $%d\n",
+	     imcode->operand1, imcode->operand2);
+      break;
+
+    case LOOP_RREC1:
+      printf("LOOP_RREC1 var%d\n",
+	     imcode->operand1);
+      break;
+
+    case LOOP_RREC2:
+      printf("LOOP_RREC2 var%d\n",
+	     imcode->operand1);
+      break;
+
+    case LOAD:
+      printf("LOAD var%d var%d\n",
+	     imcode->operand1, imcode->operand2);
+      break;
+
+    case LOADP:
+      printf("LOADP var%d var%d[%d]\n",
+	     imcode->operand1, imcode->operand2, imcode->operand3);
+      break;
+
+    case OP_ADD:
+      printf("ADD var%d var%d var%d\n",
+	     imcode->operand1, imcode->operand2, imcode->operand3);
+      break;
+
+    case OP_SUB:
+      printf("SUB var%d var%d var%d\n",
+	     imcode->operand1, imcode->operand2, imcode->operand3);
+      break;
+
+    case OP_SUBI:
+      printf("SUBI var%d var%d $%d\n",
+	     imcode->operand1, imcode->operand2, imcode->operand3);
+      break;
+
+    case OP_MUL:
+      printf("MUL var%d var%d var%d\n",
+	     imcode->operand1, imcode->operand2, imcode->operand3);
+      break;
+      
+    case OP_DIV:
+      printf("DIV var%d var%d var%d\n",
+	     imcode->operand1, imcode->operand2, imcode->operand3);
+      break;
+
+    case OP_MOD:
+      printf("MOD var%d var%d var%d\n",
+	     imcode->operand1, imcode->operand2, imcode->operand3);
+      break;
+      
+    case OP_LT:
+      printf("LT var%d var%d var%d\n",
+	     imcode->operand1, imcode->operand2, imcode->operand3);
+      break;
+      
+    case OP_LE:
+      printf("LE var%d var%d var%d\n",
+	     imcode->operand1, imcode->operand2, imcode->operand3);
+      break;
+      
+    case OP_EQ:
+      printf("EQ var%d var%d var%d\n",
+	     imcode->operand1, imcode->operand2, imcode->operand3);
+      break;
+      
+    case OP_EQI:
+      printf("EQI var%d var%d $%d\n",
+	     imcode->operand1, imcode->operand2, imcode->operand3);
+      break;
+      
+    case OP_NE:
+      printf("NE var%d var%d var%d\n",
+	     imcode->operand1, imcode->operand2, imcode->operand3);
+      break;
+      
+    case OP_JMPEQ0:
+      printf("JMPEQ0 var%d $%d\n",
+	     imcode->operand1, imcode->operand2);
+      break;
+      
+    case OP_JMPCNCT_CONS:
+      printf("JMPCNCT_CONS var%d $%d\n",
+	     imcode->operand1, imcode->operand2);
+      break;
+      
+    case OP_JMPCNCT:
+      printf("JMPCNCT var%d $%d $%d\n",
+	     imcode->operand1, imcode->operand2, imcode->operand3);
+      break;
+      
+    case OP_JMP:
+      printf("JMP $%d\n",
+	     imcode->operand1);
+      break;
+      
+    case OP_UNM:
+      printf("UNM var%d $%d\n",
+	     imcode->operand1, imcode->operand2);
+      break;
+      
+    case OP_RAND:
+      printf("RAND var%d $%d\n",
+	     imcode->operand1, imcode->operand2);
+      break;
+      
+    case CNCTGN:
+      printf("CNCTGN var%d $%d\n",
+	     imcode->operand1, imcode->operand2);
+      break;
+      
+    case SUBSTGN:
+      printf("SUBSTGN var%d $%d\n",
+	     imcode->operand1, imcode->operand2);
+      break;
+      
+    case NOP:
+      printf("NOP\n");
+      break;
+      
+    default:
+      printf("CODE %d %d %d %d %d %d\n",
+	     imcode->operand1, imcode->operand2, imcode->operand3, 
+	     imcode->operand4, imcode->operand5, imcode->operand6);
+    }
+  }
+}
 
 
 
 void PutsCodeN(void **code, int n) {
-  int i,j;
-  unsigned long arity;
-  i=0;
-
+  int i;
+  
   puts("[PutsCode]");
   if (n==-1) n = MAX_CODE_SIZE;
+  
   for (i=0; i<n; i++) {
     printf("%2d: ", i);
+    
     if (code[i] == CodeAddr[MKNAME]) {
-      printf("var%lu=mkname\n", (unsigned long)code[i+1]);
-      i +=1;
+      printf("MKNAME var%lu\n", (unsigned long)code[i+1]);
+      i+=1;
+      
     } else if (code[i] == CodeAddr[MKGNAME]) {
-      printf("var%lu=mkgname %s\n", (unsigned long)code[i+2], (char *)code[i+1]);
-      i +=2;
-    } else if (code[i] == CodeAddr[MKAGENT]) {
-      printf("MKAGENT var%lu id:%lu ar:%lu", 
-	     (unsigned long)code[i+1], (unsigned long)code[i+2], (unsigned long)code[i+3]);
-      arity = (unsigned long)code[i+3];
-      i +=3;
-      for(j=0; j<arity; j++) {
-	i++;
-	printf(" var%lu", (unsigned long)code[i]);
-      }
-      puts("");
-    } else if (code[i] == CodeAddr[REUSEAGENT]) {
-      printf("reuseagent var%lu as id=%lu arity=%lu", 
-	     (unsigned long)code[i+1], (unsigned long)code[i+2], (unsigned long)code[i+3]);
-      arity = (unsigned long)code[i+3];
-      i +=3;
-      for(j=0; j<arity; j++) {
-	i++;
-	printf(" var%lu", (unsigned long)code[i]);
-      }
-      puts("");
-    } else if (code[i] == CodeAddr[PUSH]) {
-      printf("PUSH var%lu var%lu\n", (unsigned long)code[i+1], (unsigned long)code[i+2]);
-      i +=2;
-    } else if (code[i] == CodeAddr[PUSHI]) {
-      printf("PUSHI var%lu $%d\n", (unsigned long)code[i+1], FIX2INT((unsigned long)code[i+2]));
-      i +=2;
-    } else if (code[i] == CodeAddr[MYPUSH]) {
-      printf("MYPUSH var%lu var%lu\n", (unsigned long)code[i+1], (unsigned long)code[i+2]);
-      i +=2;
-    } else if (code[i] == CodeAddr[RET]) {
-	puts("RET");
-      if (n==MAX_CODE_SIZE) {
-	return;
-      }
-    } else if (code[i] == CodeAddr[RET_FREE_L]) {
-	puts("RET_FREE_L");
-      if (n==MAX_CODE_SIZE) {
-	return;
-      }
-    } else if (code[i] == CodeAddr[RET_FREE_R]) {
-	puts("RET_FREE_R");
-      if (n==MAX_CODE_SIZE) {
-	return;
-      }
-    } else if (code[i] == CodeAddr[RET_FREE_LR]) {
-	puts("RET_FREE_LR");
-      if (n==MAX_CODE_SIZE) {
-	return;
-      }
-    } else if (code[i] == CodeAddr[LOADI]) {
-      printf("LOADI var%lu $%lu\n", (unsigned long)code[i+1],
+      printf("MKGNAME var%lu `%s'\n",
+	     (unsigned long)code[i+1],
+	     (char *)code[i+2]);
+      i+=2;
+
+    } else if (code[i] == CodeAddr[MKAGENT0]) {
+      printf("MKAGENT0 var%lu id:%lu\n", 
+	     (unsigned long)code[i+1],
 	     (unsigned long)code[i+2]);
       i+=2;
-    } else if (code[i] == CodeAddr[LOOP]) {
-      printf("LOOP\n");
+
+    } else if (code[i] == CodeAddr[MKAGENT1]) {
+      printf("MKAGENT1 var%lu id:%lu var%lu\n", 
+	     (unsigned long)code[i+1],
+	     (unsigned long)code[i+2],
+	     (unsigned long)code[i+3]);
+      i+=3;
+
+    } else if (code[i] == CodeAddr[MKAGENT2]) {
+      printf("MKAGENT2 var%lu id:%lu var%lu var%lu\n", 
+	     (unsigned long)code[i+1],
+	     (unsigned long)code[i+2],
+	     (unsigned long)code[i+3],
+	     (unsigned long)code[i+4]);
+      i+=4;
+
+    } else if (code[i] == CodeAddr[MKAGENT3]) {
+      printf("MKAGENT3 var%lu id:%lu var%lu var%lu var%lu\n", 
+	     (unsigned long)code[i+1],
+	     (unsigned long)code[i+2],
+	     (unsigned long)code[i+3],
+	     (unsigned long)code[i+4],
+	     (unsigned long)code[i+5]);
+      i+=5;
+
+    } else if (code[i] == CodeAddr[MKAGENT4]) {
+      printf("MKAGENT4 var%lu id:%lu var%lu var%lu var%lu var%lu\n", 
+	     (unsigned long)code[i+1],
+	     (unsigned long)code[i+2],
+	     (unsigned long)code[i+3],
+	     (unsigned long)code[i+4],
+	     (unsigned long)code[i+5],
+	     (unsigned long)code[i+6]);
+      i+=6;
+
+    } else if (code[i] == CodeAddr[MKAGENT5]) {
+      printf("MKAGENT5 var%lu id:%lu var%lu var%lu var%lu var%lu var%lu\n", 
+	     (unsigned long)code[i+1],
+	     (unsigned long)code[i+2],
+	     (unsigned long)code[i+3],
+	     (unsigned long)code[i+4],
+	     (unsigned long)code[i+5],
+	     (unsigned long)code[i+6],
+	     (unsigned long)code[i+7]);
+      i+=7;
       
+    } else if (code[i] == CodeAddr[REUSEAGENT0]) {
+      printf("REUSEAGENT0 var%lu as id=%lu", 
+	     (unsigned long)code[i+1],
+	     (unsigned long)code[i+2]);
+      puts("");
+      i+=2;
+
+    } else if (code[i] == CodeAddr[REUSEAGENT1]) {
+      printf("REUSEAGENT0 var%lu as id=%lu", 
+	     (unsigned long)code[i+1],
+	     (unsigned long)code[i+2]);
+      printf(" var%lu", (unsigned long)code[i+3]);
+      puts("");
+      i+=3;
+      
+    } else if (code[i] == CodeAddr[REUSEAGENT2]) {
+      printf("REUSEAGENT2 var%lu as id=%lu", 
+	     (unsigned long)code[i+1],
+	     (unsigned long)code[i+2]);
+      printf(" var%lu", (unsigned long)code[i+3]);
+      printf(" var%lu", (unsigned long)code[i+4]);
+      puts("");
+      i+=4;
+
+    } else if (code[i] == CodeAddr[REUSEAGENT3]) {
+      printf("REUSEAGENT3 var%lu as id=%lu", 
+	     (unsigned long)code[i+1],
+	     (unsigned long)code[i+2]);
+      printf(" var%lu", (unsigned long)code[i+3]);
+      printf(" var%lu", (unsigned long)code[i+4]);
+      printf(" var%lu", (unsigned long)code[i+5]);
+      puts("");
+      i+=5;
+      
+    } else if (code[i] == CodeAddr[REUSEAGENT4]) {
+      printf("REUSEAGENT4 var%lu as id=%lu", 
+	     (unsigned long)code[i+1],
+	     (unsigned long)code[i+2]);
+      printf(" var%lu", (unsigned long)code[i+3]);
+      printf(" var%lu", (unsigned long)code[i+4]);
+      printf(" var%lu", (unsigned long)code[i+5]);
+      printf(" var%lu", (unsigned long)code[i+6]);
+      puts("");
+      i+=6;
+
+    } else if (code[i] == CodeAddr[REUSEAGENT5]) {
+      printf("REUSEAGENT5 var%lu as id=%lu", 
+	     (unsigned long)code[i+1],
+	     (unsigned long)code[i+2]);
+      printf(" var%lu", (unsigned long)code[i+3]);
+      printf(" var%lu", (unsigned long)code[i+4]);
+      printf(" var%lu", (unsigned long)code[i+5]);
+      printf(" var%lu", (unsigned long)code[i+6]);
+      printf(" var%lu", (unsigned long)code[i+7]);
+      puts("");
+      i+=7;
+      
+    } else if (code[i] == CodeAddr[PUSH]) {
+      printf("PUSH var%lu var%lu\n",
+	     (unsigned long)code[i+1],
+	     (unsigned long)code[i+2]);
+      i+=2;
+
+    } else if (code[i] == CodeAddr[PUSHI]) {
+      printf("PUSHI var%lu $%d\n",
+	     (unsigned long)code[i+1],
+	     FIX2INT((unsigned long)code[i+2]));
+      i+=2;
+
+    } else if (code[i] == CodeAddr[MYPUSH]) {
+      printf("MYPUSH var%lu var%lu\n",
+	     (unsigned long)code[i+1],
+	     (unsigned long)code[i+2]);
+      i+=2;
+
+    } else if (code[i] == CodeAddr[RET]) {
+      puts("RET");
+
+    } else if (code[i] == CodeAddr[RET_FREE_L]) {
+      puts("RET_FREE_L");
+
+    } else if (code[i] == CodeAddr[RET_FREE_R]) {
+      puts("RET_FREE_R");
+
+    } else if (code[i] == CodeAddr[RET_FREE_LR]) {
+      puts("RET_FREE_LR");
+
+    } else if (code[i] == CodeAddr[LOADI]) {
+      printf("LOADI var%lu $%lu\n",
+	     (unsigned long)code[i+1],
+	     (unsigned long)code[i+2]);
+      i+=2;
+      
+    } else if (code[i] == CodeAddr[LOOP]) {
+      puts("LOOP\n");
+
     } else if (code[i] == CodeAddr[LOOP_RREC]) {
       printf("LOOP_RREC var%lu $%lu\n",
 	     (unsigned long)code[i+1],
 	     (unsigned long)code[i+2]);
       i+=2;
-      
+
     } else if (code[i] == CodeAddr[LOOP_RREC1]) {
       printf("LOOP_RREC1 var%lu\n",
 	     (unsigned long)code[i+1]);
       i+=1;
-      
+
     } else if (code[i] == CodeAddr[LOOP_RREC2]) {
       printf("LOOP_RREC2 var%lu\n",
 	     (unsigned long)code[i+1]);
       i+=1;
-      
+
     } else if (code[i] == CodeAddr[LOAD]) {
-      printf("LOAD var%lu var%lu\n", (unsigned long)code[i+1],
+      printf("LOAD var%lu var%lu\n",
+	     (unsigned long)code[i+1],
 	     (unsigned long)code[i+2]);
       i+=2;
+
     } else if (code[i] == CodeAddr[LOADP]) {
       printf("LOADP var%lu var%lu[%lu]\n",
 	     (unsigned long)code[i+1],
 	     (unsigned long)code[i+2],
 	     (unsigned long)code[i+3]);
       i+=3;
+
     } else if (code[i] == CodeAddr[OP_ADD]) {
-      printf("ADD var%lu var%lu var%lu\n", (unsigned long)code[i+1], (unsigned long)code[i+2], (unsigned long)code[i+3]);
+      printf("ADD var%lu var%lu var%lu\n",
+	     (unsigned long)code[i+1],
+	     (unsigned long)code[i+2],
+	     (unsigned long)code[i+3]);
       i+=3;
+
     } else if (code[i] == CodeAddr[OP_SUB]) {
-      printf("SUB var%lu var%lu var%lu\n", (unsigned long)code[i+1], (unsigned long)code[i+2], (unsigned long)code[i+3]);
+      printf("SUB var%lu var%lu var%lu\n", 
+	     (unsigned long)code[i+1],
+	     (unsigned long)code[i+2],
+	     (unsigned long)code[i+3]);
       i+=3;
+
     } else if (code[i] == CodeAddr[OP_SUBI]) {
-      printf("SUBI var%lu var%lu $%ld\n", (unsigned long)code[i+1], (unsigned long)code[i+2], (long int)code[i+3]);
+      printf("SUBI var%lu var%lu $%ld\n",
+	     (unsigned long)code[i+1],
+	     (unsigned long)code[i+2],
+	     (long int)code[i+3]);
       i+=3;
+
     } else if (code[i] == CodeAddr[OP_MUL]) {
-      printf("MUL var%lu var%lu var%lu\n", (unsigned long)code[i+1], (unsigned long)code[i+2], (unsigned long)code[i+3]);
+      printf("MUL var%lu var%lu var%lu\n", 
+	     (unsigned long)code[i+1],
+	     (unsigned long)code[i+2],
+	     (unsigned long)code[i+3]);
       i+=3;
+
     } else if (code[i] == CodeAddr[OP_DIV]) {
-      printf("DIV var%lu var%lu var%lu\n", (unsigned long)code[i+1], (unsigned long)code[i+2], (unsigned long)code[i+3]);
+      printf("DIV var%lu var%lu var%lu\n", 
+	     (unsigned long)code[i+1],
+	     (unsigned long)code[i+2],
+	     (unsigned long)code[i+3]);
       i+=3;
+
     } else if (code[i] == CodeAddr[OP_MOD]) {
-      printf("MOD var%lu var%lu var%lu\n", (unsigned long)code[i+1], (unsigned long)code[i+2], (unsigned long)code[i+3]);
+      printf("MOD var%lu var%lu var%lu\n", 
+	     (unsigned long)code[i+1],
+	     (unsigned long)code[i+2],
+	     (unsigned long)code[i+3]);
       i+=3;
+
     } else if (code[i] == CodeAddr[OP_LT]) {
-      printf("LT var%lu var%lu var%lu\n", (unsigned long)code[i+1], (unsigned long)code[i+2], (unsigned long)code[i+3]);
+      printf("LT var%lu var%lu var%lu\n",
+	     (unsigned long)code[i+1],
+	     (unsigned long)code[i+2],
+	     (unsigned long)code[i+3]);
       i+=3;
+
     } else if (code[i] == CodeAddr[OP_LE]) {
-      printf("LE var%lu var%lu var%lu\n", (unsigned long)code[i+1], (unsigned long)code[i+2], (unsigned long)code[i+3]);
+      printf("LE var%lu var%lu var%lu\n",
+	     (unsigned long)code[i+1],
+	     (unsigned long)code[i+2],
+	     (unsigned long)code[i+3]);
       i+=3;
+
     } else if (code[i] == CodeAddr[OP_EQ]) {
-      printf("EQ var%lu var%lu var%lu\n", (unsigned long)code[i+1], (unsigned long)code[i+2], (unsigned long)code[i+3]);
+      printf("EQ var%lu var%lu var%lu\n",
+	     (unsigned long)code[i+1],
+	     (unsigned long)code[i+2],
+	     (unsigned long)code[i+3]);
       i+=3;
+
     } else if (code[i] == CodeAddr[OP_EQI]) {
-      printf("EQI var%lu var%lu $%ld\n", (unsigned long)code[i+1], (unsigned long)code[i+2], (long int)code[i+3]);
+      printf("EQI var%lu var%lu $%ld\n",
+	     (unsigned long)code[i+1],
+	     (unsigned long)code[i+2],
+	     (long int)code[i+3]);
       i+=3;
+
     } else if (code[i] == CodeAddr[OP_NE]) {
-      printf("NE var%lu var%lu var%lu\n", (unsigned long)code[i+1], (unsigned long)code[i+2], (unsigned long)code[i+3]);
+      printf("NE var%lu var%lu var%lu\n",
+	     (unsigned long)code[i+1],
+	     (unsigned long)code[i+2],
+	     (unsigned long)code[i+3]);
       i+=3;
+
     } else if (code[i] == CodeAddr[OP_JMPEQ0]) {
-      printf("JMPEQ0 var%lu $%lu\n", (unsigned long)code[i+1], (unsigned long)code[i+2]);
+      printf("JMPEQ0 var%lu $%lu\n",
+	     (unsigned long)code[i+1],
+	     (unsigned long)code[i+2]);
       i+=2;
+
     } else if (code[i] == CodeAddr[OP_JMPCNCT_CONS]) {
-      printf("JMPCNCT_CONS var%lu $%lu\n", (unsigned long)code[i+1], (unsigned long)code[i+2]);
+      printf("JMPCNCT_CONS var%lu $%lu\n",
+	     (unsigned long)code[i+1],
+	     (unsigned long)code[i+2]);
       i+=2;
+
     } else if (code[i] == CodeAddr[OP_JMPCNCT]) {
       printf("JMPCNCT var%lu $%lu $%lu\n",
 	     (unsigned long)code[i+1],
 	     (unsigned long)code[i+2],
 	     (unsigned long)code[i+3]);
-      i+=3;
+      i+=2;
+
     } else if (code[i] == CodeAddr[OP_JMP]) {
       printf("JMP $%lu\n", (unsigned long)code[i+1]);
       i+=1;
+
     } else if (code[i] == CodeAddr[OP_UNM]) {
-      printf("UNM var%lu var%lu\n", (unsigned long)code[i+1], (unsigned long)code[i+2]);
-      i+=2;
+      printf("UNM var%lu var%lu\n",
+	     (unsigned long)code[i+1],
+	     (unsigned long)code[i+2]);
+      i+=1;
+
     } else if (code[i] == CodeAddr[OP_RAND]) {
-      printf("RND var%lu var%lu\n", (unsigned long)code[i+1], (unsigned long)code[i+2]);
+      printf("RND var%lu var%lu\n",
+	     (unsigned long)code[i+1],
+	     (unsigned long)code[i+2]);
       i+=2;
+
     } else if (code[i] == CodeAddr[CNCTGN]) {
-      printf("CNCTGN var%lu var%lu\n", (unsigned long)code[i+1], (unsigned long)code[i+2]);
-      i +=2;    
+      printf("CNCTGN var%lu var%lu\n",
+	     (unsigned long)code[i+1],
+	     (unsigned long)code[i+2]);
+      i+=2;
+
     } else if (code[i] == CodeAddr[SUBSTGN]) {
-      printf("SUBSTGN var%lu var%lu\n", (unsigned long)code[i+1], (unsigned long)code[i+2]);
-      i +=2;    
+      printf("SUBSTGN var%lu var%lu\n",
+	     (unsigned long)code[i+1],
+	     (unsigned long)code[i+2]);
+      i+=2;
+
     } else if (code[i] == CodeAddr[NOP]) {
-      printf("NOP\n");
+      puts("NOP");
+
     } else {
       printf("CODE %lu\n", (unsigned long)code[i]);      
     }
   }
 }
+
+
 
 
 void PutsCode(void **code) {
@@ -2387,7 +2991,7 @@ int is_expr(Ast *ptr) {
 
 
 
-int CompileExprFromAst(int target, Ast *ptr) {
+int CompileExprFromAst(Ast *ptr, int target) {
 
   if (ptr == NULL) {
     return 1;
@@ -2395,9 +2999,7 @@ int CompileExprFromAst(int target, Ast *ptr) {
 
   switch (ptr->id) {
   case AST_INT:
-    EnvAddCode3(CodeAddr[LOADI],
-		 (void *)(unsigned long)target,
-		 (void *)(unsigned long)(ptr->intval));
+    IMCode_genCode2(LOADI, target, ptr->intval);
     return 1;
     break;
 
@@ -2409,29 +3011,24 @@ int CompileExprFromAst(int target, Ast *ptr) {
 	     ptr->left->sym);
       return 0;
     }
-    EnvAddCode3(CodeAddr[LOAD],
-		(void *)(unsigned long)target,
-		(void *)(unsigned long)result);
+    
+    IMCode_genCode2(LOAD, target, result);
     return 1;
     break;
   }
   case AST_RAND: {
     int newreg = CmEnv_newreg();
-    if (!CompileExprFromAst(newreg, ptr->left)) return 0;
-    EnvAddCode3(CodeAddr[OP_RAND],
-		(void *)(unsigned long)target,
-		(void *)(unsigned long)newreg);
-
+    if (!CompileExprFromAst(ptr->left, newreg)) return 0;
+    
+    IMCode_genCode2(OP_RAND, target, newreg);
     return 1;
     break;
   }
   case AST_UNM: {
     int newreg = CmEnv_newreg();
-    if (!CompileExprFromAst(newreg, ptr->left)) return 0;
-    EnvAddCode3(CodeAddr[OP_UNM],
-		(void *)(unsigned long)target,
-		(void *)(unsigned long)newreg);
-
+    if (!CompileExprFromAst(ptr->left, newreg)) return 0;
+    
+    IMCode_genCode2(OP_UNM, target, newreg);
     return 1;
     break;
   }
@@ -2446,45 +3043,44 @@ int CompileExprFromAst(int target, Ast *ptr) {
   case AST_NE: {
     int newreg = CmEnv_newreg();
     int newreg2 = CmEnv_newreg();
-    if (!CompileExprFromAst(newreg, ptr->left)) return 0;
-    if (!CompileExprFromAst(newreg2, ptr->right)) return 0;
+    if (!CompileExprFromAst(ptr->left, newreg)) return 0;
+    if (!CompileExprFromAst(ptr->right, newreg2)) return 0;
 
+    int opcode;
     switch (ptr->id) {
     case AST_PLUS:
-      EnvAddCode(CodeAddr[OP_ADD]);
+      opcode = OP_ADD;
       break;
     case AST_SUB:
-      EnvAddCode(CodeAddr[OP_SUB]);
+      opcode = OP_SUB;
       break;
     case AST_MUL:
-      EnvAddCode(CodeAddr[OP_MUL]);
+      opcode = OP_MUL;
       break;
     case AST_DIV:
-      EnvAddCode(CodeAddr[OP_DIV]);
+      opcode = OP_DIV;
       break;
     case AST_MOD:
-      EnvAddCode(CodeAddr[OP_MOD]);
+      opcode = OP_MOD;
       break;
     case AST_LT:
-      EnvAddCode(CodeAddr[OP_LT]);
+      opcode = OP_LT;
       break;
     case AST_LE:
-      EnvAddCode(CodeAddr[OP_LE]);
+      opcode = OP_LE;
       break;
     case AST_EQ:
-      EnvAddCode(CodeAddr[OP_EQ]);
+      opcode = OP_EQ;
       break;
     case AST_NE:
-      EnvAddCode(CodeAddr[OP_NE]);
+      opcode = OP_NE;
       break;
     default:
-      EnvAddCode(CodeAddr[OP_MOD]);
+      opcode = OP_MOD;
     }
-    EnvAddCode3((void *)(unsigned long)target,
-		(void *)(unsigned long)newreg,
-		(void *)(unsigned long)newreg2);
-
-    return 1;
+    
+    IMCode_genCode3(opcode, target, newreg, newreg2);   
+   return 1;
     break;
   }
   default:
@@ -2499,7 +3095,7 @@ int CompileExprFromAst(int target, Ast *ptr) {
 int CompileTermFromAst(Ast *ptr, int target) {
   // input:
   // target == -1  => a new node is allocated from localHeap.
-  //   othereise   => a node specified by the `target' is reused as a new node.
+  //   otherwise   => a node specified by the `target' is reused as a new node.
   //
   // output:
   // return: offset in localHeap
@@ -2519,30 +3115,28 @@ int CompileTermFromAst(Ast *ptr, int target) {
     result = CmEnv_reg_search(ptr->left->sym);
     if (result == -1) {
       result=CmEnv_set_symbol_as_name(ptr->left->sym);
+      IMCode_genCode1(MKNAME, result);    
     }
     return result;
     break;
 
   case AST_INT:
     result = CmEnv_newreg();
-    EnvAddCode3(CodeAddr[LOADI],
-		(void *)(unsigned long)result,
-		(void *)(unsigned long)(ptr->intval));
+    
+    IMCode_genCode2(LOADI, result, ptr->intval);
     return result;
     break;
 
   case AST_NIL:
     if (target == -1) {      
       result = CmEnv_newreg();
-      mkagent = MKAGENT;
+      mkagent = MKAGENT0;
     } else {
       result = target;
-      mkagent = REUSEAGENT;
+      mkagent = REUSEAGENT0;
     }
-    EnvAddCode4(CodeAddr[mkagent],
-		(void *)(unsigned long)result,
-		(void *)(unsigned long)(ID_NIL),
-		(void *)(unsigned long)0);
+
+    IMCode_genCode2(mkagent, result, ID_NIL);
     return result;
     break;
 
@@ -2550,113 +3144,113 @@ int CompileTermFromAst(Ast *ptr, int target) {
   case AST_CONS:
     if (target == -1) {      
       result = CmEnv_newreg();
-      mkagent = MKAGENT;
+      mkagent = MKAGENT2;
     } else {
       result = target;
-      mkagent = REUSEAGENT;
+      mkagent = REUSEAGENT2;
     }
     alloc[0] = CompileTermFromAst(ptr->left, -1);
     alloc[1] = CompileTermFromAst(ptr->right, -1);
-    EnvAddCode6(CodeAddr[mkagent],
-		(void *)(unsigned long)result,
-		(void *)(unsigned long)(ID_CONS),
-		(void *)(unsigned long)(2),
-		(void *)(unsigned long)alloc[0],
-		(void *)(unsigned long)alloc[1]);    
+    
+    IMCode_genCode4(mkagent, result, ID_CONS, alloc[0], alloc[1]);
     return result;
     break;
 
+    
   case AST_OPCONS:
     if (target == -1) {      
       result = CmEnv_newreg();
-      mkagent = MKAGENT;
+      mkagent = MKAGENT2;
     } else {
       result = target;
-      mkagent = REUSEAGENT;
+      mkagent = REUSEAGENT2;
     }
     ptr = ptr->right;
     alloc[0] = CompileTermFromAst(ptr->left, -1);
     alloc[1] = CompileTermFromAst(ptr->right->left, -1);
-    EnvAddCode6(CodeAddr[mkagent],
-		(void *)(unsigned long)result,
-		(void *)(unsigned long)(ID_CONS),
-		(void *)(unsigned long)(2),
-		(void *)(unsigned long)alloc[0],
-		(void *)(unsigned long)alloc[1]);    
+
+    IMCode_genCode4(mkagent, result, ID_CONS, alloc[0], alloc[1]);
     return result;
     break;
 
-    /*
-  case AST_TUPLE:
-    if (target == -1) {      
-      result = CmEnv_newreg();
-      mkagent = MKAGENT;
-    } else {
-      result = target;
-      mkagent = REUSEAGENT;
-    }
-    arity = ptr->intval;
-    ptr=ptr->right;
-    for(i=0; i< MAX_PORT; i++) {
-      if (ptr == NULL) break;
-      alloc[i] = CompileTermFromAst(ptr->left, -1);
-      ptr = ast_getTail(ptr);
-    }
-
-    EnvAddCode4(CodeAddr[mkagent],
-		(void *)(unsigned long)result,
-		(void *)(unsigned long)(GET_TUPLEID(arity)),
-		(void *)(unsigned long)(arity));
-    for(i=0; i< arity; i++) {
-      EnvAddCode((void *)(unsigned long)alloc[i]);    
-    }
-    return result;
-    break;
-    */
 
     
   case AST_TUPLE:
     arity = ptr->intval;
 
-    if (arity == 1) {
-      // The case of (A),
-      // `A' is recognised not as an argument, as a first-class object.
+    if (arity == 1) {      
+      // The case of the single tuple such as `(A)'.
+      // The `A' is recognised as not an argument, but as a first-class object.
       ptr=ptr->right;
       alloc[0] = CompileTermFromAst(ptr->left, target);      
       result = alloc[0];
       
-    } else {
+    } else {      
       // normal case
-      
+      ptr=ptr->right;
+      for(i=0; i< arity; i++) {
+	alloc[i] = CompileTermFromAst(ptr->left, -1);
+	ptr = ast_getTail(ptr);
+      }
+
       if (target == -1) {      
 	result = CmEnv_newreg();
-	mkagent = MKAGENT;
       } else {
 	result = target;
-	mkagent = REUSEAGENT;
       }
-
-      ptr=ptr->right;
-      /*
-      for(i=0; i< MAX_PORT; i++) {
-	if (ptr == NULL) break;
-	alloc[i] = CompileTermFromAst(ptr->left, -1);
-	ptr = ast_getTail(ptr);
-      }
-      */
-      for(i=0; i< arity; i++) {
-	alloc[i] = CompileTermFromAst(ptr->left, -1);
-	ptr = ast_getTail(ptr);
+          
+      switch (arity) {
+      case 0:
+	if (target == -1) {
+	  mkagent = MKAGENT0;
+	} else {
+	  mkagent = REUSEAGENT0;
+	}
+	IMCode_genCode2(mkagent, result, GET_TUPLEID(arity));
+	break;
+      
+      
+      case 2:
+	if (target == -1) {
+	  mkagent = MKAGENT2;
+	} else {
+	  mkagent = REUSEAGENT2;
+	}
+	IMCode_genCode4(mkagent, result, GET_TUPLEID(arity),
+			alloc[0], alloc[1]);
+	break;
+      
+      case 3:
+	if (target == -1) {
+	  mkagent = MKAGENT3;
+	} else {
+	  mkagent = REUSEAGENT3;
+	}
+	IMCode_genCode5(mkagent, result, GET_TUPLEID(arity),
+			alloc[0], alloc[1], alloc[2]);
+	break;
+      
+      case 4:
+	if (target == -1) {
+	  mkagent = MKAGENT4;
+	} else {
+	  mkagent = REUSEAGENT4;
+	}
+	IMCode_genCode6(mkagent, result, GET_TUPLEID(arity),
+			alloc[0], alloc[1], alloc[2], alloc[3]);
+	break;
+      
+      default:
+	if (target == -1) {
+	  mkagent = MKAGENT5;
+	} else {
+	  mkagent = REUSEAGENT5;
+	}
+	IMCode_genCode7(mkagent, result, GET_TUPLEID(arity),
+			alloc[0], alloc[1], alloc[2], alloc[3], alloc[4]);
+      
       }
       
-      EnvAddCode4(CodeAddr[mkagent],
-		  (void *)(unsigned long)result,
-		  (void *)(unsigned long)(GET_TUPLEID(arity)),
-		  (void *)(unsigned long)(arity));
-      for(i=0; i< arity; i++) {
-	EnvAddCode((void *)(unsigned long)alloc[i]);    
-      }
-
     }
     
     return result;
@@ -2668,10 +3262,8 @@ int CompileTermFromAst(Ast *ptr, int target) {
 
     if (target == -1) {      
       result = CmEnv_newreg();
-      mkagent = MKAGENT;
     } else {
       result = target;
-      mkagent = REUSEAGENT;
     }
     
     int id = IdTable_getid_builtin_funcAgent(ptr);
@@ -2679,8 +3271,6 @@ int CompileTermFromAst(Ast *ptr, int target) {
       id = NameTable_get_set_id((char *)ptr->left->sym);
     }
 
-    /* For arity */
-    //    result->arity = ptr->arity;
     arity=0;
     ptr=ptr->right;
     for(i=0; i< MAX_PORT; i++) {
@@ -2689,19 +3279,71 @@ int CompileTermFromAst(Ast *ptr, int target) {
       arity++;
       ptr = ast_getTail(ptr);
     }
-    // MKAGENT var ID ARITY var0 var1 ...
-    EnvAddCode4(CodeAddr[mkagent],
-		(void *)(unsigned long)result,
-		(void *)(unsigned long)id,
-		(void *)(unsigned long)arity);
+    
     IdTable_set_arity(id, arity);
 
-    for(i=0; i< arity; i++) {
-      EnvAddCode((void *)(unsigned long)alloc[i]);    
+    switch (arity) {
+    case 0:
+      if (target == -1) {
+	mkagent = MKAGENT0;
+      } else {
+	mkagent = REUSEAGENT0;
+      }
+      IMCode_genCode2(mkagent, result, id);
+      break;
+      
+    case 1:
+      if (target == -1) {
+	mkagent = MKAGENT1;
+      } else {
+	mkagent = REUSEAGENT1;
+      }
+      IMCode_genCode3(mkagent, result, id, alloc[0]);
+      break;
+      
+    case 2:
+      if (target == -1) {
+	mkagent = MKAGENT2;
+      } else {
+	mkagent = REUSEAGENT2;
+      }
+      IMCode_genCode4(mkagent, result, id, alloc[0], alloc[1]);
+      break;
+      
+    case 3:
+      if (target == -1) {
+	mkagent = MKAGENT3;
+      } else {
+	mkagent = REUSEAGENT3;
+      }
+      IMCode_genCode5(mkagent, result, id, alloc[0], alloc[1], alloc[2]);
+      break;
+
+    case 4:
+      if (target == -1) {
+	mkagent = MKAGENT4;
+      } else {
+	mkagent = REUSEAGENT4;
+      }
+      IMCode_genCode6(mkagent, result, id, alloc[0], alloc[1], alloc[2],
+		      alloc[3]);
+      break;
+      
+    default:
+      if (target == -1) {
+	mkagent = MKAGENT5;
+      } else {
+	mkagent = REUSEAGENT5;
+      }
+      IMCode_genCode7(mkagent, result, id, alloc[0], alloc[1], alloc[2],
+		      alloc[3], alloc[4]);
+      break;
     }
+    
     return result;
     break;
 
+    
   case AST_ANNOTATION_L:
   case AST_ANNOTATION_R:
     if (ptr->id == AST_ANNOTATION_L) {
@@ -2722,7 +3364,7 @@ int CompileTermFromAst(Ast *ptr, int target) {
   default:
     // expression case
     result = CmEnv_newreg();    
-    int compile_result = CompileExprFromAst(result, ptr);
+    int compile_result = CompileExprFromAst(ptr, result);
     if (compile_result != 0) {
       return result;
     } else {
@@ -2834,7 +3476,8 @@ int CompileEQListFromAst(Ast *at) {
       EnvAddCodePUSH((void *)(unsigned long)t1, (void *)(unsigned long)t2);     
     }
     */
-    EnvAddCodePUSH((void *)(unsigned long)t1, (void *)(unsigned long)t2);
+    IMCode_genCode2(PUSH, t1, t2);
+
     
     at = next;
   }
@@ -2846,27 +3489,31 @@ void Compile_Put_Ret_ForRuleBody() {
   
   if ((CmEnv.annotateL == ANNOTATE_NOTHING) &&
       (CmEnv.annotateR == ANNOTATE_NOTHING)) {
-    EnvAddCode(CodeAddr[RET_FREE_LR]);  
-
+    IMCode_genCode0(RET_FREE_LR);
+    
   } else if ((CmEnv.annotateL == ANNOTATE_NOTHING) &&
 	     (CmEnv.annotateR != ANNOTATE_NOTHING)) {
     // FreeL
     if (CmEnv.reg_agentL == VM_OFFSET_ANNOTATE_L) {
-      EnvAddCode(CodeAddr[RET_FREE_L]);  
+      IMCode_genCode0(RET_FREE_L);
+      
     } else {
-      EnvAddCode(CodeAddr[RET_FREE_R]);  
+      IMCode_genCode0(RET_FREE_R);
     }
 
   } else if ((CmEnv.annotateL != ANNOTATE_NOTHING) &&
 	     (CmEnv.annotateR == ANNOTATE_NOTHING)) {
     // FreeR
     if (CmEnv.reg_agentL == VM_OFFSET_ANNOTATE_L) {
-      EnvAddCode(CodeAddr[RET_FREE_R]);  
+      IMCode_genCode0(RET_FREE_R);
+      
     } else {
-      EnvAddCode(CodeAddr[RET_FREE_L]);  
+      IMCode_genCode0(RET_FREE_L);
+      
     }
   } else {
-    EnvAddCode(CodeAddr[RET]);  
+    IMCode_genCode0(RET);
+    
   }    
 	     
 }
@@ -2888,6 +3535,7 @@ int CompileStmListFromAst(Ast *at) {
     // for the x
     toRegLeft = CmEnv_reg_search(ptr->left->left->sym);
     if (toRegLeft == -1) {
+      // the sym is new
       toRegLeft = CmEnv_set_as_INTVAR(ptr->left->left->sym);
     } else {
       printf("Warning: '%s' has been already defined.\n", ptr->left->left->sym);
@@ -2900,19 +3548,16 @@ int CompileStmListFromAst(Ast *at) {
       if (toRegRight == -1) {
 	toRegRight = CmEnv_set_as_INTVAR(ptr->right->left->sym);
       }
-      EnvAddCode3(CodeAddr[LOAD],
-		  (void *)(unsigned long)toRegLeft,
-		  (void *)(unsigned long)toRegRight);
+      IMCode_genCode2(LOAD, toRegLeft, toRegRight);
+      
 
     } else if (ptr->right->id == AST_INT) {
       // y is an integer
-      EnvAddCode3(CodeAddr[LOADI],
-		  (void *)(unsigned long)toRegLeft,
-		  (void *)(unsigned long)ptr->right->intval);
+      IMCode_genCode2(LOADI, toRegLeft, ptr->right->intval);
       
     } else {
       // y is an expression
-      if (!CompileExprFromAst(toRegLeft, ptr->right)) return 0;
+      if (!CompileExprFromAst(ptr->right, toRegLeft)) return 0;
 
     }
 
@@ -3229,33 +3874,42 @@ void RuleTable_init() {
 }
 
 
-void RuleTable_record(int symlID, int symrID, int byte, void **code) {
+void RuleTable_record(int symlID, int symrID, void **code, int byte) {
 
   RuleList *add;
 
-  if (RuleTable[symlID] == NULL) {  /* もしテーブルが空ならば */
-    add = RuleList_new();             /* データノードを作成し */
+  if (RuleTable[symlID] == NULL) {
+    // No entry for symlID
+    
+    add = RuleList_new();
 
+    // Make a new linear list whose node is (symrID, code, byte)
     RuleList_set_code(add, symrID, code, byte, NULL);
-    RuleTable[symlID] = add;        /* 単にセット */
+
+    // Set the linear list to RuleTable[symlID]
+    RuleTable[symlID] = add;
     return;
     
   }
 
-  /* 線形探査が必要 */
-  RuleList *at = RuleTable[symlID];  // 先頭をセット
+  // Linear Search
+  RuleList *at = RuleTable[symlID];  // Set the top of the list to `at'.
     
   while( at != NULL ) {
-    if( at->sym == symrID) {  // すでにあれば書き換える
+    if( at->sym == symrID) {
+      // already exists
+
+      // overwrite 
       CopyCode(byte, code, at->code);
       return;
     }
     at = at->next;
   }
   
-  // key がなかったら、 先頭に追加
+  // No entry for symlID in the linear list
 
-  /* 以前の先頭を自分の次にする */
+  // Make a new linear list
+  // and add it as the top of the list (that is RuleTable[symlID]).
   add = RuleList_new();
   RuleList_set_code(add, symrID, code, byte, RuleTable[symlID]);
   RuleTable[symlID] = add; 
@@ -3266,21 +3920,24 @@ void RuleTable_record(int symlID, int symrID, int byte, void **code) {
 
 void RuleTable_delete(int symlID, int symrID) {
   
-  if (RuleTable[symlID] == NULL) {  /* もしテーブルが空ならば */
-    // 何もしない
+  if (RuleTable[symlID] == NULL) {
+    // No entry for symlID
     return;
     
   }
-  
-  /* 線形探査が必要 */
-  RuleList *at = RuleTable[symlID];  /* 先頭をセット */
+
+  // Linear Search
+  RuleList *at = RuleTable[symlID];
     
   while( at != NULL ) {
-    if( at->sym == symrID) {  /* すでにあれば書き換える */
+    if( at->sym == symrID) {
+      // already exists
+
+      // Make it void
       RuleList_inavailable(at);
       return;
     }
-    at = at->next;  /* 次のチェーンを辿る */
+    at = at->next;
   }
     
 }
@@ -3427,8 +4084,10 @@ int CompileIfSentenceFromAST(Ast *if_sentence_top,
     if (!CompileBodyFromAst(body)) return -1;
     Compile_Put_Ret_ForRuleBody();
       
-    generated_codesize = CmEnv_generate_code_with_nameinfo(code, offset_code);
-      
+    CmEnv_Retrieve_GNAME();
+    generated_codesize = CmEnv_Generate_VMCode(code, offset_code);
+
+    
     if (generated_codesize < 0) {
       puts("System ERROR: Generated codes were too long.");
       return -1;
@@ -3456,8 +4115,10 @@ int CompileIfSentenceFromAST(Ast *if_sentence_top,
 
     // Gurad のコンパイル
     int newreg = CmEnv_newreg();
-    if (!CompileExprFromAst(newreg, guard)) return -1;
-    generated_codesize = CmEnv_generate_code(code, offset);
+    if (!CompileExprFromAst(guard, newreg)) return -1;
+    
+    //    CmEnv_Retrieve_GNAME();
+    generated_codesize = CmEnv_Generate_VMCode(code, offset_code);
     offset += generated_codesize;
 
 
@@ -3467,7 +4128,6 @@ int CompileIfSentenceFromAST(Ast *if_sentence_top,
     label = offset++;  // 飛び先を格納するアドレスを記憶しておく
 
     // then_branch のコンパイル
-    EnvCodeClear();
     CmEnv_clear_localnamePtr();  // 局所変数としての reg番号を初期化
 
     generated_codesize = CompileIfSentenceFromAST(then_branch, code, offset);
@@ -3485,7 +4145,6 @@ int CompileIfSentenceFromAST(Ast *if_sentence_top,
 
 
     // else_branch のコンパイル
-    EnvCodeClear();
     CmEnv_clear_localnamePtr();  // 局所変数としての reg番号を初期化
     
     generated_codesize = CompileIfSentenceFromAST(else_branch, code, offset);
@@ -3522,7 +4181,7 @@ int makeRule(Ast *ast) {
   Ast *ruleL, *ruleR, *if_sentence;
 
   void* code[MAX_CODE_SIZE];
-  int code_size=0;
+  int code_offset=0;
 
   ruleL = ast->left->left;
   ruleR = ast->left->right;
@@ -3626,7 +4285,7 @@ int makeRule(Ast *ast) {
     int arity;
 
     // IMPORTANT:
-    // The first two codes store arities of idL and idR.
+    // At the first two codes, arities of idL and idR are stored.
     if (idL == ID_INT) {
       arity = 0;
     } else {
@@ -3643,7 +4302,7 @@ int makeRule(Ast *ast) {
     IdTable_set_arity(idR, arity);
     code[1] = (void *)(unsigned long)arity;
 
-    code_size = 2;
+    code_offset = 2;
   }
   
   
@@ -3669,1662 +4328,31 @@ int makeRule(Ast *ast) {
 
 
   {
-    int generated_codesize = CompileIfSentenceFromAST(if_sentence, code, code_size);
+    int generated_codesize = CompileIfSentenceFromAST(if_sentence,
+						      code, code_offset);
     if (generated_codesize < 0) {
       return 0;
     }
-    code_size += generated_codesize;
+    code_offset += generated_codesize;
   }  
 
 #ifdef MYDEBUG
-    PutsCodeN(code, code_size); exit(1);
+  PutsCodeN(code, code_offset); exit(1);
 #endif
-
-    //    printf("Rule: %s(id:%d) >< %s(id:%d).\n", 
-    //	   IdTable_get_name(idL), idL,
-    //	   IdTable_get_name(idR), idR);
-    //    PutsCodeN(&code[2], code_size-2);
-    //    exit(1);
-    
-    
-// --------------------------------------------------------------
-// For Fibonacci (as much as possible)
-// #define HAND_FIB_AS_MUCH_AS_POSSIBLE
-// --------------------------------------------------------------
-#ifdef HAND_FIB_AS_MUCH_AS_POSSIBLE
-    if ((strcmp(IdTable_get_name(idL), "Fib") == 0) &&
-	(idR == ID_INT)) {
-
-      printf("Rule is optimised: %s >< %s.\n", 
-	     IdTable_get_name(idL),
-	     IdTable_get_name(idR));
-      
-      //      PutsCodeN(&code[2], code_size-2);
-      
-      int i=2;
-      //   code[i++] = CodeAddr[MKVAL];
-      //   code[i++] = (void *)14;
-      //   code[i++] = (void *)0;
-      //   code[i++] = (void *)0;
-      //
-      //   code[i++] = CodeAddr[OP_EQ];
-      //   code[i++] = (void *)12;
-      //   code[i++] = (void *)11;
-      //   code[i++] = (void *)14;
-   
-      code[i++] = CodeAddr[OP_EQI];
-      //code[i++] = (void *)11;  // ここで 11(OFFSET_R)を壊してしまうと他で影響あり
-      code[i++] = (void *)12;
-      code[i++] = (void *)11;
-      code[i++] = (void *)0;
-
-      code[i++] = CodeAddr[OP_JMPEQ0];
-      code[i++] = (void *)12;
-      //   code[i++] = (void *)8;   
-      code[i++] = (void *)4;
-   
-      //   code[i++] = CodeAddr[MKVAL];
-      //   code[i++] = (void *)12;
-      //   code[i++] = (void *)0;
-      //   code[i++] = (void *)1;
-      //   
-      //   code[i++] = CodeAddr[PUSH];
-      //   code[i++] = (void *)0;
-      //   code[i++] = (void *)12;
-   
-      code[i++] = CodeAddr[PUSHI];
-      code[i++] = (void *)0;
-      code[i++] = (void *)INT2FIX(1);
-
-      code[i++] = CodeAddr[RET_FREE_L];
-
-   
-
-
-      //   code[i++] = CodeAddr[MKVAL];
-      //   code[i++] = (void *)14;
-      //   code[i++] = (void *)0;
-      //   code[i++] = (void *)1;
-      //
-      //   code[i++] = CodeAddr[OP_EQ];
-      //   code[i++] = (void *)12;
-      //   code[i++] = (void *)11;
-      //   code[i++] = (void *)14;
-
-      code[i++] = CodeAddr[OP_EQI];
-      code[i++] = (void *)12;
-      code[i++] = (void *)11;
-      code[i++] = (void *)1;
-
-      code[i++] = CodeAddr[OP_JMPEQ0];
-      code[i++] = (void *)12;
-      //   code[i++] = (void *)8;
-      code[i++] = (void *)4;
-
-      //   code[i++] = CodeAddr[MKVAL];
-      //   code[i++] = (void *)12;
-      //   code[i++] = (void *)0;
-      //   code[i++] = (void *)1;
-      //   
-      //   code[i++] = CodeAddr[PUSH];
-      //   code[i++] = (void *)0;
-      //   code[i++] = (void *)12;
-
-      code[i++] = CodeAddr[PUSHI];
-      code[i++] = (void *)0;
-      code[i++] = (void *)INT2FIX(1);
-
-   
-      code[i++] = CodeAddr[RET_FREE_L];
-
-
-
-   
-      code[i++] = CodeAddr[MKNAME];
-      code[i++] = (void *)16;
-
-   
-      //   code[i++] = CodeAddr[MKVAL];
-      //   code[i++] = (void *)14;
-      //   code[i++] = (void *)0;
-      //   code[i++] = (void *)1;
-      //
-      //   code[i++] = CodeAddr[OP_SUB];
-      //   code[i++] = (void *)12;
-      //   code[i++] = (void *)11;
-      //   code[i++] = (void *)14;
-
-      code[i++] = CodeAddr[OP_SUBI];
-      code[i++] = (void *)12;
-      code[i++] = (void *)11;
-      code[i++] = (void *)1;
-   
-
-      //   code[i++] = CodeAddr[MKVAL];
-      //   code[i++] = (void *)17;
-      //   code[i++] = (void *)0;
-      //   code[i++] = (void *)2;
-      //
-      //   code[i++] = CodeAddr[OP_SUB];
-      //   code[i++] = (void *)15;
-      //   code[i++] = (void *)11;
-      //   code[i++] = (void *)17;
-
-      code[i++] = CodeAddr[OP_SUBI];
-      code[i++] = (void *)13;
-      code[i++] = (void *)11;
-      code[i++] = (void *)2;
-
-   
-      code[i++] = CodeAddr[MKAGENT];
-      code[i++] = (void *)14;
-      code[i++] = (void *)10;
-      code[i++] = (void *)2;
-      code[i++] = (void *)16;
-      code[i++] = (void *)0;
-
-      code[i++] = CodeAddr[MKAGENT];
-      code[i++] = (void *)14;
-      code[i++] = (void *)20;
-      code[i++] = (void *)1;
-      code[i++] = (void *)14;
-
-      code[i++] = CodeAddr[PUSH];
-      code[i++] = (void *)14;
-      code[i++] = (void *)12;
-
-   
-      //   code[i++] = CodeAddr[REUSEAGENT];
-      //   code[i++] = (void *)10;
-      //   code[i++] = (void *)21;
-      //   code[i++] = (void *)1;
-      //   code[i++] = (void *)20;
-      //
-      //   code[i++] = CodeAddr[PUSH];
-      //   code[i++] = (void *)10;
-      //   code[i++] = (void *)15;
-      //   
-      //   code[i++] = CodeAddr[RET];
-
-
-      code[i++] = CodeAddr[LOAD];
-      code[i++] = (void *)VM_OFFSET_META_L(0);
-      code[i++] = (void *)16;
-
-      code[i++] = CodeAddr[LOAD];
-      code[i++] = (void *)VM_OFFSET_ANNOTATE_R;
-      code[i++] = (void *)13;
-   
-      code[i++] = CodeAddr[LOOP];
-   
-      code_size = i;
-      
-      //      PutsCodeN(&code[2], i-2);
-      //    exit(1);
-    }
-#endif
-
-
-// --------------------------------------------------------------
-// For Fibonacci (naive)
-//    #define HAND_FIB
-// --------------------------------------------------------------
-#ifdef HAND_FIB
-    if ((strcmp(IdTable_get_name(idL), "Fib") == 0) &&
-	(idR == ID_INT)) {
-
-      printf("Rule is optimised: %s >< %s.\n", 
-	     IdTable_get_name(idL),
-	     IdTable_get_name(idR));
-      
-      //            PutsCodeN(&code[2], code_size-2);
-      
-      int i=2;
-      
-      code[i++] = CodeAddr[LOAD];
-      code[i++] = (void *)13;
-      code[i++] = (void *)VM_OFFSET_ANNOTATE_R;
-
-      code[i++] = CodeAddr[LOADI];
-      code[i++] = (void *)14;
-      code[i++] = (void *)0;
-      
-      code[i++] = CodeAddr[OP_EQ];
-      code[i++] = (void *)12;
-      code[i++] = (void *)13;
-      code[i++] = (void *)14;
-   
-      code[i++] = CodeAddr[OP_JMPEQ0];
-      code[i++] = (void *)12;
-      code[i++] = (void *)7;
-   
-      code[i++] = CodeAddr[LOADI];
-      code[i++] = (void *)12;
-      code[i++] = (void *)0;
-         
-      code[i++] = CodeAddr[PUSH];
-      code[i++] = (void *)0;
-      code[i++] = (void *)12;
-   
-      code[i++] = CodeAddr[RET_FREE_L];
-
-
-      
-      code[i++] = CodeAddr[LOAD];
-      code[i++] = (void *)13;
-      code[i++] = (void *)VM_OFFSET_ANNOTATE_R;
-
-      code[i++] = CodeAddr[LOADI];
-      code[i++] = (void *)14;
-      code[i++] = (void *)1;
-      
-      code[i++] = CodeAddr[OP_EQ];
-      code[i++] = (void *)12;
-      code[i++] = (void *)13;
-      code[i++] = (void *)14;
-
-      code[i++] = CodeAddr[OP_JMPEQ0];
-      code[i++] = (void *)12;
-      code[i++] = (void *)7;
-
-      code[i++] = CodeAddr[LOADI];
-      code[i++] = (void *)12;
-      code[i++] = (void *)1;
-         
-      code[i++] = CodeAddr[PUSH];
-      code[i++] = (void *)0;
-      code[i++] = (void *)12;
-   
-      code[i++] = CodeAddr[RET_FREE_L];
-
-
-
-   
-      code[i++] = CodeAddr[MKNAME];
-      code[i++] = (void *)14;
-
-      code[i++] = CodeAddr[MKAGENT];
-      code[i++] = (void *)13;
-      code[i++] = (void *)21;
-      code[i++] = (void *)2;
-      code[i++] = (void *)0;
-      code[i++] = (void *)14;
-
-      code[i++] = CodeAddr[MKAGENT];
-      code[i++] = (void *)12;
-      code[i++] = (void *)20;
-      code[i++] = (void *)1;
-      code[i++] = (void *)13;
-
-      code[i++] = CodeAddr[LOAD];
-      code[i++] = (void *)16;
-      code[i++] = (void *)VM_OFFSET_ANNOTATE_R;
-      
-      code[i++] = CodeAddr[LOADI];
-      code[i++] = (void *)17;
-      code[i++] = (void *)1;
-      
-      code[i++] = CodeAddr[OP_SUB];
-      code[i++] = (void *)15;
-      code[i++] = (void *)16;
-      code[i++] = (void *)17;
-
-      code[i++] = CodeAddr[PUSH];
-      code[i++] = (void *)12;
-      code[i++] = (void *)15;
-
-      
-      code[i++] = CodeAddr[LOAD];
-      code[i++] = (void *)VM_OFFSET_META_L(0);
-      code[i++] = (void *)14;
-      
-      code[i++] = CodeAddr[LOAD];
-      code[i++] = (void *)20;
-      code[i++] = (void *)VM_OFFSET_ANNOTATE_R;
-   
-      code[i++] = CodeAddr[LOADI];
-      code[i++] = (void *)21;
-      code[i++] = (void *)2;
-      
-      code[i++] = CodeAddr[OP_SUB];
-      code[i++] = (void *)19;
-      code[i++] = (void *)20;
-      code[i++] = (void *)21;
-
-
-      code[i++] = CodeAddr[LOAD];
-      code[i++] = (void *)VM_OFFSET_ANNOTATE_R;
-      code[i++] = (void *)19;
-      
-      code[i++] = CodeAddr[LOOP];
-   
-      code_size = i;
-      
-      //            PutsCodeN(&code[2], i-2);
-	    //                exit(1);
-    }
-#endif
-
-
-
-// --------------------------------------------------------------
-// For Fibonacci (naive)
-//    #define HAND_FIB_INT
-// --------------------------------------------------------------
-#ifdef HAND_FIB_INT
-    if ((strcmp(IdTable_get_name(idL), "Fibi") == 0) &&
-	(strcmp(IdTable_get_name(idR), "Int") == 0)) {
-
-      printf("Rule is optimised: %s >< %s.\n", 
-	     IdTable_get_name(idL),
-	     IdTable_get_name(idR));
-      
-      //            PutsCodeN(&code[2], code_size-2);
-      
-      int i=2;
-      
-      code[i++] = CodeAddr[LOAD];
-      code[i++] = (void *)13;
-      code[i++] = (void *)VM_OFFSET_META_R(0);
-
-      code[i++] = CodeAddr[LOADI];
-      code[i++] = (void *)14;
-      code[i++] = (void *)0;
-      
-      code[i++] = CodeAddr[OP_EQ];
-      code[i++] = (void *)12;
-      code[i++] = (void *)13;
-      code[i++] = (void *)14;
-   
-      code[i++] = CodeAddr[OP_JMPEQ0];
-      code[i++] = (void *)12;
-      code[i++] = (void *)12;
-   
-      code[i++] = CodeAddr[LOADI];
-      code[i++] = (void *)13;
-      code[i++] = (void *)0;
-         
-      code[i++] = CodeAddr[MKAGENT];
-      code[i++] = (void *)12;
-      code[i++] = (void *)(unsigned long)idR;
-      code[i++] = (void *)1;
-      code[i++] = (void *)13;
-
-      code[i++] = CodeAddr[PUSH];
-      code[i++] = (void *)0;
-      code[i++] = (void *)12;
-   
-      code[i++] = CodeAddr[RET_FREE_LR];
-
-
-      
-      code[i++] = CodeAddr[LOAD];
-      code[i++] = (void *)13;
-      code[i++] = (void *)VM_OFFSET_META_R(0);
-
-      code[i++] = CodeAddr[LOADI];
-      code[i++] = (void *)14;
-      code[i++] = (void *)1;
-      
-      code[i++] = CodeAddr[OP_EQ];
-      code[i++] = (void *)12;
-      code[i++] = (void *)13;
-      code[i++] = (void *)14;
-
-      code[i++] = CodeAddr[OP_JMPEQ0];
-      code[i++] = (void *)12;
-      code[i++] = (void *)12;
-
-      code[i++] = CodeAddr[LOADI];
-      code[i++] = (void *)13;
-      code[i++] = (void *)1;
-
-      code[i++] = CodeAddr[MKAGENT];
-      code[i++] = (void *)12;
-      code[i++] = (void *)(unsigned long)idR;
-      code[i++] = (void *)1;
-      code[i++] = (void *)13;
-
-      code[i++] = CodeAddr[PUSH];
-      code[i++] = (void *)0;
-      code[i++] = (void *)12;
-   
-      code[i++] = CodeAddr[RET_FREE_LR];
-
-   
-      code[i++] = CodeAddr[MKNAME];
-      code[i++] = (void *)20;
-
-      code[i++] = CodeAddr[LOAD];
-      code[i++] = (void *)13;
-      code[i++] = (void *)VM_OFFSET_META_R(0);
-   
-      code[i++] = CodeAddr[LOADI];
-      code[i++] = (void *)14;
-      code[i++] = (void *)1;
-      
-      code[i++] = CodeAddr[OP_SUB];
-      code[i++] = (void *)12;
-      code[i++] = (void *)13;
-      code[i++] = (void *)14;
-
-
-      code[i++] = CodeAddr[LOAD];
-      code[i++] = (void *)16;
-      code[i++] = (void *)VM_OFFSET_META_R(0);
-      
-      code[i++] = CodeAddr[LOADI];
-      code[i++] = (void *)17;
-      code[i++] = (void *)2;
-      
-      code[i++] = CodeAddr[OP_SUB];
-      code[i++] = (void *)15;
-      code[i++] = (void *)16;
-      code[i++] = (void *)17;
-
-   
-      code[i++] = CodeAddr[MKAGENT];
-      code[i++] = (void *)19;
-      code[i++] = (void *)21;
-      code[i++] = (void *)2;
-      code[i++] = (void *)0;
-      code[i++] = (void *)20;
-
-      code[i++] = CodeAddr[MKAGENT];
-      code[i++] = (void *)18;
-      code[i++] = (void *)20;
-      code[i++] = (void *)1;
-      code[i++] = (void *)19;
-
-      code[i++] = CodeAddr[MKAGENT];
-      code[i++] = (void *)21;
-      code[i++] = (void *)9;
-      code[i++] = (void *)1;
-      code[i++] = (void *)12;
-
-      code[i++] = CodeAddr[PUSH];
-      code[i++] = (void *)18;
-      code[i++] = (void *)21;
-
-      code[i++] = CodeAddr[LOAD];
-      code[i++] = (void *)VM_OFFSET_META_L(0);
-      code[i++] = (void *)20;
-      
-      code[i++] = CodeAddr[LOAD];
-      code[i++] = (void *)VM_OFFSET_META_R(0);
-      code[i++] = (void *)15;
-      
-      code[i++] = CodeAddr[LOOP];
-      
-   
-      code_size = i;
-      
-      //            PutsCodeN(&code[2], i-2);
-	    //                exit(1);
-    }
-#endif
-    
-    
-// --------------------------------------------------------------
-// For Fibonacci (tail call version)
-//    #define HAND_FIB_TAIL
-// --------------------------------------------------------------
-#ifdef HAND_FIB_TAIL
-    if (strcmp(IdTable_get_name(idL), "Fibt") == 0) {
-      printf("Rule is optimised: %s >< %s.\n", 
-	     IdTable_get_name(idL),
-	     IdTable_get_name(idR));
-      
-      //      PutsCodeN(&code[2], code_size-2);
-      
-      int i=2;
-      
-      code[i++] = CodeAddr[LOAD];
-      code[i++] = (void *)13;
-      code[i++] = (void *)VM_OFFSET_ANNOTATE_R;
-
-      code[i++] = CodeAddr[LOADI];
-      code[i++] = (void *)14;
-      code[i++] = (void *)0;
-      
-      code[i++] = CodeAddr[OP_EQ];
-      code[i++] = (void *)12;
-      code[i++] = (void *)13;
-      code[i++] = (void *)14;
-   
-      code[i++] = CodeAddr[OP_JMPEQ0];
-      code[i++] = (void *)12;
-      code[i++] = (void *)7;
-   
-      code[i++] = CodeAddr[LOADI];
-      code[i++] = (void *)12;
-      code[i++] = (void *)1;
-         
-      code[i++] = CodeAddr[PUSH];
-      code[i++] = (void *)0;
-      code[i++] = (void *)12;
-   
-      code[i++] = CodeAddr[RET_FREE_L];
-
-
-      
-      code[i++] = CodeAddr[LOAD];
-      code[i++] = (void *)13;
-      code[i++] = (void *)VM_OFFSET_ANNOTATE_R;
-
-      code[i++] = CodeAddr[LOADI];
-      code[i++] = (void *)14;
-      code[i++] = (void *)1;
-      
-      code[i++] = CodeAddr[OP_EQ];
-      code[i++] = (void *)12;
-      code[i++] = (void *)13;
-      code[i++] = (void *)14;
-
-      code[i++] = CodeAddr[OP_JMPEQ0];
-      code[i++] = (void *)12;
-      code[i++] = (void *)4;
-         
-      code[i++] = CodeAddr[PUSH];
-      code[i++] = (void *)0;
-      code[i++] = (void *)VM_OFFSET_META_L(1);
-   
-      code[i++] = CodeAddr[RET_FREE_L];
-
-
-   
-      code[i++] = CodeAddr[LOAD];
-      code[i++] = (void *)14;
-      code[i++] = (void *)VM_OFFSET_META_L(1);
-
-      code[i++] = CodeAddr[LOAD];
-      code[i++] = (void *)15;
-      code[i++] = (void *)VM_OFFSET_META_L(2);
-
-      code[i++] = CodeAddr[OP_ADD];
-      code[i++] = (void *)13;
-      code[i++] = (void *)14;
-      code[i++] = (void *)15;
-
-      code[i++] = CodeAddr[LOAD];
-      code[i++] = (void *)16;
-      code[i++] = (void *)VM_OFFSET_ANNOTATE_R;
-
-      code[i++] = CodeAddr[LOADI];
-      code[i++] = (void *)17;
-      code[i++] = (void *)1;
-      
-      code[i++] = CodeAddr[OP_SUB];
-      code[i++] = (void *)18;
-      code[i++] = (void *)16;
-      code[i++] = (void *)17;
-      
-      code[i++] = CodeAddr[LOAD];
-      code[i++] = (void *)19;
-      code[i++] = (void *)VM_OFFSET_META_L(1);
-
-      code[i++] = CodeAddr[LOAD];
-      code[i++] = (void *)VM_OFFSET_META_L(1);
-      code[i++] = (void *)13;
-
-      code[i++] = CodeAddr[LOAD];
-      code[i++] = (void *)VM_OFFSET_META_L(2);
-      code[i++] = (void *)19;
-
-      code[i++] = CodeAddr[LOAD];
-      code[i++] = (void *)VM_OFFSET_ANNOTATE_R;
-      code[i++] = (void *)18;
-      
-      code[i++] = CodeAddr[LOOP];
-   
-      code_size = i;
-      
-      //      PutsCodeN(&code[2], i-2);
-      //          exit(1);
-    }
-#endif
-    
-
-    
-// --------------------------------------------------------------
-// For Insersion Sort
-// #define HAND_I_CONS
-// #define HAND_IS_CONS
-// --------------------------------------------------------------
-#ifdef HAND_I_CONS
-    if ((strcmp(IdTable_get_name(idL), "I") == 0) &&
-	(strcmp(IdTable_get_name(idR), "Cons") == 0)) {
-
-      printf("Rule is optimised: %s >< %s.\n", 
-	     IdTable_get_name(idL),
-	     IdTable_get_name(idR));
-      
-      //      PutsCodeN(&code[2], code_size-2);
-      
-      int i=2;
-
-      code[i++] = CodeAddr[LOAD];
-      code[i++] = (void *)13;
-      code[i++] = (void *)1;
-
-      code[i++] = CodeAddr[LOAD];
-      code[i++] = (void *)14;
-      code[i++] = (void *)5;
-
-      code[i++] = CodeAddr[OP_LE];
-      code[i++] = (void *)12;
-      code[i++] = (void *)13;
-      code[i++] = (void *)14;
+  PutsCodeN(code, code_offset); exit(1);
+
+  //    printf("Rule: %s(id:%d) >< %s(id:%d).\n", 
+  //	   IdTable_get_name(idL), idL,
+  //	   IdTable_get_name(idR), idR);
+  //    PutsCodeN(&code[2], code_offset-2);
+  //    exit(1);
   
-      code[i++] = CodeAddr[OP_JMPEQ0];
-      code[i++] = (void *)12;
-      code[i++] = (void *)16;
-
-      code[i++] = CodeAddr[MKAGENT];
-      code[i++] = (void *)13;
-      code[i++] = (void *)8;
-      code[i++] = (void *)2;
-      code[i++] = (void *)5;
-      code[i++] = (void *)6;
-
-
-      code[i++] = CodeAddr[MKAGENT];
-      code[i++] = (void *)12;
-      code[i++] = (void *)8;
-      code[i++] = (void *)2;
-      code[i++] = (void *)1;
-      code[i++] = (void *)13;
-      
-      code[i++] = CodeAddr[PUSH];
-      code[i++] = (void *)0;
-      code[i++] = (void *)12;
-      
-      code[i++] = CodeAddr[RET_FREE_LR];
-
-
-
-      
-      code[i++] = CodeAddr[MKNAME];
-      code[i++] = (void *)13;
-
-      code[i++] = CodeAddr[MKAGENT];
-      code[i++] = (void *)12;
-      code[i++] = (void *)8;
-      code[i++] = (void *)2;
-      code[i++] = (void *)5;
-      code[i++] = (void *)13;
-
-      code[i++] = CodeAddr[PUSH];
-      code[i++] = (void *)0;
-      code[i++] = (void *)12;
-
-      code[i++] = CodeAddr[OP_JMPCNCT_CONS];
-      code[i++] = (void *)VM_OFFSET_META_R(1);
-      code[i++] = (void *)10;
-            
-      code[i++] = CodeAddr[MKAGENT];
-      code[i++] = (void *)14;
-      code[i++] = (void *)21;
-      code[i++] = (void *)2;
-      code[i++] = (void *)13;
-      code[i++] = (void *)1;
-
-      code[i++] = CodeAddr[PUSH];
-      code[i++] = (void *)14;
-      code[i++] = (void *)6;
-
-      code[i++] = CodeAddr[RET_FREE_LR];
-
-      
-      code[i++] = CodeAddr[LOAD];
-      code[i++] = (void *)VM_OFFSET_META_L(0);
-      code[i++] = (void *)13;
-
-      code[i++] = CodeAddr[LOOP_RREC2];
-      code[i++] = (void *)VM_OFFSET_META_R(1);
-      
-      code_size = i;
-      
-      //      PutsCodeN(&code[2], i-2);
-      //      exit(1);
-    }
-#endif
-
-
-
-#ifdef HAND_IS_CONS
-    if ((strcmp(IdTable_get_name(idL), "IS") == 0) &&
-	(strcmp(IdTable_get_name(idR), "Cons") == 0)) {
-
-      printf("Rule is optimised: %s >< %s.\n", 
-	     IdTable_get_name(idL),
-	     IdTable_get_name(idR));
-      
-      //      PutsCodeN(&code[2], code_size-2);
-      
-      int i=2;
-
-      code[i++] = CodeAddr[MKAGENT];
-      code[i++] = (void *)13;
-      code[i++] = (void *)21;
-      code[i++] = (void *)2;
-      code[i++] = (void *)VM_OFFSET_META_L(0);
-      code[i++] = (void *)VM_OFFSET_META_R(0);
-
-      code[i++] = CodeAddr[OP_JMPCNCT_CONS];
-      code[i++] = (void *)VM_OFFSET_META_R(1);
-      code[i++] = (void *)9;
-
-      code[i++] = CodeAddr[MKAGENT];
-      code[i++] = (void *)12;
-      code[i++] = (void *)20;
-      code[i++] = (void *)1;
-      code[i++] = (void *)13;
-
-      code[i++] = CodeAddr[PUSH];
-      code[i++] = (void *)12;
-      code[i++] = (void *)VM_OFFSET_META_R(1);;
-      
-      code[i++] = CodeAddr[RET_FREE_LR];
-      
-      code[i++] = CodeAddr[LOAD];
-      code[i++] = (void *)VM_OFFSET_META_L(0);
-      code[i++] = (void *)13;
-
-      code[i++] = CodeAddr[LOOP_RREC2];
-      code[i++] = (void *)VM_OFFSET_META_R(1);
-      
-      code_size = i;
-      
-      //      PutsCodeN(&code[2], i-2);
-      //      exit(1);
-    }
-#endif
-
-
-// --------------------------------------------------------------
-// For Quick Sort
-//     #define HAND_Apnd_CONS
-//     #define HAND_Part_CONS
-// --------------------------------------------------------------
-    
-#ifdef HAND_Apnd_CONS
-    if ((strcmp(IdTable_get_name(idL), "Apnd") == 0) &&
-	(idR == ID_CONS)) {
-
-      printf("Rule is optimised: %s >< %s.\n", 
-	     IdTable_get_name(idL),
-	     IdTable_get_name(idR));
-      
-      //      PutsCodeN(&code[2], code_size-2);
-      
-      int i=2;
-
-      code[i++] = CodeAddr[MKNAME];
-      code[i++] = (void *)13;
-
-      code[i++] = CodeAddr[MKAGENT];
-      code[i++] = (void *)12;
-      code[i++] = (void *)8;
-      code[i++] = (void *)2;
-      code[i++] = (void *)5;
-      code[i++] = (void *)13;
-
-      code[i++] = CodeAddr[PUSH];
-      code[i++] = (void *)0;
-      code[i++] = (void *)12;
-
-
-      code[i++] = CodeAddr[OP_JMPCNCT_CONS];
-      code[i++] = (void *)VM_OFFSET_META_R(1);
-      code[i++] = (void *)10;
-            
-      code[i++] = CodeAddr[MKAGENT];
-      code[i++] = (void *)14;
-      code[i++] = (void *)(unsigned long)idL;
-      code[i++] = (void *)2;
-      code[i++] = (void *)13;
-      code[i++] = (void *)1;
-
-      code[i++] = CodeAddr[PUSH];
-      code[i++] = (void *)14;
-      code[i++] = (void *)6;
-
-      code[i++] = CodeAddr[RET_FREE_LR];
-
-      
-      code[i++] = CodeAddr[LOAD];
-      code[i++] = (void *)VM_OFFSET_META_L(0);
-      code[i++] = (void *)13;
-
-      code[i++] = CodeAddr[LOOP_RREC2];
-      code[i++] = (void *)VM_OFFSET_META_R(1);
-      
-      code_size = i;
-      
-      //      PutsCodeN(&code[2], i-2);
-      //                  exit(1);
-    }
-#endif
-
-    
-#ifdef HAND_Part_CONS
-    if ((strcmp(IdTable_get_name(idL), "Part") == 0) &&
-	(strcmp(IdTable_get_name(idR), "Cons") == 0)) {
-
-      printf("Rule is optimised: %s >< %s.\n", 
-	     IdTable_get_name(idL),
-	     IdTable_get_name(idR));
-      
-      //      PutsCodeN(&code[2], code_size-2);
-      
-      int i=2;
-
-      code[i++] = CodeAddr[LOAD];
-      code[i++] = (void *)13;
-      code[i++] = (void *)VM_OFFSET_META_R(0);
-
-      code[i++] = CodeAddr[LOAD];
-      code[i++] = (void *)14;
-      code[i++] = (void *)VM_OFFSET_META_L(0);
-
-      code[i++] = CodeAddr[OP_LT];
-      code[i++] = (void *)12;
-      code[i++] = (void *)13;
-      code[i++] = (void *)14;
-      
-      code[i++] = CodeAddr[OP_JMPEQ0];
-      code[i++] = (void *)12;
-      code[i++] = (void *)30;
-
-      code[i++] = CodeAddr[MKNAME];
-      code[i++] = (void *)13;
-
-      code[i++] = CodeAddr[MKAGENT];
-      code[i++] = (void *)12;
-      code[i++] = (void *)8;
-      code[i++] = (void *)2;
-      code[i++] = (void *)5;
-      code[i++] = (void *)13;
-
-      code[i++] = CodeAddr[PUSH];
-      code[i++] = (void *)VM_OFFSET_META_L(2);
-      code[i++] = (void *)12;
-
-      code[i++] = CodeAddr[OP_JMPCNCT_CONS];
-      code[i++] = (void *)VM_OFFSET_META_R(1);
-      code[i++] = (void *)11;
-            
-      code[i++] = CodeAddr[MKAGENT];
-      code[i++] = (void *)14;
-      code[i++] = (void *)(unsigned long)idL;
-      code[i++] = (void *)3;
-      code[i++] = (void *)VM_OFFSET_META_L(0);
-      code[i++] = (void *)VM_OFFSET_META_L(1);
-      code[i++] = (void *)13;
-
-      code[i++] = CodeAddr[PUSH];
-      code[i++] = (void *)14;
-      code[i++] = (void *)VM_OFFSET_META_R(1);
-
-      code[i++] = CodeAddr[RET_FREE_LR];
-
-      code[i++] = CodeAddr[LOAD];
-      code[i++] = (void *)VM_OFFSET_META_L(2);
-      code[i++] = (void *)13;
-
-      code[i++] = CodeAddr[LOOP_RREC2];
-      code[i++] = (void *)VM_OFFSET_META_R(1);
-
-
-      
-      code[i++] = CodeAddr[MKNAME];
-      code[i++] = (void *)13;
-
-      code[i++] = CodeAddr[MKAGENT];
-      code[i++] = (void *)12;
-      code[i++] = (void *)8;
-      code[i++] = (void *)2;
-      code[i++] = (void *)5;
-      code[i++] = (void *)13;
-
-      code[i++] = CodeAddr[PUSH];
-      code[i++] = (void *)VM_OFFSET_META_L(1);
-      code[i++] = (void *)12;
-
-      code[i++] = CodeAddr[OP_JMPCNCT_CONS];
-      code[i++] = (void *)VM_OFFSET_META_L(2);
-      code[i++] = (void *)11;
-            
-      code[i++] = CodeAddr[MKAGENT];
-      code[i++] = (void *)14;
-      code[i++] = (void *)(unsigned long)idL;
-      code[i++] = (void *)3;
-      code[i++] = (void *)VM_OFFSET_META_L(0);
-      code[i++] = (void *)13;
-      code[i++] = (void *)VM_OFFSET_META_L(2);
-
-      code[i++] = CodeAddr[PUSH];
-      code[i++] = (void *)14;
-      code[i++] = (void *)VM_OFFSET_META_R(1);
-
-      code[i++] = CodeAddr[RET_FREE_LR];
-
-      code[i++] = CodeAddr[LOAD];
-      code[i++] = (void *)VM_OFFSET_META_L(1);
-      code[i++] = (void *)13;
-
-      code[i++] = CodeAddr[LOOP_RREC2];
-      code[i++] = (void *)VM_OFFSET_META_R(1);
-
-      
-      
-      code_size = i;
-      
-      //      PutsCodeN(&code[2], i-2);
-      //                  exit(1);
-    }
-#endif
-
-    
-
-// --------------------------------------------------------------
-// For Merge Sort
-//    #define HAND_Split_CONS
-//    #define HAND_MergeCC_CONS
-// --------------------------------------------------------------
-    
-#ifdef HAND_Split_CONS
-    if ((strcmp(IdTable_get_name(idL), "Split") == 0) &&
-	(strcmp(IdTable_get_name(idR), "Cons") == 0)) {
-
-      printf("Rule is optimised: %s >< %s.\n", 
-	     IdTable_get_name(idL),
-	     IdTable_get_name(idR));
-      
-      //PutsCodeN(&code[2], code_size-2);
-      
-      int i=2;
-
-      code[i++] = CodeAddr[MKNAME];
-      code[i++] = (void *)13;
-
-      code[i++] = CodeAddr[MKAGENT];
-      code[i++] = (void *)12;
-      code[i++] = (void *)8;
-      code[i++] = (void *)2;
-      code[i++] = (void *)5;
-      code[i++] = (void *)13;
-
-      code[i++] = CodeAddr[PUSH];
-      code[i++] = (void *)0;
-      code[i++] = (void *)12;
-
-      code[i++] = CodeAddr[OP_JMPCNCT_CONS];
-      code[i++] = (void *)VM_OFFSET_META_R(1);
-      code[i++] = (void *)10;
-            
-      code[i++] = CodeAddr[MKAGENT];
-      code[i++] = (void *)14;
-      code[i++] = (void *)22;
-      code[i++] = (void *)2;
-      code[i++] = (void *)1;
-      code[i++] = (void *)13;
-
-      code[i++] = CodeAddr[PUSH];
-      code[i++] = (void *)14;
-      code[i++] = (void *)6;
-
-      code[i++] = CodeAddr[RET_FREE_LR];
-
-      
-      code[i++] = CodeAddr[LOAD];
-      code[i++] = (void *)VM_OFFSET_META_L(0);
-      code[i++] = (void *)VM_OFFSET_META_L(1);
-
-      code[i++] = CodeAddr[LOAD];
-      code[i++] = (void *)VM_OFFSET_META_L(1);
-      code[i++] = (void *)13;
-      
-      code[i++] = CodeAddr[LOOP_RREC2];
-      code[i++] = (void *)VM_OFFSET_META_R(1);
-      
-      code_size = i;
-      
-      //      PutsCodeN(&code[2], i-2);
-      //            exit(1);
-    }
-#endif
-
-
-    //        #define HAND_MergeCC_CONS
-#ifdef HAND_MergeCC_CONS
-    if ((strcmp(IdTable_get_name(idL), "MergeCC") == 0) &&
-	(strcmp(IdTable_get_name(idR), "Cons") == 0)) {
-
-      printf("Rule is optimised: %s >< %s.\n", 
-	     IdTable_get_name(idL),
-	     IdTable_get_name(idR));
-      
-      PutsCodeN(&code[2], code_size-2);
-      //exit(1);
-      
-      int i=2;
-
-      code[i++] = CodeAddr[LOAD];
-      code[i++] = (void *)13;
-      code[i++] = (void *)VM_OFFSET_META_R(0);
-
-      code[i++] = CodeAddr[LOAD];
-      code[i++] = (void *)14;
-      code[i++] = (void *)VM_OFFSET_META_L(1);
-
-      code[i++] = CodeAddr[OP_LE];
-      code[i++] = (void *)12;
-      code[i++] = (void *)13;
-      code[i++] = (void *)14;
-      
-      code[i++] = CodeAddr[OP_JMPEQ0];
-      code[i++] = (void *)12;
-      code[i++] = (void *)30;
-
-      code[i++] = CodeAddr[MKNAME];
-      code[i++] = (void *)13;
-
-      code[i++] = CodeAddr[MKAGENT];
-      code[i++] = (void *)12;
-      code[i++] = (void *)8;
-      code[i++] = (void *)2;
-      code[i++] = (void *)5;
-      code[i++] = (void *)13;
-
-      code[i++] = CodeAddr[PUSH];
-      code[i++] = (void *)0;
-      code[i++] = (void *)12;
-
-      code[i++] = CodeAddr[OP_JMPCNCT_CONS];
-      code[i++] = (void *)VM_OFFSET_META_R(1);
-      code[i++] = (void *)11;
-            
-      code[i++] = CodeAddr[MKAGENT];
-      code[i++] = (void *)14;
-      code[i++] = (void *)(unsigned long)idL;
-      code[i++] = (void *)3;
-      code[i++] = (void *)13;
-      code[i++] = (void *)1;
-      code[i++] = (void *)2;
-
-      code[i++] = CodeAddr[PUSH];
-      code[i++] = (void *)14;
-      code[i++] = (void *)6;
-
-      code[i++] = CodeAddr[RET_FREE_LR];
-
-      code[i++] = CodeAddr[LOAD];
-      code[i++] = (void *)VM_OFFSET_META_L(0);
-      code[i++] = (void *)13;
-
-      code[i++] = CodeAddr[LOOP_RREC2];
-      code[i++] = (void *)VM_OFFSET_META_R(1);
-
-
-      
-      code[i++] = CodeAddr[MKNAME];
-      code[i++] = (void *)13;
-
-      code[i++] = CodeAddr[MKAGENT];
-      code[i++] = (void *)12;
-      code[i++] = (void *)8;
-      code[i++] = (void *)2;
-      code[i++] = (void *)1;
-      code[i++] = (void *)13;
-
-      code[i++] = CodeAddr[PUSH];
-      code[i++] = (void *)0;
-      code[i++] = (void *)12;
-
-      code[i++] = CodeAddr[OP_JMPCNCT_CONS];
-      code[i++] = (void *)VM_OFFSET_META_L(2);
-      code[i++] = (void *)11;
-            
-      code[i++] = CodeAddr[MKAGENT];
-      code[i++] = (void *)14;
-      code[i++] = (void *)(unsigned long)idL;
-      code[i++] = (void *)3;
-      code[i++] = (void *)13;
-      code[i++] = (void *)5;
-      code[i++] = (void *)6;
-
-      code[i++] = CodeAddr[PUSH];
-      code[i++] = (void *)14;
-      code[i++] = (void *)2;
-
-      code[i++] = CodeAddr[RET_FREE_LR];
-
-      code[i++] = CodeAddr[LOAD];
-      code[i++] = (void *)14;
-      code[i++] = (void *)VM_OFFSET_META_L(2); // ys
-
-      code[i++] = CodeAddr[LOAD];
-      code[i++] = (void *)VM_OFFSET_META_L(0);
-      code[i++] = (void *)13;
-
-      code[i++] = CodeAddr[LOAD];
-      code[i++] = (void *)VM_OFFSET_META_L(1);
-      code[i++] = (void *)VM_OFFSET_META_R(0);
-
-      code[i++] = CodeAddr[LOAD];
-      code[i++] = (void *)VM_OFFSET_META_L(2);
-      code[i++] = (void *)VM_OFFSET_META_R(1);
-
-      code[i++] = CodeAddr[LOOP_RREC2];
-      code[i++] = (void *)14;
-
-
-      
-      
-      code_size = i;
-      
-      //      PutsCodeN(&code[2], i-2);
-      //                  exit(1);
-    }
-#endif
-
-
-
-
-// --------------------------------------------------------------
-// For Bubble Sort
-//    #define HAND_B_CONS
-// --------------------------------------------------------------
-    
-#ifdef HAND_B_CONS
-    if ((strcmp(IdTable_get_name(idL), "B") == 0) &&
-	(strcmp(IdTable_get_name(idR), "Cons") == 0)) {
-
-      printf("Rule is optimised: %s >< %s.\n", 
-	     IdTable_get_name(idL),
-	     IdTable_get_name(idR));
-      
-      //      PutsCodeN(&code[2], code_size-2);
-      
-      int i=2;
-
-      code[i++] = CodeAddr[LOAD];
-      code[i++] = (void *)13;
-      code[i++] = (void *)VM_OFFSET_META_L(1);
-
-      code[i++] = CodeAddr[LOAD];
-      code[i++] = (void *)14;
-      code[i++] = (void *)VM_OFFSET_META_R(0);
-
-      code[i++] = CodeAddr[OP_LT];
-      code[i++] = (void *)12;
-      code[i++] = (void *)13;
-      code[i++] = (void *)14;
-      
-      code[i++] = CodeAddr[OP_JMPEQ0];
-      code[i++] = (void *)12;
-      code[i++] = (void *)32;
-
-      code[i++] = CodeAddr[MKNAME];
-      code[i++] = (void *)13;
-
-      code[i++] = CodeAddr[MKAGENT];
-      code[i++] = (void *)12;
-      code[i++] = (void *)8;
-      code[i++] = (void *)2;
-      code[i++] = (void *)1;
-      code[i++] = (void *)13;
-
-      code[i++] = CodeAddr[PUSH];
-      code[i++] = (void *)0;
-      code[i++] = (void *)12;
-
-      code[i++] = CodeAddr[OP_JMPCNCT_CONS];
-      code[i++] = (void *)VM_OFFSET_META_R(1);
-      code[i++] = (void *)10;
-            
-      code[i++] = CodeAddr[MKAGENT];
-      code[i++] = (void *)14;
-      code[i++] = (void *)(unsigned long)idL;
-      code[i++] = (void *)2;
-      code[i++] = (void *)13;
-      code[i++] = (void *)5;
-
-      code[i++] = CodeAddr[PUSH];
-      code[i++] = (void *)14;
-      code[i++] = (void *)6;
-
-      code[i++] = CodeAddr[RET_FREE_LR];
-
-      code[i++] = CodeAddr[LOAD];
-      code[i++] = (void *)VM_OFFSET_META_L(0);
-      code[i++] = (void *)13;
-
-      code[i++] = CodeAddr[LOAD];
-      code[i++] = (void *)VM_OFFSET_META_L(1);
-      code[i++] = (void *)VM_OFFSET_META_R(0);
-
-      code[i++] = CodeAddr[LOOP_RREC2];
-      code[i++] = (void *)VM_OFFSET_META_R(1);
-
-
-      
-      code[i++] = CodeAddr[MKNAME];
-      code[i++] = (void *)13;
-
-      code[i++] = CodeAddr[MKAGENT];
-      code[i++] = (void *)12;
-      code[i++] = (void *)8;
-      code[i++] = (void *)2;
-      code[i++] = (void *)5;
-      code[i++] = (void *)13;
-
-      code[i++] = CodeAddr[PUSH];
-      code[i++] = (void *)0;
-      code[i++] = (void *)12;
-
-      code[i++] = CodeAddr[OP_JMPCNCT_CONS];
-      code[i++] = (void *)VM_OFFSET_META_R(1);
-      code[i++] = (void *)10;
-            
-      code[i++] = CodeAddr[MKAGENT];
-      code[i++] = (void *)14;
-      code[i++] = (void *)(unsigned long)idL;
-      code[i++] = (void *)2;
-      code[i++] = (void *)13;
-      code[i++] = (void *)1;
-
-      code[i++] = CodeAddr[PUSH];
-      code[i++] = (void *)14;
-      code[i++] = (void *)6;
-
-      code[i++] = CodeAddr[RET_FREE_LR];
-
-      code[i++] = CodeAddr[LOAD];
-      code[i++] = (void *)VM_OFFSET_META_L(0);
-      code[i++] = (void *)13;
-
-      code[i++] = CodeAddr[LOOP_RREC2];
-      code[i++] = (void *)VM_OFFSET_META_R(1);
-
-
-      
-      
-      code_size = i;
-      
-      //      PutsCodeN(&code[2], i-2);
-      //                  exit(1);
-    }
-#endif
-
-
-
-
-// --------------------------------------------------------------
-// For Dup_SZ
-//       #define HAND_DUP_S
-// --------------------------------------------------------------
-#ifdef HAND_DUP_S
-    if ((strcmp(IdTable_get_name(idL), "Dup") == 0) &&
-	(strcmp(IdTable_get_name(idR), "S") == 0)) {
-
-      printf("Rule is optimised: %s >< %s.\n", 
-	     IdTable_get_name(idL),
-	     IdTable_get_name(idR));
-      //      PutsCodeN(&code[2], code_size-2);
-      
-      int i=2;
-
-      code[i++] = CodeAddr[MKNAME];
-      code[i++] = (void *)13;
-
-      code[i++] = CodeAddr[MKNAME];
-      code[i++] = (void *)15;
-      
-      code[i++] = CodeAddr[MKAGENT];
-      code[i++] = (void *)12;
-      code[i++] = (void *)(unsigned long)idR;
-      code[i++] = (void *)1;
-      code[i++] = (void *)13;
-
-      code[i++] = CodeAddr[PUSH];
-      code[i++] = (void *)VM_OFFSET_META_L(0);
-      code[i++] = (void *)12;
-
-      code[i++] = CodeAddr[MKAGENT];
-      code[i++] = (void *)14;
-      code[i++] = (void *)(unsigned long)idR;
-      code[i++] = (void *)1;
-      code[i++] = (void *)15;
-
-      code[i++] = CodeAddr[PUSH];
-      code[i++] = (void *)VM_OFFSET_META_L(1);
-      code[i++] = (void *)14;
-
-      
-      code[i++] = CodeAddr[OP_JMPCNCT];
-      code[i++] = (void *)VM_OFFSET_META_R(0);
-      code[i++] = (void *)(unsigned long)idR;
-      code[i++] = (void *)10;
-
-      code[i++] = CodeAddr[MKAGENT];
-      code[i++] = (void *)16;
-      code[i++] = (void *)(unsigned long)idL;
-      code[i++] = (void *)2;
-      code[i++] = (void *)13;
-      code[i++] = (void *)15;
-
-      code[i++] = CodeAddr[PUSH];
-      code[i++] = (void *)16;
-      code[i++] = (void *)VM_OFFSET_META_R(0);
-      
-      code[i++] = CodeAddr[RET_FREE_LR];
-
-      
-      code[i++] = CodeAddr[LOAD];
-      code[i++] = (void *)VM_OFFSET_META_L(0);
-      code[i++] = (void *)13;
-
-      code[i++] = CodeAddr[LOAD];
-      code[i++] = (void *)VM_OFFSET_META_L(1);
-      code[i++] = (void *)15;
-      
-      code[i++] = CodeAddr[LOOP_RREC1];
-      code[i++] = (void *)VM_OFFSET_META_R(0);
-      //code[i++] = (void *)1;
-      
-      code_size = i;
-      
-      //PutsCodeN(&code[2], i-2);
-      //            exit(1);
-    }
-#endif
-    
-
-
-// --------------------------------------------------------------
-// For ADD_SZ
-//#define HAND_ADD_S
-// --------------------------------------------------------------
-#ifdef HAND_ADD_S
-    if ((strcmp(IdTable_get_name(idL), "AddSZ") == 0) &&
-	(strcmp(IdTable_get_name(idR), "S") == 0)) {
-
-      printf("Rule is optimised: %s >< %s.\n", 
-	     IdTable_get_name(idL),
-	     IdTable_get_name(idR));
-      //PutsCodeN(&code[2], code_size-2);
-      
-      int i=2;
-
-      code[i++] = CodeAddr[MKNAME];
-      code[i++] = (void *)13;
-
-      code[i++] = CodeAddr[MKAGENT];
-      code[i++] = (void *)12;
-      code[i++] = (void *)(unsigned long)idR;
-      code[i++] = (void *)1;
-      code[i++] = (void *)13;
-
-      code[i++] = CodeAddr[PUSH];
-      code[i++] = (void *)VM_OFFSET_META_L(0);;
-      code[i++] = (void *)12;
-
-      code[i++] = CodeAddr[OP_JMPCNCT];
-      code[i++] = (void *)VM_OFFSET_META_R(0);
-      code[i++] = (void *)(unsigned long)idR;
-      code[i++] = (void *)10;
-
-      code[i++] = CodeAddr[MKAGENT];
-      code[i++] = (void *)14;
-      code[i++] = (void *)(unsigned long)idL;
-      code[i++] = (void *)2;
-      code[i++] = (void *)13;
-      code[i++] = (void *)VM_OFFSET_META_L(1);
-
-      code[i++] = CodeAddr[PUSH];
-      code[i++] = (void *)14;
-      code[i++] = (void *)VM_OFFSET_META_R(0);
-      
-      code[i++] = CodeAddr[RET_FREE_LR];
-
-      
-      code[i++] = CodeAddr[LOAD];
-      code[i++] = (void *)VM_OFFSET_META_L(0);
-      code[i++] = (void *)13;
-
-      code[i++] = CodeAddr[LOOP_RREC1];
-      code[i++] = (void *)VM_OFFSET_META_R(0);
-      
-      code_size = i;
-      //      PutsCodeN(&code[2], i-2);
-      //            exit(1);
-    }
-#endif
-
-
-// --------------------------------------------------------------
-// For ACK_Sx
-// #define HAND_ACK_S
-// --------------------------------------------------------------
-#ifdef HAND_ACK_S
-    if ((strcmp(IdTable_get_name(idL), "Ack_Sx") == 0) &&
-	(strcmp(IdTable_get_name(idR), "S") == 0)) {
-
-      printf("Rule is optimised: %s >< %s.\n", 
-	     IdTable_get_name(idL),
-	     IdTable_get_name(idR));
-      //      PutsCodeN(&code[2], code_size-2);
-      
-      int i=2;
-
-      code[i++] = CodeAddr[MKNAME];
-      code[i++] = (void *)14;
-
-      code[i++] = CodeAddr[MKNAME];
-      code[i++] = (void *)15;
-
-      code[i++] = CodeAddr[MKAGENT];
-      code[i++] = (void *)13;
-      code[i++] = (void *)20; // Ack
-      code[i++] = (void *)2;
-      code[i++] = (void *)VM_OFFSET_META_L(0);
-      code[i++] = (void *)14;
-
-      code[i++] = CodeAddr[MKAGENT];
-      code[i++] = (void *)12;
-      code[i++] = (void *)24; // Dup
-      code[i++] = (void *)2;
-      code[i++] = (void *)13;
-      code[i++] = (void *)15;
-      
-      code[i++] = CodeAddr[PUSH];
-      code[i++] = (void *)12;
-      code[i++] = (void *)1;
-
-      code[i++] = CodeAddr[OP_JMPCNCT];
-      code[i++] = (void *)VM_OFFSET_META_R(0);
-      code[i++] = (void *)(unsigned long)idR;
-      code[i++] = (void *)10;
-      
-      code[i++] = CodeAddr[MKAGENT];
-      code[i++] = (void *)16;
-      code[i++] = (void *)(unsigned long)idL;
-      code[i++] = (void *)2;
-      code[i++] = (void *)14;
-      code[i++] = (void *)15;
-      
-      code[i++] = CodeAddr[PUSH];
-      code[i++] = (void *)16;
-      code[i++] = (void *)5;
-
-      code[i++] = CodeAddr[RET_FREE_LR];
-            
-      code[i++] = CodeAddr[LOAD];
-      code[i++] = (void *)VM_OFFSET_META_L(0);
-      code[i++] = (void *)14;
-
-      code[i++] = CodeAddr[LOAD];
-      code[i++] = (void *)VM_OFFSET_META_L(1);
-      code[i++] = (void *)15;
-
-      code[i++] = CodeAddr[LOOP_RREC1];
-      code[i++] = (void *)VM_OFFSET_META_R(0);
-      
-      code_size = i;
-      //            PutsCodeN(&code[2], i-2);
-	    //                  exit(1);
-    }
-#endif
-    
-    
-    
-   
-   //   #define HAND_FIB2
-#ifdef HAND_FIB2
-    PutsCodeN(&code[2], code_size-2);
-   int i=2;
-   //   code[i++] = CodeAddr[MKVAL];
-   //   code[i++] = (void *)14;
-   //   code[i++] = (void *)0;
-   //   code[i++] = (void *)0;
-   //
-   //   code[i++] = CodeAddr[OP_EQ];
-   //   code[i++] = (void *)12;
-   //   code[i++] = (void *)11;
-   //   code[i++] = (void *)14;
-   
-   code[i++] = CodeAddr[OP_EQI];
-   //code[i++] = (void *)11;  // ここで 11(OFFSET_R)を壊してしまうと他で影響あり
-   code[i++] = (void *)12;
-   code[i++] = (void *)11;
-   code[i++] = (void *)0;
-
-   code[i++] = CodeAddr[OP_JMPEQ0];
-   code[i++] = (void *)12;
-   //   code[i++] = (void *)8;   
-   code[i++] = (void *)4;
-   
-   //   code[i++] = CodeAddr[MKVAL];
-   //   code[i++] = (void *)12;
-   //   code[i++] = (void *)0;
-   //   code[i++] = (void *)1;
-   //   
-   //   code[i++] = CodeAddr[PUSH];
-   //   code[i++] = (void *)0;
-   //   code[i++] = (void *)12;
-   
-      code[i++] = CodeAddr[PUSHI];
-      code[i++] = (void *)0;
-      code[i++] = (void *)INT2FIX(1);
-
-   code[i++] = CodeAddr[RET_FREE_L];
-
-   
-
-
-   //   code[i++] = CodeAddr[MKVAL];
-   //   code[i++] = (void *)14;
-   //   code[i++] = (void *)0;
-   //   code[i++] = (void *)1;
-   //
-   //   code[i++] = CodeAddr[OP_EQ];
-   //   code[i++] = (void *)12;
-   //   code[i++] = (void *)11;
-   //   code[i++] = (void *)14;
-
-   code[i++] = CodeAddr[OP_EQI];
-   code[i++] = (void *)12;
-   code[i++] = (void *)11;
-   code[i++] = (void *)1;
-
-   code[i++] = CodeAddr[OP_JMPEQ0];
-   code[i++] = (void *)12;
-   //   code[i++] = (void *)8;
-   code[i++] = (void *)4;
-
-   //   code[i++] = CodeAddr[MKVAL];
-   //   code[i++] = (void *)12;
-   //   code[i++] = (void *)0;
-   //   code[i++] = (void *)1;
-   //   
-   //   code[i++] = CodeAddr[PUSH];
-   //   code[i++] = (void *)0;
-   //   code[i++] = (void *)12;
-
-      code[i++] = CodeAddr[PUSHI];
-      code[i++] = (void *)0;
-      code[i++] = (void *)INT2FIX(1);
-
-   
-   code[i++] = CodeAddr[RET_FREE_L];
-
-
-   
-   // Fib(Add(n2,r))~b, Fib(n2)~c
-   // -------------------------------
-   // Fib(n2)~c   
-   code[i++] = CodeAddr[MKNAME];
-   code[i++] = (void *)16;
-
-   
-   code[i++] = CodeAddr[OP_SUBI];
-   code[i++] = (void *)12;
-   code[i++] = (void *)11;
-   code[i++] = (void *)2;
-
-   code[i++] = CodeAddr[MKAGENT];
-   code[i++] = (void *)13;
-   code[i++] = (void *)20;
-   code[i++] = (void *)1;
-   code[i++] = (void *)16;
-
-   code[i++] = CodeAddr[PUSH];
-   code[i++] = (void *)13;
-   code[i++] = (void *)12;
-   
-
-   // -------------------------------
-   // Fib(Add(n2,r))~b
-   code[i++] = CodeAddr[OP_SUBI];
-   code[i++] = (void *)13;
-   code[i++] = (void *)11;
-   code[i++] = (void *)1;
-
-   
-   code[i++] = CodeAddr[MKAGENT];
-   code[i++] = (void *)14;
-   code[i++] = (void *)10;
-   code[i++] = (void *)2;
-   code[i++] = (void *)16;
-   code[i++] = (void *)0;
-
-
-   code[i++] = CodeAddr[LOAD];
-   code[i++] = (void *)VM_OFFSET_META_L(0);
-   code[i++] = (void *)14;
-
-   code[i++] = CodeAddr[LOAD];
-   code[i++] = (void *)VM_OFFSET_ANNOTATE_R;
-   code[i++] = (void *)13;
-   
-   code[i++] = CodeAddr[LOOP];
-   
-   code_size = i;
-   PutsCodeN(&code[2], i-2);
-   //    exit(1);
-#endif   
-
-
-   
-		    //ast_puts(ruleL); printf("><");
-		    //ast_puts(ruleR); puts("");
-
+  //ast_puts(ruleL); printf("><");
+  //ast_puts(ruleR); puts("");
+  
   // Record the rule code for idR >< idL
-  RuleTable_record(idL, idR, code_size, code); 
-
+  RuleTable_record(idL, idR, code, code_offset); 
+  
   if (idL != idR) {    
     // Delete the rule code for idR >< idL
     // because we need only the rule idL >< idR.    
@@ -5418,8 +4446,12 @@ void *ExecCode(int mode, VirtualMachine *restrict vm, void *restrict *code) {
 
   //http://magazine.rubyist.net/?0008-YarvManiacs
   static const void *table[] = {
-    &&E_PUSH, &&E_PUSHI, &&E_MKNAME, &&E_MKGNAME, &&E_MKAGENT,
-    &&E_REUSEAGENT, &&E_MYPUSH,
+    &&E_PUSH, &&E_PUSHI, &&E_MKNAME, &&E_MKGNAME,
+    &&E_MKAGENT0, &&E_MKAGENT1, &&E_MKAGENT2,
+    &&E_MKAGENT3, &&E_MKAGENT4, &&E_MKAGENT5,
+    &&E_REUSEAGENT0 ,&&E_REUSEAGENT1, &&E_REUSEAGENT2,
+    &&E_REUSEAGENT3, &&E_REUSEAGENT4, &&E_REUSEAGENT5,
+    &&E_MYPUSH,
     &&E_RET, &&E_RET_FREE_LR, &&E_RET_FREE_L, &&E_RET_FREE_R,
     &&E_LOOP, &&E_LOOP_RREC, &&E_LOOP_RREC1, &&E_LOOP_RREC2,
     &&E_LOADI, &&E_LOAD, &&E_LOADP,
@@ -5438,7 +4470,7 @@ void *ExecCode(int mode, VirtualMachine *restrict vm, void *restrict *code) {
     return table;
   }
 
-  int arity, i, pc=0;
+  int i, pc=0;
   VALUE a1;
   
   goto *code[0];
@@ -5446,65 +4478,178 @@ void *ExecCode(int mode, VirtualMachine *restrict vm, void *restrict *code) {
 
  E_MKNAME:
   //    puts("mkname");
-  vm->reg[(unsigned long)code[pc+1]] = makeName(vm);
-  pc +=2;
+  pc++;
+  vm->reg[(unsigned long)code[pc++]] = makeName(vm);
   goto *code[pc];
 
  E_MKGNAME:
-  //    puts("mkgname");
+  //    puts("mkgname reg sym");
 
   //a1 = makeGlobalName(vm, (char *)code[pc+1]);
 
-  a1 = NameTable_get_heap((char *)code[pc+1]);
+  a1 = NameTable_get_heap((char *)code[pc+2]);
   if (a1 == (VALUE)NULL) {
     i = IdTable_new_gnameid();
     a1 = makeName(vm);
 
     // set GID obtained by IdTable_new_gnameid()    
     BASIC(a1)->id = i;  
-    NameTable_set_heap_id((char *)code[pc+1], a1, i);
+    NameTable_set_heap_id((char *)code[pc+2], a1, i);
   }
 
-  vm->reg[(unsigned long)code[pc+2]] = a1;
+  vm->reg[(unsigned long)code[pc+1]] = a1;
   pc +=3;
   goto *code[pc];
 
   
- E_MKAGENT:
-  //    puts("mkagent");
-  arity = (unsigned long)code[pc+3];
+ E_MKAGENT0:
+  //    puts("mkagent0 reg id");
+  vm->reg[(unsigned long)code[pc+1]] =
+    makeAgent(vm, (unsigned long)code[pc+2]);;
+
+  pc+=3;
+  goto *code[pc];
+
+ E_MKAGENT1:
+  //    puts("mkagent0 reg id");
   a1 = makeAgent(vm, (unsigned long)code[pc+2]);
   vm->reg[(unsigned long)code[pc+1]] = a1;
+  pc+=3;
+  AGENT(a1)->port[0] = vm->reg[(unsigned long)code[pc++]];
+
+  goto *code[pc];
+  
+ E_MKAGENT2:
+  //    puts("mkagent0 reg id");
+  a1 = makeAgent(vm, (unsigned long)code[pc+2]);
+  vm->reg[(unsigned long)code[pc+1]] = a1;
+  pc+=3;
   {
     volatile VALUE *a1port = AGENT(a1)->port;
-    
-    pc +=4;
-    
-    for(i=0; i<arity; i++) {
-      //    AGENT(a1)->port[i] = vm->reg[(unsigned long)code[pc]];
-      a1port[i] = vm->reg[(unsigned long)code[pc++]];	  
-    }
-    
+    a1port[0] = vm->reg[(unsigned long)code[pc++]];
+    a1port[1] = vm->reg[(unsigned long)code[pc++]];
   }
   goto *code[pc];
 
- E_REUSEAGENT: // reuseagent target id arity
-  //    puts("reuseagent");
+
+ E_MKAGENT3:
+  //    puts("mkagent0 reg id");
+  a1 = makeAgent(vm, (unsigned long)code[pc+2]);
+  vm->reg[(unsigned long)code[pc+1]] = a1;
+  pc+=3;
+  {
+    volatile VALUE *a1port = AGENT(a1)->port;
+    a1port[0] = vm->reg[(unsigned long)code[pc++]];
+    a1port[1] = vm->reg[(unsigned long)code[pc++]];
+    a1port[2] = vm->reg[(unsigned long)code[pc++]];
+  }
+  goto *code[pc];
+
+ E_MKAGENT4:
+  //    puts("mkagent0 reg id");
+  a1 = makeAgent(vm, (unsigned long)code[pc+2]);
+  vm->reg[(unsigned long)code[pc+1]] = a1;
+  pc+=3;
+  {
+    volatile VALUE *a1port = AGENT(a1)->port;
+    a1port[0] = vm->reg[(unsigned long)code[pc++]];
+    a1port[1] = vm->reg[(unsigned long)code[pc++]];
+    a1port[2] = vm->reg[(unsigned long)code[pc++]];
+    a1port[3] = vm->reg[(unsigned long)code[pc++]];
+  }
+  goto *code[pc];
+
+ E_MKAGENT5:
+  //    puts("mkagent0 reg id");
+  a1 = makeAgent(vm, (unsigned long)code[pc+2]);
+  vm->reg[(unsigned long)code[pc+1]] = a1;
+  pc+=3;
+  {
+    volatile VALUE *a1port = AGENT(a1)->port;
+    a1port[0] = vm->reg[(unsigned long)code[pc++]];
+    a1port[1] = vm->reg[(unsigned long)code[pc++]];
+    a1port[2] = vm->reg[(unsigned long)code[pc++]];
+    a1port[3] = vm->reg[(unsigned long)code[pc++]];
+    a1port[4] = vm->reg[(unsigned long)code[pc++]];
+  }
+  goto *code[pc];
+
+  
+
+ E_REUSEAGENT0:
+  //    puts("reuseagent target id");
   a1 = vm->reg[(unsigned long)code[pc+1]];
   AGENT(a1)->basic.id = (unsigned long)code[pc+2];
+  pc+=3;
+  
+  goto *code[pc];
+
+ E_REUSEAGENT1:
+ //    puts("reuseagent target id");
+  pc++;
+  a1 = vm->reg[(unsigned long)code[pc++]];
+  AGENT(a1)->basic.id = (unsigned long)code[pc++];
+  AGENT(a1)->port[0] = vm->reg[(unsigned long)code[pc++]];
+  
+  goto *code[pc];
+  
+
+ E_REUSEAGENT2:
+ //    puts("reuseagent target id");
+  pc++;
+  a1 = vm->reg[(unsigned long)code[pc++]];
+  AGENT(a1)->basic.id = (unsigned long)code[pc++];
   {
     volatile VALUE *a1port = AGENT(a1)->port;
-    arity = (unsigned long)code[pc+3];
-    pc +=4;
-    for(i=0; i<arity; i++) {
-      //    AGENT(a1)->port[i] = vm->reg[(unsigned long)code[pc]];	  
-      a1port[i] = vm->reg[(unsigned long)code[pc]];	  
-      pc++;
-    }
-  }
+    a1port[0] = vm->reg[(unsigned long)code[pc++]];
+    a1port[1] = vm->reg[(unsigned long)code[pc++]];
+  }    
   goto *code[pc];
 
 
+ E_REUSEAGENT3:
+ //    puts("reuseagent target id");
+  pc++;
+  a1 = vm->reg[(unsigned long)code[pc++]];
+  AGENT(a1)->basic.id = (unsigned long)code[pc++];
+  {
+    volatile VALUE *a1port = AGENT(a1)->port;
+    a1port[0] = vm->reg[(unsigned long)code[pc++]];
+    a1port[1] = vm->reg[(unsigned long)code[pc++]];
+    a1port[2] = vm->reg[(unsigned long)code[pc++]];
+  }  
+  goto *code[pc];
+
+ E_REUSEAGENT4:
+ //    puts("reuseagent target id");
+  pc++;
+  a1 = vm->reg[(unsigned long)code[pc++]];
+  AGENT(a1)->basic.id = (unsigned long)code[pc++];
+  {
+    volatile VALUE *a1port = AGENT(a1)->port;
+    a1port[0] = vm->reg[(unsigned long)code[pc++]];
+    a1port[1] = vm->reg[(unsigned long)code[pc++]];
+    a1port[2] = vm->reg[(unsigned long)code[pc++]];
+    a1port[3] = vm->reg[(unsigned long)code[pc++]];
+  }  
+  goto *code[pc];
+
+ E_REUSEAGENT5:
+ //    puts("reuseagent target id");
+  pc++;
+  a1 = vm->reg[(unsigned long)code[pc++]];
+  AGENT(a1)->basic.id = (unsigned long)code[pc++];
+  {
+    volatile VALUE *a1port = AGENT(a1)->port;
+    a1port[0] = vm->reg[(unsigned long)code[pc++]];
+    a1port[1] = vm->reg[(unsigned long)code[pc++]];
+    a1port[2] = vm->reg[(unsigned long)code[pc++]];
+    a1port[3] = vm->reg[(unsigned long)code[pc++]];
+    a1port[4] = vm->reg[(unsigned long)code[pc++]];
+  }  
+  goto *code[pc];
+
+  
 
   /*
     ===TODO===
@@ -5992,18 +5137,6 @@ void *ExecCode(int mode, VirtualMachine *restrict vm, void *restrict *code) {
 
 
 
-
-
-void errprintf(int tid) {
-  printf("%2d:", tid);
-}  
-
-void errputs(char *s, int tid) {
-  /*
-    errprintf(tid);
-    puts(s);
-  */
-}
 
 
 /******************************************
@@ -6887,6 +6020,32 @@ void VM_Init(VirtualMachine *vm, unsigned int eqStackSize) {
 
 
 
+
+void select_kind_of_push(Ast *ast, int p1, int p2) {  
+  char *sym = ast->left->sym;
+  VALUE aheap = NameTable_get_heap(sym);
+  
+  if (aheap != (VALUE)NULL) {
+    // aheap already exists as a global
+    
+    // aheap is connected with something such as aheap->t
+    // ==> p2 should be conncected with t, so CNCTGN(p1,p2)
+    if (NAME(aheap)->port != (VALUE)NULL) {
+      IMCode_genCode2(CNCTGN, p1, p2);
+      
+    } else {
+      // aheap occurs somewhere, so it should be replaced by SUBSTGN(p1,p2)
+      IMCode_genCode2(SUBSTGN, p1, p2);
+    }
+  } else {
+    IMCode_genCode2(PUSH, p1, p2);
+  }
+    
+}
+
+
+
+
 #ifndef THREAD
 
 
@@ -6944,29 +6103,6 @@ void WHNF_execution_loop() {
 }
 
 
-void select_kind_of_push(Ast *ast, int p1, int p2) {  
-  char *sym = ast->left->sym;
-  VALUE aheap = NameTable_get_heap(sym);
-  
-  if (aheap != (VALUE)NULL) {
-    // aheap already exists as a global
-    
-    // aheap is connected with something such as aheap->t
-    // ==> p2 should be conncected with t, so CNCTGN(p1,p2)
-    if (NAME(aheap)->port != (VALUE)NULL) {
-      EnvAddCodeCNCTGN((void *)(unsigned long)p1,
-		       (void *)(unsigned long)p2);
-    } else {
-      // aheap occurs somewhere, so it should be replaced by SUBSTGN(p1,p2)
-      EnvAddCodeSUBSTGN((void *)(unsigned long)p1,
-			(void *)(unsigned long)p2);
-    }
-  } else {
-    EnvAddCodePUSH((void *)(unsigned long)p1, (void *)(unsigned long)p2);
-  }
-  
-  
-}
 
 
 int exec(Ast *at) {
@@ -6983,6 +6119,7 @@ int exec(Ast *at) {
 
   // for `where' expression
   if (!CompileStmListFromAst(at->left)) return 0;
+
 
   // aplist
   at = at->right;
@@ -7020,11 +6157,6 @@ int exec(Ast *at) {
     p2 = CompileTermFromAst(right, -1);
 
 
-    /*
-    EnvAddCodePUSH((void *)(unsigned long)p1, (void *)(unsigned long)p2);
-    at = ast_getTail(at);
-    */
-
     if (left->id == AST_NAME) {
       select_kind_of_push(left, p1, p2);
       
@@ -7032,7 +6164,7 @@ int exec(Ast *at) {
       select_kind_of_push(right, p2, p1);
       
     } else {
-      EnvAddCodePUSH((void *)(unsigned long)p1, (void *)(unsigned long)p2);    
+      IMCode_genCode2(PUSH, p1, p2);
     }
     
     at = ast_getTail(at);
@@ -7040,7 +6172,9 @@ int exec(Ast *at) {
 
 
   }
-  EnvAddCode(CodeAddr[RET]);  
+  IMCode_genCode0(RET);
+
+  
 
   // checking whether names occur more than twice
   if (!CmEnv_check_name_reference_times()) {
@@ -7048,12 +6182,15 @@ int exec(Ast *at) {
     return 0;
   }
 
+  
   // Generate codes from CmEnv, where '0' means index of the `code',
   // so here codes are stored from code[0].
-  CmEnv_generate_code_with_nameinfo(code,0); 
 
+  CmEnv_Retrieve_GNAME();
+  //    IMCode_Puts(0);
+  CmEnv_Generate_VMCode(code, 0);
+  //    PutsCode(code); exit(1);
 
-  //PutsCode(code); exit(1);
 
 #ifdef COUNT_MKAGENT
   NumberOfMkAgent=0;
@@ -7249,14 +6386,17 @@ int exec(Ast *at) {
 #endif
 
   void* code[MAX_CODE_SIZE];
+  
   int eqsnum = 0;
 
   start_timer(&t);
+  
   CmEnv_clear_all();
 
   // for `where' expression
   if (!CompileStmListFromAst(at->left)) return 0;
 
+  
   // aplist
   at = at->right;
   
@@ -7280,22 +6420,40 @@ int exec(Ast *at) {
   
   while (at!=NULL) {
     int p1,p2;
-    p1 = CompileTermFromAst(at->left->left, -1);
-    p2 = CompileTermFromAst(at->left->right, -1);
-    EnvAddCodeMYPUSH((void *)(unsigned long)p1, (void *)(unsigned long)p2);
+    Ast *left, *right;
+    left = at->left->left;
+    right = at->left->right;
+    p1 = CompileTermFromAst(left, -1);
+    p2 = CompileTermFromAst(right, -1);
+
+    if (left->id == AST_NAME) {
+      select_kind_of_push(left, p1, p2);
+      
+    } else if (right->id == AST_NAME) {
+      select_kind_of_push(right, p2, p1);
+      
+    } else {
+      IMCode_genCode2(PUSH, p1, p2);
+    }
+        
     eqsnum++;   //分散用
     at = ast_getTail(at);
   }
-  EnvAddCode(CodeAddr[RET]);  
+  IMCode_genCode0(RET);
 
+  
   // checking whether names occur more than twice
   if (!CmEnv_check_name_reference_times()) {
     return 0;
   }
-  // '0' means that generated codes are stored in code[0,...].
-  CmEnv_generate_code_with_nameinfo(code,0);
 
-  //PutsCode(code); exit(1);
+  // '0' means that generated codes are stored in code[0,...].
+  CmEnv_Retrieve_GNAME();
+  CmEnv_Generate_VMCode(code, 0);
+
+  //  int codenum = CmEnv_Generate_VMCode(code, 0);
+  //  PutsCodeN(code, codenum); exit(1);
+  
 
   ExecCode(1, VMs[0], code);
 
