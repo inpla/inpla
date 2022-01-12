@@ -6568,7 +6568,7 @@ int main(int argc, char *argv[])
 	  puts("Options:");
 	  printf(" -f <filename>    Set input file name                 (Defalut:    STDIN)\n");
 	  
-	  printf(" -x <number>      Set the unit size of the EQ stack   (Default: %8u)\n",
+	  printf(" -e <number>      Set the unit size of the EQ stack   (Default: %8u)\n",
 		 max_EQStack);
 
 
@@ -6578,7 +6578,7 @@ int main(int argc, char *argv[])
 		 MaxThreadsNum);
 
 #else
-	  printf(" -w               Enable Weak Reduction strategy      (Default: false)\n"
+	  printf(" -w               Enable Weak Reduction strategy      (Default:    false)\n"
 		 );
 	  
 	  
@@ -6647,23 +6647,23 @@ int main(int argc, char *argv[])
 	    fname = argv[i];
 	    retrieve_flag = 0;
 	  } else {
-	    printf("ERROR: The option switch '-f' needs a string that specifies an input file name.");
+	    printf("ERROR: The option switch '-f' needs a string of an input file name.");
 	    exit(-1);
 	  }
 	  break;
 	  
 	  
 	  
-	case 'x':
+	case 'e':
 	  i++;
 	  if (i < argc) {
 	    param = atoi(argv[i]);
 	    if (param == 0) {
-	      printf("ERROR: '%s' is illegal parameter for -x\n", argv[i]);
+	      printf("ERROR: '%s' is illegal parameter for -e\n", argv[i]);
 	      exit(-1);
 	    }
 	  } else {
-	    printf("ERROR: The option switch '-x' needs a number as an argument.");
+	    printf("ERROR: The option switch '-e' needs a natural number.");
 	    exit(-1);
 	  }
 	  max_EQStack=param;
@@ -6680,7 +6680,7 @@ int main(int argc, char *argv[])
 	      exit(-1);
 	    }
 	  } else {
-	    printf("ERROR: The option switch '-t' needs a number as an argument.");
+	    printf("ERROR: The option switch '-t' needs a number of threads.");
 	    exit(-1);
 	  }
 	  
