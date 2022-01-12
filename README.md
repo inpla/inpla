@@ -6,18 +6,18 @@
 
 Inpla is a multi-threaded parallel interpreter of interaction nets. Once you write programs for sequential execution, it works also in multi-threaded parallel execution. Each thread is managed on each CPU-core with POSIX-thread library. 
 
-* The current version is 0.6.0 released on **9 January 2022**. (See [Changelog.md](Changelog.md) for details.)
+* The current version is 0.6.1 released on **12 January 2022**. (See [Changelog.md](Changelog.md) for details.)
 
-![speedup-ratio](pic/benchmark_reuse_v0.6.0.png)
+![speedup-ratio](pic/benchmark_reuse_v0.6.1.png)
 
 |                | Haskell  |   SML    | Python | Inpla1 | Inpla1_r | Inpla7 | Inpla7_r |
 | -------------- | :------: | :------: | :----: | :----: | :------: | :----: | :------: |
-| ack(3,11)    |   2.31   | **0.41** |   -    |  5.54  |   4.57   |  1.58  |   0.92   |
-| fib 38       |   1.60   | **0.26** |  8.49  |  3.96  |   3.83   |  0.67  |   0.62   |
-| bsort 40000  |  34.81   |  11.17   | 76.72  | 26.31 | 21.07 |  7.39  | **3.41** |
-| isort 40000  | **0.02** |   2.97   | 36.63  | 12.59 |   10.03   |  3.65  |   1.63   |
-| qsort 800000 | **0.15** |   1.16   | 97.30  |  3.79  |   2.04   |  0.77  |   0.37   |
-| msort 800000 | 0.46 |   1.00   | 98.27  |  2.50  |   1.45   |  0.64  |   **0.39**   |
+| ack(3,11)    |   2.31   | **0.41** |   -    |  5.46  |   4.16   |  1.56  |   0.86   |
+| fib 38       |   1.60   | **0.26** |  8.49  |  3.93  |   3.68   |  0.69  |   0.62   |
+| bsort 40000  |  34.81   |  11.17   | 76.72  | 25.75 | 19.06 |  7.32  | **3.14** |
+| isort 40000  | **0.02** |   2.97   | 36.63  | 12.38 |   9.25   |  3.64  |   1.53   |
+| qsort 800000 | **0.15** |   1.16   | 97.30  |  3.83  |   1.91   |  0.77  |   0.35   |
+| msort 800000 | 0.46 |   1.00   | 98.27  |  2.39  |   1.39   |  0.69  |   **0.41**   |
 
 - **Comparison in execution time** with other implementations: **Haskell** (GHC version 8.10.7), **Standard ML of New Jersey** v110.74 (interpreter mode) and **Python** 3.8.5 in execution time.
   
@@ -73,7 +73,7 @@ Inpla is a multi-threaded parallel interpreter of interaction nets. Once you wri
 	
 	```
 	$ ./inpla
-	Inpla 0.6.0 : Interaction nets as a programming language [built: 9 Jan. 2022]
+	Inpla 0.6.1 : Interaction nets as a programming language [built: 12 Jan. 2022]
 	>>> 
 	```
 
@@ -130,7 +130,7 @@ Inpla is a multi-threaded parallel interpreter of interaction nets. Once you wri
   
     ```
     $ ./inpla -f sample/gcd.in
-    Inpla 0.6.0 : Interaction nets as a programming language [built: 9 Jan. 2022]
+    Inpla 0.6.1 : Interaction nets as a programming language [built: 12 Jan. 2022]
     (4 interactions, 0.00 sec)
     7
     
@@ -163,7 +163,7 @@ Inpla is a multi-threaded parallel interpreter of interaction nets. Once you wri
 
     ```
     $ ./inpla -f sample/isort.in
-    Inpla 0.6.0 : Interaction nets as a programming language [built: 9 Jan. 2022]
+    Inpla 0.6.1 : Interaction nets as a programming language [built: 12 Jan. 2022]
     (16 interactions, 0.00 sec)
     [1,2,3,6,9]
     
@@ -233,7 +233,7 @@ Inpla is a multi-threaded parallel interpreter of interaction nets. Once you wri
 
       ```
       $ ./inpla -f sample/qsort.in
-      Inpla 0.6.0 : Interaction nets as a programming language [built: 9 Jan. 2022]
+      Inpla 0.6.1 : Interaction nets as a programming language [built: 12 Jan. 2022]
       (22 interactions, 0.00 sec)
       [1,2,3,6,9]
       
@@ -259,13 +259,13 @@ Inpla is a multi-threaded parallel interpreter of interaction nets. Once you wri
 
   ```
   $ ./inpla -h
-  Inpla version 0.6.0
+  Inpla version 0.6.1
   Usage: inpla [options]
   
   Options:
-   -f <filename>    Set input file name            (Defalut:    STDIN)
-   -x <number>      Set the size of the EQ stack   (Default:    10000)
-   -t <number>      Set the number of threads      (Default:        1)
+   -f <filename>    Set input file name                 (Defalut:    STDIN)
+   -x <number>      Set the unit size of the EQ stack   (Default:      256)
+   -t <number>      Set the number of threads           (Default:        1)
    -d <Name>=<val>  Bind <val> to <Name>
    -h               Print this help message
   ```
