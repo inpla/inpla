@@ -4,6 +4,7 @@
 
 #include "name_table.h"
 
+static NameList *NameHashTable[NAME_HASHSIZE];  // HashTable for name strings
 
 /*
   NameTable[] <-- hashtable

@@ -36,6 +36,20 @@ typedef struct {
 #endif
 
 
+
+// Equation
+typedef struct EQ_tag {
+  VALUE l, r;
+} EQ;
+
+typedef struct EQList_tag {  
+  EQ eq;
+  struct EQList_tag *next;
+} EQList;
+
+
+
+
 #define FIXNUM_FLAG 0x01
 #define INT2FIX(i) ((VALUE)(((long)(i) << 1) | FIXNUM_FLAG))
 #define FIX2INT(i) ((int)(i) >> 1)
