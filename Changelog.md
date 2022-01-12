@@ -4,7 +4,7 @@
 ### v0.6.1 (released on 12 January 2022)
 
 #### New Features:
-- **Introduced automatically expandable equation stacks**: Stacks for equations are automatically expanded when the stacks overflow. The unit size is 256, so each stack size in virtual machines starts from 256, and these will be twice (256), triple (768) and so on. The unit size is specified by the execution option `-x`. For instance, Inpla invoked with `-x 1024` assigns a 1024-size equation stack for each thread. As for the global equation stack, the size is specified as `(the number of threads) * 8` in the `main` function as follows, so change it to improve the execution performance:
+- **Introduced automatically expandable equation stacks**: Stacks for equations are automatically expanded when the stacks overflow. The unit size is 256, so each stack size in virtual machines starts from 256, and these will be twice (256), triple (768) and so on. The unit size is specified by the execution option `-e`. For instance, Inpla invoked with `-e 1024` assigns a 1024-size equation stack for each thread. As for the global equation stack, the size is specified as `(the number of threads) * 8` in the `main` function as follows, so change it to improve the execution performance:
 
   ```
   GlobalEQStack_Init(MaxThreadsNum*8);

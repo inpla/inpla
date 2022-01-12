@@ -264,13 +264,17 @@ Inpla is a multi-threaded parallel interpreter of interaction nets. Once you wri
   
   Options:
    -f <filename>    Set input file name                 (Defalut:    STDIN)
-   -x <number>      Set the unit size of the EQ stack   (Default:      256)
+   -e <number>      Set the unit size of the EQ stack   (Default:      256)
+   -w               Enable Weak Reduction strategy      (Default:    false) 
    -t <number>      Set the number of threads           (Default:        1)
    -d <Name>=<val>  Bind <val> to <Name>
    -h               Print this help message
   ```
 
-(The option ```-t``` is available for the multi-thread version that is compiled by ```make thread```.)
+**Note**: 
+
+* The option `-w` is available for the single-thread version.
+* The option ```-t``` is available for the multi-thread version that is compiled by ```make thread```.
 
 
 
