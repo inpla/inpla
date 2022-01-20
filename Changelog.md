@@ -1,10 +1,21 @@
 # Change log
 
+### v0.6.2 (released on 20 January 2022)
+
+#### New Features:
+- **Retaining the big ring buffer**:  The new expandable buffer for agents and names require extra costs sometimes, so the old one, that is the big ring buffer, is embedded into programs sources. Comment out the following definition `EXPANDABLE_HEAP` in `src/inpla.y` when the old one is needed:
+
+  ```
+  #define EXPANDABLE_HEAP    // Expandable heaps for agents and names
+  ```
+
+  
+
 
 ### v0.6.1 (released on 12 January 2022)
 
 #### New Features:
-- **Introduced automatically expandable equation stacks**: Stacks for equations are automatically expanded when the stacks overflow. The unit size is 256, so each stack size in virtual machines starts from 256, and these will be twice (256), triple (768) and so on. The unit size is specified by the execution option `-e`. For instance, Inpla invoked with `-e 1024` assigns a 1024-size equation stack for each thread. As for the global equation stack, the size is specified as `(the number of threads) * 8` in the `main` function as follows, so change it to improve the execution performance:
+- **Introduced automatically expandable equation stacks**: Stacks for equations are automatically expanded when the stacks overflow. The unit size is 256, so each stack size in virtual machines starts from 256, and these will be twice (256), triple (768) and so on. The unit size is specified by the execution option `-e`. For instance, Inpla invoked with `-e 1024` assigns a 1024-size equation stack for each thread. As for the global equation stack, it is also automatically expandable, but the initial size is specified as `(the number of threads) * 8` in the `main` function as follows, so change it to improve the execution performance if it is needed:
 
   ```
   GlobalEQStack_Init(MaxThreadsNum*8);

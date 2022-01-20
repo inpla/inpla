@@ -19,9 +19,10 @@
   
 // Configuration  ---------------------------------------------------
 #define COUNT_INTERACTION  // Count interaction.
+#define EXPANDABLE_HEAP    // Expandable heaps for agents and names
+  
 //#define VERBOSE_NODE_USE  // Put memory usage of agents and names.
 //#define VERBOSE_HOOP_EXPANSION  // Put messages when hoops are expanded.
-
 //#define VERBOSE_EQSTACK_EXPANSION  // Put messages when Eqstacks are expanded.
 
 
@@ -561,7 +562,9 @@ int yyerror(char *s) {
  AGENT and NAME Heaps
 *********************************/
 
-//#define HOOP_SIZE (1 << 14)
+#ifdef EXPANDABLE_HEAP
+
+// HOOP_SIZE must be power of two
 #define HOOP_SIZE (1 << 18)
 #define HOOP_SIZE_MASK ((HOOP_SIZE) -1)
 
@@ -576,6 +579,8 @@ typedef struct HoopList_tag {
 #define HOOPFLAG_READYFORUSE 0x01 << 31 
 #define IS_READYFORUSE(a) ((a) & HOOPFLAG_READYFORUSE)
 #define SET_HOOPFLAG_READYFORUSE(a) ((a) = ((a) | HOOPFLAG_READYFORUSE))
+#define RESET_HOOPFLAG_READYFORUSE_AGENT(a) ((a) = (HOOPFLAG_READYFORUSE))
+#define RESET_HOOPFLAG_READYFORUSE_NAME(a) ((a) = ((ID_NAME) | (HOOPFLAG_READYFORUSE)))
 #define TOGGLE_HOOPFLAG_READYFORUSE(a) ((a) = ((a) ^ HOOPFLAG_READYFORUSE))
 
 
@@ -604,8 +609,8 @@ HoopList *HoopList_New_forName(void) {
       exit(-1);
   }
   for (i=0; i<HOOP_SIZE; i++) {
-    ((Name *)(hp_list->hoop))[i].basic.id = ID_NAME;
-    SET_HOOPFLAG_READYFORUSE(((Name *)(hp_list->hoop))[i].basic.id);
+    //    ((Name *)(hp_list->hoop))[i].basic.id = ID_NAME;
+    RESET_HOOPFLAG_READYFORUSE_NAME(((Name *)(hp_list->hoop))[i].basic.id);
   }
 
   // hp->next = NULL;   // this should be executed only for the first creation.
@@ -633,7 +638,8 @@ HoopList *HoopList_New_forAgent(void) {
       exit(-1);
   }
   for (i=0; i<HOOP_SIZE; i++) {
-    SET_HOOPFLAG_READYFORUSE(((Agent *)(hp_list->hoop))[i].basic.id);
+    RESET_HOOPFLAG_READYFORUSE_AGENT(((Agent *)(hp_list->hoop))[i].basic.id);
+
   }
 
   // hp->next = NULL;   // this should be executed only for the first creation.
@@ -711,7 +717,8 @@ VALUE myallocAgent(Heap *hp) {
       if (IS_READYFORUSE(hoop[idx].basic.id)) {
 	TOGGLE_HOOPFLAG_READYFORUSE(hoop[idx].basic.id);
 
-	hp->last_alloc_idx = idx;  
+	///		hp->last_alloc_idx = idx;
+	hp->last_alloc_idx = (idx-1+HOOP_SIZE)%HOOP_SIZE_MASK;  	
 	hp->last_alloc_list = hoop_list;
 
 	//    printf("hit[%d]\n", idx);
@@ -849,7 +856,171 @@ void myfree(VALUE ptr) {
 }
 
 
+#else
+// v0.5.6 -------------------------------------
+typedef struct Heap_tag {
+  VALUE *heap;
+  int lastAlloc;
+  unsigned int size;
+} Heap;  
 
+
+
+// Heap cells having '1' on the 31bit are ready for use and
+// '0' are occupied, that is to say, using now.
+#define HEAPFLAG_READYFORUSE 0x01 << 31 
+#define IS_READYFORUSE(a) ((a) & HEAPFLAG_READYFORUSE)
+#define SET_HEAPFLAG_READYFORUSE(a) ((a) = ((a) | HEAPFLAG_READYFORUSE))
+#define RESET_HEAPFLAG_READYFORUSE_AGENT(a) ((a) = (HEAPFLAG_READYFORUSE))
+#define RESET_HEAPFLAG_READYFORUSE_NAME(a) ((a) = ((ID_NAME) | (HEAPFLAG_READYFORUSE)))
+#define TOGGLE_HEAPFLAG_READYFORUSE(a) ((a) = ((a) ^ HEAPFLAG_READYFORUSE))
+
+
+
+VALUE *MakeAgentHeap(int size) {
+  int i;
+  VALUE *heap;
+
+  // Agent Heap  
+  heap = (VALUE *)malloc(sizeof(Agent)*size);
+  if (heap == (VALUE *)NULL) {
+      printf("[Heap]Malloc error\n");
+      exit(-1);
+  }
+  for (i=0; i<size; i++) {
+    RESET_HEAPFLAG_READYFORUSE_AGENT(((Agent *)(heap))[i].basic.id);
+  }
+
+  return heap;
+}
+
+VALUE *MakeNameHeap(int size) {
+  int i;
+  VALUE *heap;
+
+  // Name Heap  
+  heap = (VALUE *)malloc(sizeof(Name)*size);
+  if (heap == (VALUE *)NULL) {
+      printf("[Name]Malloc error\n");
+      exit(-1);
+  }
+ for (i=0; i<size; i++) {
+   //    ((Name *)(heap))[i].basic.id = ID_NAME;
+    RESET_HEAPFLAG_READYFORUSE_NAME(((Name *)(heap))[i].basic.id);
+  }
+
+  return heap;
+}
+
+
+
+//static inline
+VALUE myallocAgent(Heap *hp) {
+
+  int i, idx, hp_size;
+  Agent *hp_heap;
+
+  hp_size = hp->size;
+  hp_heap = (Agent *)(hp->heap);
+  
+  idx = hp->lastAlloc-1;
+
+  for (i=0; i < hp_size; i++) {
+    if (!IS_READYFORUSE(hp_heap[idx].basic.id)) {
+      idx++;
+      if (idx >= hp_size) {
+	idx -= hp_size;
+      }
+      continue;
+    }
+    TOGGLE_HEAPFLAG_READYFORUSE(hp_heap[idx].basic.id);
+    
+    hp->lastAlloc = idx;
+    
+    return (VALUE)&(hp_heap[idx]);
+  }
+
+  printf("\nCritical ERROR: All %d term cells have been consumed.\n", hp->size);
+  printf("You should have more term cells with -c option.\n");
+  exit(-1);
+
+  
+}
+
+
+//static inline
+VALUE myallocName(Heap *hp) {
+
+  int i,idx,hp_size;
+  Name *hp_heap;
+
+  hp_size = hp->size;
+  hp_heap = (Name *)(hp->heap);
+  
+  idx = hp->lastAlloc;
+
+
+  for (i=0; i < hp_size; i++) {
+    //    if (!IS_READYFORUSE(((Name *)hp->heap)[idx].basic.id)) {
+    if (!IS_READYFORUSE(hp_heap[idx].basic.id)) {
+      idx++;
+      if (idx >= hp_size) {
+	idx -= hp_size;
+      }
+      continue;
+    }
+    //    TOGGLE_HEAPFLAG_READYFORUSE(((Name *)hp->heap)[idx].basic.id);
+    TOGGLE_HEAPFLAG_READYFORUSE(hp_heap[idx].basic.id);
+    
+    hp->lastAlloc = idx;
+    
+    //    return (VALUE)&(((Name *)hp->heap)[idx]);
+    return (VALUE)&(hp_heap[idx]);
+  }
+
+  printf("\nCritical ERROR: All %d name cells have been consumed.\n", hp->size);
+  printf("You should have more term cells with -c option.\n");
+  exit(-1);
+
+  
+}
+
+
+unsigned long Heap_GetNum_Usage_forName(Heap *hp) {
+  int i;
+  unsigned long total=0;
+  for (i=0; i < hp->size; i++) {
+    if (!IS_READYFORUSE( ((Name *)hp->heap)[i].basic.id)) {
+      total++;
+    }
+  }
+  return total;
+}
+unsigned long Heap_GetNum_Usage_forAgent(Heap *hp) {
+  int i;
+  unsigned long total=0;
+  for (i=0; i < hp->size; i++) {
+    if (!IS_READYFORUSE( ((Agent *)hp->heap)[i].basic.id)) {
+      total++;
+    }
+  }
+  return total;
+}
+
+
+
+//static inline
+void myfree(VALUE ptr) {
+
+  TOGGLE_HEAPFLAG_READYFORUSE(BASIC(ptr)->id);
+
+}
+
+
+//---------------------------------------------
+
+
+#endif
 
 
 //-----------------------------------------
@@ -1215,6 +1386,7 @@ static VirtualMachine VM;
 #endif
 
 
+#ifdef EXPANDABLE_HEAP
 void VM_Buffer_Init(VirtualMachine *vm) {
   // Agent Heap
   vm->agentHeap.last_alloc_list = HoopList_New_forAgent();
@@ -1226,6 +1398,26 @@ void VM_Buffer_Init(VirtualMachine *vm) {
   vm->nameHeap.last_alloc_list->next = vm->nameHeap.last_alloc_list;
   vm->nameHeap.last_alloc_idx = 0;
 }  
+#else
+
+void VM_InitBuffer(VirtualMachine *vm, int size) {
+
+  // Name Heap
+  vm->agentHeap.heap = MakeAgentHeap(size);
+  vm->agentHeap.lastAlloc = 0;
+  vm->agentHeap.size = size;
+  
+		    
+  //size = size/2;
+  vm->nameHeap.heap = MakeNameHeap(size);
+  vm->nameHeap.lastAlloc = size-1;
+  //vm->nameHeap.lastAlloc = 0;
+  vm->nameHeap.size = size;
+
+}  
+
+#endif
+
 
 
 void VM_EQStack_Init(VirtualMachine *vm, int size) {
@@ -1280,10 +1472,21 @@ int VM_EQStack_Pop(VirtualMachine *vm, VALUE *l, VALUE *r) {
 }
 
 
+#ifdef EXPANDABLE_HEAP
 void VM_Init(VirtualMachine *vm, unsigned int eqStackSize) {
   VM_Buffer_Init(vm);
   VM_EQStack_Init(vm, eqStackSize);
 }
+#else
+
+// v0.5.6
+void VM_Init(VirtualMachine *vm, 
+	     unsigned int agentBufferSize, unsigned int eqStackSize) {
+  VM_InitBuffer(vm, agentBufferSize);
+  VM_EQStack_Init(vm, eqStackSize);
+}
+#endif
+
 
 
 
@@ -2256,7 +2459,7 @@ int CmEnv_Generate_VMCode(void **code, int offset) {
       //	     imcode->operand1, imcode->operand2);
       code[ptr++] = CodeAddr[imcode->opcode];
       code[ptr++] = (void *)(unsigned long)imcode->operand1;      
-      code[ptr++] = (void *)(unsigned long)imcode->operand2;                  
+      code[ptr++] = (void *)INT2FIX(imcode->operand2);                  
       break;
 
 
@@ -2602,30 +2805,30 @@ void PutsCodeN(void **code, int n) {
     printf("%2d: ", i);
     
     if (code[i] == CodeAddr[MKNAME]) {
-      printf("MKNAME var%lu\n", (unsigned long)code[i+1]);
+      printf("mkname var%lu\n", (unsigned long)code[i+1]);
       i+=1;
       
     } else if (code[i] == CodeAddr[MKGNAME]) {
-      printf("MKGNAME var%lu `%s'\n",
+      printf("mkgname var%lu `%s'\n",
 	     (unsigned long)code[i+1],
 	     (char *)code[i+2]);
       i+=2;
 
     } else if (code[i] == CodeAddr[MKAGENT0]) {
-      printf("MKAGENT0 var%lu id:%lu\n", 
+      printf("mkagent0 var%lu id:%lu\n", 
 	     (unsigned long)code[i+1],
 	     (unsigned long)code[i+2]);
       i+=2;
 
     } else if (code[i] == CodeAddr[MKAGENT1]) {
-      printf("MKAGENT1 var%lu id:%lu var%lu\n", 
+      printf("mkagent1 var%lu id:%lu var%lu\n", 
 	     (unsigned long)code[i+1],
 	     (unsigned long)code[i+2],
 	     (unsigned long)code[i+3]);
       i+=3;
 
     } else if (code[i] == CodeAddr[MKAGENT2]) {
-      printf("MKAGENT2 var%lu id:%lu var%lu var%lu\n", 
+      printf("mkagent2 var%lu id:%lu var%lu var%lu\n", 
 	     (unsigned long)code[i+1],
 	     (unsigned long)code[i+2],
 	     (unsigned long)code[i+3],
@@ -2633,7 +2836,7 @@ void PutsCodeN(void **code, int n) {
       i+=4;
 
     } else if (code[i] == CodeAddr[MKAGENT3]) {
-      printf("MKAGENT3 var%lu id:%lu var%lu var%lu var%lu\n", 
+      printf("mkagent3 var%lu id:%lu var%lu var%lu var%lu\n", 
 	     (unsigned long)code[i+1],
 	     (unsigned long)code[i+2],
 	     (unsigned long)code[i+3],
@@ -2642,7 +2845,7 @@ void PutsCodeN(void **code, int n) {
       i+=5;
 
     } else if (code[i] == CodeAddr[MKAGENT4]) {
-      printf("MKAGENT4 var%lu id:%lu var%lu var%lu var%lu var%lu\n", 
+      printf("mkagent4 var%lu id:%lu var%lu var%lu var%lu var%lu\n", 
 	     (unsigned long)code[i+1],
 	     (unsigned long)code[i+2],
 	     (unsigned long)code[i+3],
@@ -2652,7 +2855,7 @@ void PutsCodeN(void **code, int n) {
       i+=6;
 
     } else if (code[i] == CodeAddr[MKAGENT5]) {
-      printf("MKAGENT5 var%lu id:%lu var%lu var%lu var%lu var%lu var%lu\n", 
+      printf("mkagent5 var%lu id:%lu var%lu var%lu var%lu var%lu var%lu\n", 
 	     (unsigned long)code[i+1],
 	     (unsigned long)code[i+2],
 	     (unsigned long)code[i+3],
@@ -2663,14 +2866,14 @@ void PutsCodeN(void **code, int n) {
       i+=7;
       
     } else if (code[i] == CodeAddr[REUSEAGENT0]) {
-      printf("REUSEAGENT0 var%lu as id=%lu", 
+      printf("reuseagent0 var%lu as id=%lu", 
 	     (unsigned long)code[i+1],
 	     (unsigned long)code[i+2]);
       puts("");
       i+=2;
 
     } else if (code[i] == CodeAddr[REUSEAGENT1]) {
-      printf("REUSEAGENT0 var%lu as id=%lu", 
+      printf("reuseagent0 var%lu as id=%lu", 
 	     (unsigned long)code[i+1],
 	     (unsigned long)code[i+2]);
       printf(" var%lu", (unsigned long)code[i+3]);
@@ -2678,7 +2881,7 @@ void PutsCodeN(void **code, int n) {
       i+=3;
       
     } else if (code[i] == CodeAddr[REUSEAGENT2]) {
-      printf("REUSEAGENT2 var%lu as id=%lu", 
+      printf("reuseagent2 var%lu as id=%lu", 
 	     (unsigned long)code[i+1],
 	     (unsigned long)code[i+2]);
       printf(" var%lu", (unsigned long)code[i+3]);
@@ -2687,7 +2890,7 @@ void PutsCodeN(void **code, int n) {
       i+=4;
 
     } else if (code[i] == CodeAddr[REUSEAGENT3]) {
-      printf("REUSEAGENT3 var%lu as id=%lu", 
+      printf("reuseagent3 var%lu as id=%lu", 
 	     (unsigned long)code[i+1],
 	     (unsigned long)code[i+2]);
       printf(" var%lu", (unsigned long)code[i+3]);
@@ -2697,7 +2900,7 @@ void PutsCodeN(void **code, int n) {
       i+=5;
       
     } else if (code[i] == CodeAddr[REUSEAGENT4]) {
-      printf("REUSEAGENT4 var%lu as id=%lu", 
+      printf("reuseagent4 var%lu as id=%lu", 
 	     (unsigned long)code[i+1],
 	     (unsigned long)code[i+2]);
       printf(" var%lu", (unsigned long)code[i+3]);
@@ -2708,7 +2911,7 @@ void PutsCodeN(void **code, int n) {
       i+=6;
 
     } else if (code[i] == CodeAddr[REUSEAGENT5]) {
-      printf("REUSEAGENT5 var%lu as id=%lu", 
+      printf("reuseagent5 var%lu as id=%lu", 
 	     (unsigned long)code[i+1],
 	     (unsigned long)code[i+2]);
       printf(" var%lu", (unsigned long)code[i+3]);
@@ -2720,202 +2923,202 @@ void PutsCodeN(void **code, int n) {
       i+=7;
       
     } else if (code[i] == CodeAddr[PUSH]) {
-      printf("PUSH var%lu var%lu\n",
+      printf("push var%lu var%lu\n",
 	     (unsigned long)code[i+1],
 	     (unsigned long)code[i+2]);
       i+=2;
 
     } else if (code[i] == CodeAddr[PUSHI]) {
-      printf("PUSHI var%lu $%d\n",
+      printf("pushi var%lu $%d\n",
 	     (unsigned long)code[i+1],
 	     FIX2INT((unsigned long)code[i+2]));
       i+=2;
 
     } else if (code[i] == CodeAddr[MYPUSH]) {
-      printf("MYPUSH var%lu var%lu\n",
+      printf("mypush var%lu var%lu\n",
 	     (unsigned long)code[i+1],
 	     (unsigned long)code[i+2]);
       i+=2;
 
     } else if (code[i] == CodeAddr[RET]) {
-      puts("RET");
+      puts("ret");
 
     } else if (code[i] == CodeAddr[RET_FREE_L]) {
-      puts("RET_FREE_L");
+      puts("ret_free_l");
 
     } else if (code[i] == CodeAddr[RET_FREE_R]) {
-      puts("RET_FREE_R");
+      puts("ret_free_r");
 
     } else if (code[i] == CodeAddr[RET_FREE_LR]) {
-      puts("RET_FREE_LR");
+      puts("ret_free_lr");
 
     } else if (code[i] == CodeAddr[LOADI]) {
-      printf("LOADI var%lu $%lu\n",
+      printf("loadi var%lu $%d\n",
 	     (unsigned long)code[i+1],
-	     (unsigned long)code[i+2]);
+	     FIX2INT((unsigned long)code[i+2]));
       i+=2;
       
     } else if (code[i] == CodeAddr[LOOP]) {
-      puts("LOOP\n");
+      puts("loop\n");
 
     } else if (code[i] == CodeAddr[LOOP_RREC]) {
-      printf("LOOP_RREC var%lu $%lu\n",
+      printf("loop_rrec var%lu $%lu\n",
 	     (unsigned long)code[i+1],
 	     (unsigned long)code[i+2]);
       i+=2;
 
     } else if (code[i] == CodeAddr[LOOP_RREC1]) {
-      printf("LOOP_RREC1 var%lu\n",
+      printf("loop_rrec1 var%lu\n",
 	     (unsigned long)code[i+1]);
       i+=1;
 
     } else if (code[i] == CodeAddr[LOOP_RREC2]) {
-      printf("LOOP_RREC2 var%lu\n",
+      printf("loop_rrec2 var%lu\n",
 	     (unsigned long)code[i+1]);
       i+=1;
 
     } else if (code[i] == CodeAddr[LOAD]) {
-      printf("LOAD var%lu var%lu\n",
+      printf("load var%lu var%lu\n",
 	     (unsigned long)code[i+1],
 	     (unsigned long)code[i+2]);
       i+=2;
 
     } else if (code[i] == CodeAddr[LOADP]) {
-      printf("LOADP var%lu var%lu[%lu]\n",
+      printf("loadp var%lu var%lu[%lu]\n",
 	     (unsigned long)code[i+1],
 	     (unsigned long)code[i+2],
 	     (unsigned long)code[i+3]);
       i+=3;
 
     } else if (code[i] == CodeAddr[OP_ADD]) {
-      printf("ADD var%lu var%lu var%lu\n",
+      printf("add var%lu var%lu var%lu\n",
 	     (unsigned long)code[i+1],
 	     (unsigned long)code[i+2],
 	     (unsigned long)code[i+3]);
       i+=3;
 
     } else if (code[i] == CodeAddr[OP_SUB]) {
-      printf("SUB var%lu var%lu var%lu\n", 
+      printf("sub var%lu var%lu var%lu\n", 
 	     (unsigned long)code[i+1],
 	     (unsigned long)code[i+2],
 	     (unsigned long)code[i+3]);
       i+=3;
 
     } else if (code[i] == CodeAddr[OP_SUBI]) {
-      printf("SUBI var%lu var%lu $%ld\n",
+      printf("subi var%lu var%lu $%ld\n",
 	     (unsigned long)code[i+1],
 	     (unsigned long)code[i+2],
 	     (long int)code[i+3]);
       i+=3;
 
     } else if (code[i] == CodeAddr[OP_MUL]) {
-      printf("MUL var%lu var%lu var%lu\n", 
+      printf("mul var%lu var%lu var%lu\n", 
 	     (unsigned long)code[i+1],
 	     (unsigned long)code[i+2],
 	     (unsigned long)code[i+3]);
       i+=3;
 
     } else if (code[i] == CodeAddr[OP_DIV]) {
-      printf("DIV var%lu var%lu var%lu\n", 
+      printf("div var%lu var%lu var%lu\n", 
 	     (unsigned long)code[i+1],
 	     (unsigned long)code[i+2],
 	     (unsigned long)code[i+3]);
       i+=3;
 
     } else if (code[i] == CodeAddr[OP_MOD]) {
-      printf("MOD var%lu var%lu var%lu\n", 
+      printf("mod var%lu var%lu var%lu\n", 
 	     (unsigned long)code[i+1],
 	     (unsigned long)code[i+2],
 	     (unsigned long)code[i+3]);
       i+=3;
 
     } else if (code[i] == CodeAddr[OP_LT]) {
-      printf("LT var%lu var%lu var%lu\n",
+      printf("lt var%lu var%lu var%lu\n",
 	     (unsigned long)code[i+1],
 	     (unsigned long)code[i+2],
 	     (unsigned long)code[i+3]);
       i+=3;
 
     } else if (code[i] == CodeAddr[OP_LE]) {
-      printf("LE var%lu var%lu var%lu\n",
+      printf("le var%lu var%lu var%lu\n",
 	     (unsigned long)code[i+1],
 	     (unsigned long)code[i+2],
 	     (unsigned long)code[i+3]);
       i+=3;
 
     } else if (code[i] == CodeAddr[OP_EQ]) {
-      printf("EQ var%lu var%lu var%lu\n",
+      printf("eq var%lu var%lu var%lu\n",
 	     (unsigned long)code[i+1],
 	     (unsigned long)code[i+2],
 	     (unsigned long)code[i+3]);
       i+=3;
 
     } else if (code[i] == CodeAddr[OP_EQI]) {
-      printf("EQI var%lu var%lu $%ld\n",
+      printf("eqi var%lu var%lu $%ld\n",
 	     (unsigned long)code[i+1],
 	     (unsigned long)code[i+2],
 	     (long int)code[i+3]);
       i+=3;
 
     } else if (code[i] == CodeAddr[OP_NE]) {
-      printf("NE var%lu var%lu var%lu\n",
+      printf("ne var%lu var%lu var%lu\n",
 	     (unsigned long)code[i+1],
 	     (unsigned long)code[i+2],
 	     (unsigned long)code[i+3]);
       i+=3;
 
     } else if (code[i] == CodeAddr[OP_JMPEQ0]) {
-      printf("JMPEQ0 var%lu $%lu\n",
+      printf("jmpeq0 var%lu $%lu\n",
 	     (unsigned long)code[i+1],
 	     (unsigned long)code[i+2]);
       i+=2;
 
     } else if (code[i] == CodeAddr[OP_JMPCNCT_CONS]) {
-      printf("JMPCNCT_CONS var%lu $%lu\n",
+      printf("jmpcnct_cons var%lu $%lu\n",
 	     (unsigned long)code[i+1],
 	     (unsigned long)code[i+2]);
       i+=2;
 
     } else if (code[i] == CodeAddr[OP_JMPCNCT]) {
-      printf("JMPCNCT var%lu $%lu $%lu\n",
+      printf("jmpcnct var%lu $%lu $%lu\n",
 	     (unsigned long)code[i+1],
 	     (unsigned long)code[i+2],
 	     (unsigned long)code[i+3]);
       i+=2;
 
     } else if (code[i] == CodeAddr[OP_JMP]) {
-      printf("JMP $%lu\n", (unsigned long)code[i+1]);
+      printf("jmp $%lu\n", (unsigned long)code[i+1]);
       i+=1;
 
     } else if (code[i] == CodeAddr[OP_UNM]) {
-      printf("UNM var%lu var%lu\n",
+      printf("unm var%lu var%lu\n",
 	     (unsigned long)code[i+1],
 	     (unsigned long)code[i+2]);
       i+=1;
 
     } else if (code[i] == CodeAddr[OP_RAND]) {
-      printf("RND var%lu var%lu\n",
+      printf("rnd var%lu var%lu\n",
 	     (unsigned long)code[i+1],
 	     (unsigned long)code[i+2]);
       i+=2;
 
     } else if (code[i] == CodeAddr[CNCTGN]) {
-      printf("CNCTGN var%lu var%lu\n",
+      printf("cnctgn var%lu var%lu\n",
 	     (unsigned long)code[i+1],
 	     (unsigned long)code[i+2]);
       i+=2;
 
     } else if (code[i] == CodeAddr[SUBSTGN]) {
-      printf("SUBSTGN var%lu var%lu\n",
+      printf("substgn var%lu var%lu\n",
 	     (unsigned long)code[i+1],
 	     (unsigned long)code[i+2]);
       i+=2;
 
     } else if (code[i] == CodeAddr[NOP]) {
-      puts("NOP");
+      puts("nop");
 
     } else {
-      printf("CODE %lu\n", (unsigned long)code[i]);      
+      printf("code %lu\n", (unsigned long)code[i]);      
     }
   }
 }
@@ -4762,7 +4965,8 @@ void *ExecCode(int mode, VirtualMachine *restrict vm, void *restrict *code) {
   
  E_LOADI:
   //    puts("loadi reg num");
-  a1 = INT2FIX((long)code[pc+2]);
+  //  a1 = INT2FIX((long)code[pc+2]);
+  a1 = (long)code[pc+2];  
   reg[(unsigned long)code[pc+1]] = a1;
   pc +=3;
   goto *code[pc];
@@ -5212,6 +5416,7 @@ void mark_allHash(void) {
   }
 }
 
+#ifdef EXPANDABLE_HEAP
 void sweep_AgentHeap(Heap *hp) {
 
   HoopList *hoop_list = hp->last_alloc_list;
@@ -5251,7 +5456,32 @@ void sweep_NameHeap(Heap *hp) {
   } while (hoop_list != hp->last_alloc_list);
   
 }
+#else
 
+// v0.5.6
+void sweep_AgentHeap(Heap *hp) {
+  int i;
+  for (i=0; i < hp->size; i++) {
+    if (!IS_FLAG_MARKED( ((Agent *)hp->heap)[i].basic.id)) {
+      SET_HEAPFLAG_READYFORUSE( ((Agent *)hp->heap)[i].basic.id);
+    } else {
+      TOGGLE_FLAG_MARKED( ((Agent *)hp->heap)[i].basic.id);
+    }
+  }
+}
+void sweep_NameHeap(Heap *hp) {
+  int i;
+  for (i=0; i < hp->size; i++) {
+    if (!IS_FLAG_MARKED( ((Name *)hp->heap)[i].basic.id)) {
+      SET_HEAPFLAG_READYFORUSE( ((Name *)hp->heap)[i].basic.id);
+    } else {
+      TOGGLE_FLAG_MARKED( ((Name *)hp->heap)[i].basic.id);
+    }
+  }
+}
+
+
+#endif
 
 
 void mark_and_sweep(void) {
@@ -6306,7 +6536,14 @@ void *tpool_thread(void *arg) {
   return (void *)NULL;
 }
 
+#ifdef EXPANDABLE_HEAP    
 void tpool_init(unsigned int eqstack_size) {
+#else
+  //v0.5.6
+void tpool_init(unsigned int agentBufferSize, unsigned int eqstack_size) {  
+#endif
+  
+  
   int i, status;
   //  static int id[100];
 
@@ -6338,7 +6575,13 @@ void tpool_init(unsigned int eqstack_size) {
   for (i=0; i<MaxThreadsNum; i++) {
     VMs[i] = malloc(sizeof(VirtualMachine));
     VMs[i]->id = i;
+    
+#ifdef EXPANDABLE_HEAP    
     VM_Init(VMs[i], eqstack_size);
+#else
+    VM_Init(VMs[i], agentBufferSize, eqstack_size);
+#endif
+    
     status = pthread_create( &Threads[i],
 		    &attr,
 		    tpool_thread,
@@ -6541,9 +6784,14 @@ int main(int argc, char *argv[])
     int i, param;
     char *fname = NULL;
 
-    // int max_EQStack=1<<12; // 512
     int max_EQStack=1<<8; // 512
 
+
+#ifndef EXPANDABLE_HEAP
+    // v0.5.6
+    unsigned int heap_size=100000;
+#endif
+    
 
 #ifndef THREAD
     Init_WHNFinfo();
@@ -6567,12 +6815,17 @@ int main(int argc, char *argv[])
 	  puts("Usage: inpla [options]\n");
 	  puts("Options:");
 	  printf(" -f <filename>    Set input file name                 (Defalut:    STDIN)\n");
+#ifndef EXPANDABLE_HEAP
+	  //v0.5.6
+	  printf(" -c <number>      Set the size of heaps               (Defalut: %8u)\n",
+		 heap_size);
+#endif
 	  
 	  printf(" -e <number>      Set the unit size of the EQ stack   (Default: %8u)\n",
 		 max_EQStack);
 
 
-	  // Extended Options for threads or non-threads
+	  // Special Options
 #ifdef THREAD
 	  printf(" -t <number>      Set the number of threads           (Default: %8d)\n",
 		 MaxThreadsNum);
@@ -6651,7 +6904,25 @@ int main(int argc, char *argv[])
 	    exit(-1);
 	  }
 	  break;
-	  
+
+
+#ifndef EXPANDABLE_HEAP
+	// v0.5.6
+	case 'c':
+	  i++;
+	  if (i < argc) {
+	    param = atoi(argv[i]);
+	    if (param == 0) {
+	      printf("ERROR: '%s' is illegal parameter for -c\n", argv[i]);
+	      exit(-1);
+	    }
+	  } else {
+	    printf("ERROR: The option switch '-c' needs a number as an argument.");
+	    exit(-1);
+	  }
+	  heap_size=param;
+	  break;
+#endif	  
 	  
 	  
 	case 'e':
@@ -6735,6 +7006,11 @@ int main(int argc, char *argv[])
 #endif
 
 
+
+#ifndef EXPANDABLE_HEAP
+    // v0.5.6
+    heap_size = heap_size/MaxThreadsNum;    
+#endif
     
     
     IdTable_init();    
@@ -6750,11 +7026,25 @@ int main(int argc, char *argv[])
     
     
     
-#ifndef THREAD
+#ifdef EXPANDABLE_HEAP
+
+#ifndef THREAD    
     VM_Init(&VM, max_EQStack);
 #else
-    tpool_init(max_EQStack);
-#endif    
+    tpool_init(max_EQStack);    
+#endif
+
+#else // ifndef EXPANDABLE_HEAP
+    //v0.5.6
+
+#ifndef THREAD        
+    VM_Init(&VM, heap_size, max_EQStack);
+#else    
+    tpool_init(heap_size, max_EQStack);
+#endif
+
+#endif
+    
   }
     
   linenoiseHistoryLoad(".inpla.history.txt");
