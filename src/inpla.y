@@ -35,8 +35,8 @@
 //#define COUNT_MKAGENT // count of execution fo mkagent
 
 
-#define VERSION "0.6.1"
-#define BUILT_DATE  "12 Jan. 2022"  
+#define VERSION "0.6.2"
+#define BUILT_DATE  "20 Jan. 2022"  
 // ------------------------------------------------------------------
 
 
