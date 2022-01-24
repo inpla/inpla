@@ -8,16 +8,16 @@ Inpla is a multi-threaded parallel interpreter of interaction nets. Once you wri
 
 * The current version is 0.6.2 released on **20 January 2022**. (See [Changelog.md](Changelog.md) for details.)
 
-![speedup-ratio](pic/benchmark_reuse_v0.6.1.png)
+![speedup-ratio](pic/benchmark_reuse_v0.6.2.png)
 
 |                | Haskell  |   SML    | Python | Inpla1 | Inpla1_r | Inpla7 | Inpla7_r |
 | -------------- | :------: | :------: | :----: | :----: | :------: | :----: | :------: |
-| ack(3,11)    |   2.31   | **0.41** |   -    |  5.46  |   4.16   |  1.56  |   0.86   |
-| fib 38       |   1.60   | **0.26** |  8.49  |  3.93  |   3.68   |  0.69  |   0.62   |
-| bsort 40000  |  34.81   |  11.17   | 76.72  | 25.75 | 19.06 |  7.32  | **3.14** |
-| isort 40000  | **0.02** |   2.97   | 36.63  | 12.38 |   9.25   |  3.64  |   1.53   |
-| qsort 800000 | **0.15** |   1.16   | 97.30  |  3.83  |   1.91   |  0.77  |   0.35   |
-| msort 800000 | 0.46 |   1.00   | 98.27  |  2.39  |   1.39   |  0.69  |   **0.41**   |
+| ack(3,11)    |   2.31   | **0.41** |   -    |  5.29  |   4.13   |  1.55  |   0.85   |
+| fib 38       |   1.60   | **0.26** |  8.49  |  3.90  |   3.63   |  0.67  |   0.61   |
+| bsort 40000  |  34.81   |  11.17   | 76.72  | 25.90 | 18.92 |  7.38  | **3.06** |
+| isort 40000  | **0.02** |   2.97   | 36.63  | 12.45 |   9.10   |  3.71  |   1.51   |
+| qsort 800000 | **0.15** |   1.16   | 97.30  |  3.57  |   1.93   |  0.80  |   0.35   |
+| msort 800000 | 0.46 |   1.00   | 98.27  |  2.29  |   1.34   |  0.72  |   **0.44**   |
 
 - **Comparison in execution time** with other implementations: **Haskell** (GHC version 8.10.7), **Standard ML of New Jersey** v110.74 (interpreter mode) and **Python** 3.8.5 in execution time.
   
