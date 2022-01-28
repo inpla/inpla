@@ -1,18 +1,49 @@
 // Ackermann function on unary natural numbers
+
+// Originally the function is written as follows:
 // fun ack(0,y) = y+1
 //   | ack(x,0) = ack(x-1,1)        
 //   | ack(x,y) = ack(x-1,ack(x,y-1));
-//
-ack(r,y)>< Z => r~S(y);
+
+// This is written one on unary natural nunbers:
+// fun ack(Z   ,    y) = S(y)
+//   | ack(S(x),    Z) = ack(x,S(Z))        
+//   | ack(S(x), S(y)) = ack(x,ack(S(x),y));
+
+// For easily translation to interaction nets,
+// the first argument will be moved to the last:
+// fun ack(y,       Z) = S(y)
+//   | ack(Z,    S(x)) = ack(S(Z),x)        
+//   | ack(S(y), S(x)) = ack(ack(y,S(x)),x);
+
+// It is traslated directly as follows:
+// ack(r,y)>< Z    => r~S(y);
+// ack(r,y)>< S(x) => ack_Sx(r, x)~y;
+// ack_Sx(r,x)>< Z    => ack(r, S(Z))~x;
+// ack_Sx(r,x)>< S(y) => dup(x1,x2)~x, ack(r,cnt)~x1, ack(cnt,y)~S(x2);
+
+// The last connection can be optimised by applying the rule ack><S,
+// so finally we get the following as the result of the translation:
+ack(r,y)>< Z    => r~S(y);
 ack(r,y)>< S(x) => ack_Sx(r, x)~y;
-ack_Sx(r,x)>< Z => ack(r, S(Z))~x;
+ack_Sx(r,x)>< Z    => ack(r, S(Z))~x;
 ack_Sx(r,x)>< S(y) => dup(x1,x2)~x, ack(r,cnt)~x1, ack_Sx(cnt,x2)~y;
+
+
+// By the way, it is possible to write it by using abbreviation notation:
+// ack(r,y)>< Z    => r~S(y);
+// ack(r,y)>< S(x) => r<<ack_Sx(x,y);
+// ack_Sx(r,x)>< Z    => r<<ack(S(Z),x);
+// ack_Sx(r,x)>< S(y) => x1,x2<<dup(x), r<<ack(cnt,x1), cnt<<ack_Sx(x2,y);
+
 
 
 dup(a1,a2)>< Z => a1~Z, a2~Z;
 dup(a1,a2)>< S(x) => a1~S(w1), a2~S(w2), dup(w1,w2)~x;
 
-// Ack 3 5
-ack(r, S(S(S(S(S(Z))))))~S(S(S(Z)));
-prnat r;
+// ack(result, y)~x
+// For computation `ack 3 5', it is written as follows:
+ack(result, S(S(S(S(S(Z))))))~S(S(S(Z)));
+
+prnat result;
 exit;
