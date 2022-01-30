@@ -2,7 +2,7 @@
 
 
 all:
-	sh main.sh
+	bash main.sh
 
 clean:
 	rm -f ./inplaSeq ./inplaPara log-* *~
