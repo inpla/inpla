@@ -265,7 +265,9 @@ void ast_puts(Ast *p) {
     // extension
     "TUPLE", "PPAIR", 
     "INT", "LD", "ADD", "SUB", "MUL", "DIV", "MOD", 
-    "LT", "LE",  "EQ", "NE", "UNM", 
+    "LT", "LE",  "EQ", "NE", "UNM", "AND", "OR", "NOT",
+
+    
     "CONS", "NIL", "OPCONS",
     "RAND", "SRAND", 
 

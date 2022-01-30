@@ -89,8 +89,13 @@ char *Parse_closeStringBuffer() {
 <INITIAL>"=>" return (TO);
 <INITIAL>"~" return (CNCT);
 <INITIAL>"-" return (SUB);
+<INITIAL>"&&" return(AND);
+<INITIAL>"and" return(AND);
+<INITIAL>"||" return(OR);
+<INITIAL>"or" return(OR);
+<INITIAL>"!" return(NOT);
+<INITIAL>"not" return(NOT);
 <INITIAL>"|" return(PIPE);
-<INITIAL>"&" return(AMP);
 <INITIAL>"=" return(LD);
 <INITIAL>"==" return(EQUAL);
 <INITIAL>"!=" return(NE);

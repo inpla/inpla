@@ -1,5 +1,21 @@
 # Change log
 
+### v0.7.0 (released on 30 January 2022)
+
+#### New Features:
+
+- **Logical operators on integers**: Not `!` (`not`), And `&&` (`and`)  and Or `||` (`or`) are available.  Only `0` is regarded as False and these operators return `1` for Truth, `0` for False.
+
+- **Bytecode optimisations*: Bytecodes are optimised by methods such as Copy propagation, Delete dead code. In addition, Register0 is used to store comparison results, and conditional branches are performed according to the value of Register0. To prevent those optimisation, comment out the following definition `OPTIMISE_IMCODE` in `src/inpla.y`:
+
+  ```
+  #define OPTIMISE_IMCODE    // Optimise the intermediate codes
+  ```
+
+  
+
+
+
 ### v0.6.2 (released on 20 January 2022)
 
 #### New Features:

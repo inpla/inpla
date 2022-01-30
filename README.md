@@ -6,18 +6,18 @@
 
 Inpla is a multi-threaded parallel interpreter of interaction nets. Once you write programs for sequential execution, it works also in multi-threaded parallel execution. Each thread is managed on each CPU-core with POSIX-thread library. 
 
-* The current version is 0.6.2 released on **20 January 2022**. (See [Changelog.md](Changelog.md) for details.)
+* The current version is 0.7.0 released on **30 January 2022**. (See [Changelog.md](Changelog.md) for details.)
 
-![speedup-ratio](pic/benchmark_reuse_v0.6.2.png)
+![speedup-ratio](pic/benchmark_reuse_v0.7.0.png)
 
 |                | Haskell  |   SML    | Python | Inpla1 | Inpla1_r | Inpla7 | Inpla7_r |
 | -------------- | :------: | :------: | :----: | :----: | :------: | :----: | :------: |
-| ack(3,11)    |   2.31   | **0.41** |   -    |  5.29  |   4.13   |  1.55  |   0.85   |
-| fib 38       |   1.60   | **0.26** |  8.49  |  3.90  |   3.63   |  0.67  |   0.61   |
-| bsort 40000  |  34.81   |  11.17   | 76.72  | 25.90 | 18.92 |  7.38  | **3.06** |
-| isort 40000  | **0.02** |   2.97   | 36.63  | 12.45 |   9.10   |  3.71  |   1.51   |
-| qsort 800000 | **0.15** |   1.16   | 97.30  |  3.57  |   1.93   |  0.80  |   0.35   |
-| msort 800000 | 0.46 |   1.00   | 98.27  |  2.29  |   1.34   |  0.72  |   **0.44**   |
+| ack(3,11)    |   2.31   | **0.41** |   -    |  5.22  |   3.86   |  1.52  |   0.81   |
+| fib 38       |   1.60   | **0.26** |  8.49  |  3.52  |   3.31   |  0.62  |   0.55   |
+| bsort 40000  |  34.81   |  11.17   | 76.72  | 25.76 | 18.21 |  7.36  | **2.87** |
+| isort 40000  | **0.02** |   2.97   | 36.63  | 11.97 |   8.62   |  3.64  |   1.44   |
+| qsort 800000 | **0.15** |   1.16   | 97.30  |  3.55  |   1.87   |  0.82  |   0.35   |
+| msort 800000 | 0.46 |   1.00   | 98.27  |  2.29  |   1.34   |  0.60  |   **0.33**   |
 
 - **Comparison in execution time** with other implementations: **Haskell** (GHC version 8.10.7), **Standard ML of New Jersey** v110.74 (interpreter mode) and **Python** 3.8.5 in execution time.
   
@@ -605,7 +605,7 @@ Attributes can be given as the results of arithmetic operation using `where` sta
 <let-clause> ::= <name> '=' <arithmetic expression>
 ```
 
-The symbol of addition, subtraction, multiplication, division and modulo are `+`, `-`, `*`, `/` and `%`, respectively.
+The symbol of addition, subtraction, multiplication, division, modulo are `+`, `-`, `*`, `/` and `%`, respectively. Not `!` (`not`), And `&&` (`and`)  and Or `||` (`or`) are also available where only `0` is regarded as False and return `1` for Truth. 
 
 * For instance, the following is an expression using `where`:
 
@@ -820,17 +820,22 @@ Inpla has the following macro:
 
 See [Changelog.md](Changelog.md) for details.
 
+### v0.7.0 (released on 30 January 2022)
+
+#### New Features:
+
+- **Logical operators on integers**: Not `!` (`not`), And `&&` (`and`)  and Or `||` (`or`) are available.  Only `0` is regarded as False and these operators return `1` for Truth, `0` for False.
+- **Bytecode optimisations*: Bytecodes are optimised by methods such as Copy propagation, Delete dead code. See [Changelog.md](Changelog.md) for more details.
+
+
+
 ### v0.6.0 (released on 9 January 2022)
 
 #### New Features:
 
-- Introduced new data structure for ring buffers for agents and names: The ring buffers are automatically expanded when all elements of these are used up. Each size starts from 2^18 (=262144), and it will be twice, triple and so on as needed. To adjust the unit size, change the following definition in `src/inpla.y`:
+- **Introduced new data structure for ring buffers for agents and names**: The ring buffers are automatically expanded when all elements of these are used up. See [Changelog.md](Changelog.md) for more details.
 
-  ```
-  #define HOOP_SIZE (1 << 18)
-  ```
-
-- Deleted the execution option `-c` that specifies the size of these ring buffers: This execution option is deleted because these buffers are expanded as needed.
+  
 
 ### Logo of Inpla (relased on 27 December 2021)
 

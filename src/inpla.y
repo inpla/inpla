@@ -20,6 +20,8 @@
 // Configuration  ---------------------------------------------------
 #define COUNT_INTERACTION  // Count interaction.
 #define EXPANDABLE_HEAP    // Expandable heaps for agents and names
+#define OPTIMISE_IMCODE    // Optimise the intermediate codes
+
   
 //#define VERBOSE_NODE_USE  // Put memory usage of agents and names.
 //#define VERBOSE_HOOP_EXPANSION  // Put messages when hoops are expanded.
@@ -35,8 +37,8 @@
 //#define COUNT_MKAGENT // count of execution fo mkagent
 
 
-#define VERSION "0.6.2"
-#define BUILT_DATE  "20 Jan. 2022"  
+#define VERSION "0.7.0"
+#define BUILT_DATE  "30 Jan. 2022"  
 // ------------------------------------------------------------------
 
 
@@ -157,7 +159,8 @@ static char *Errormsg = NULL;
 
 %token ANNOTATE_L ANNOTATE_R
 
-%token PIPE AMP LD EQUAL NE GT GE LT LE
+%token PIPE
+%token NOT AND OR LD EQUAL NE GT GE LT LE
 %token ADD SUB MUL DIV MOD INT LET IN END IF THEN ELSE ANY WHERE RAND DEF
 %token INTERFACE IFCE PRNAT FREE EXIT
 %token END_OF_FILE USE
@@ -168,7 +171,7 @@ rule
 ap aplist
 stm stmlist_nondelimiter
 stmlist 
-expr additive_expr equational_expr relational_expr unary_expr
+expr additive_expr equational_expr logical_expr relational_expr unary_expr
 multiplicative_expr primary_expr agent_tuple agent_list agent_cons
 bodyguard bd_else bd_elif bd_compound
 if_sentence if_compound
@@ -483,9 +486,16 @@ expr
 ;
 
 equational_expr
+: logical_expr
+| equational_expr EQUAL logical_expr { $$ = ast_makeAST(AST_EQ, $1, $3); }
+| equational_expr NE logical_expr { $$ = ast_makeAST(AST_NE, $1, $3); }
+
+logical_expr
 : relational_expr
-| equational_expr EQUAL relational_expr { $$ = ast_makeAST(AST_EQ, $1, $3); }
-| equational_expr NE relational_expr { $$ = ast_makeAST(AST_NE, $1, $3); }
+| NOT relational_expr { $$ = ast_makeAST(AST_NOT, $2, NULL); }
+| logical_expr AND relational_expr { $$ = ast_makeAST(AST_AND, $1, $3); }
+| logical_expr OR relational_expr { $$ = ast_makeAST(AST_OR, $1, $3); }
+;
 
 relational_expr
 : additive_expr
@@ -1335,13 +1345,21 @@ void puts_eqlist(EQList *at) {
 /**********************************
   VIRTUAL MACHINE 
 *********************************/
-#define VM_LOCALVAR_SIZE 200
+#define VM_REG_SIZE 128
+
+/*
 #define VM_OFFSET_META_L(a) (a)
 #define VM_OFFSET_META_R(a) (MAX_PORT+(a))
 #define VM_OFFSET_ANNOTATE_L (MAX_PORT*2)
 #define VM_OFFSET_ANNOTATE_R (MAX_PORT*2+1)
 #define VM_OFFSET_LOCALVAR (MAX_PORT*2+2)
+*/
 
+#define VM_OFFSET_META_L(a) (a+1)
+#define VM_OFFSET_META_R(a) (MAX_PORT+1+(a))
+#define VM_OFFSET_ANNOTATE_L (MAX_PORT*2+1)
+#define VM_OFFSET_ANNOTATE_R (MAX_PORT*2+2)
+#define VM_OFFSET_LOCALVAR (MAX_PORT*2+2+1)
 
 
 typedef struct {
@@ -1353,20 +1371,21 @@ typedef struct {
   int nextPtr_eqStack;
   int eqStack_size;
 
-
-  // code execution
-  VALUE reg[VM_LOCALVAR_SIZE+(MAX_PORT*2 + 2)];
-
-  // flag
-  //  VALUE flag;
-
-  
-  unsigned int id;
 #ifdef COUNT_INTERACTION
-  unsigned int count_interaction;
-  
+  unsigned int count_interaction;  
 #endif
 
+
+  // register
+  //  VALUE reg[VM_REG_SIZE+(MAX_PORT*2 + 2)];
+  //  VALUE reg[VM_REG_SIZE];
+  VALUE *reg;
+
+
+#ifdef THREAD
+  unsigned int id;
+#endif
+  
 } VirtualMachine;
 
 #ifdef COUNT_INTERACTION
@@ -1397,6 +1416,8 @@ void VM_Buffer_Init(VirtualMachine *vm) {
   vm->nameHeap.last_alloc_list = HoopList_New_forName();
   vm->nameHeap.last_alloc_list->next = vm->nameHeap.last_alloc_list;
   vm->nameHeap.last_alloc_idx = 0;
+
+  vm->reg = malloc(sizeof(VALUE) * VM_REG_SIZE);
 }  
 #else
 
@@ -1414,6 +1435,7 @@ void VM_InitBuffer(VirtualMachine *vm, int size) {
   //vm->nameHeap.lastAlloc = 0;
   vm->nameHeap.size = size;
 
+  vm->reg = malloc(sizeof(VALUE) * VM_REG_SIZE);
 }  
 
 #endif
@@ -1885,15 +1907,28 @@ typedef enum {
   OP_MUL,
   OP_DIV,
   OP_MOD,
+  
   OP_LT,
   OP_LE,
   OP_EQ,
   OP_EQI,
   OP_NE,
+
+  OP_LT_R0,
+  OP_LE_R0,
+  OP_EQ_R0,
+  OP_EQI_R0,
+  OP_NE_R0,
+
+  
   OP_JMPEQ0,
+  OP_JMPEQ0_R0,
+  OP_JMP,
+  OP_JMPNEQ0,
+  
   OP_JMPCNCT_CONS,
   OP_JMPCNCT,
-  OP_JMP,
+
   OP_UNM,
   OP_RAND,
 
@@ -1904,12 +1939,29 @@ typedef enum {
   NOP,
 
   // This will be used for translation from intermediate codes to Bytecodes
-  VOID_CODE
+  LABEL, 
+  DEAD_CODE
 } Code;
 
 
 // The real addresses for the `Code':
 static void* CodeAddr[NOP+1];
+
+
+//void *ExecCode(int arg, VirtualMachine *vm, void **code);
+void *ExecCode(int mode, VirtualMachine *restrict vm, void *restrict *code);
+
+void CodeAddr_init(void) {
+  // Set CodeAddr
+  void **table;
+  table = ExecCode(0, NULL, NULL);
+  for (int i=0; i<NOP; i++) {
+    CodeAddr[i] = table[i];
+  }
+}
+
+
+
 
 
 typedef enum {
@@ -2026,7 +2078,7 @@ typedef struct {
   
   // Index for local and global names in Regs
   int localNamePtr;           // It starts from VM_OFFSET_LOCALVAR
-  int vmStackSize;            // the array size of the Regs.
+  int vmRegSize;              // the array size of the Regs.
 
   
   // For rule agents
@@ -2035,6 +2087,9 @@ typedef struct {
                               // ruleAgentL, ruleAgentR
   int annotateL, annotateR;   // `Annotation properties' such as (*L) (*R) (int)
 
+
+  // labels
+  int label;
 } CmEnvironment;
 
 // The annotation properties
@@ -2044,25 +2099,6 @@ typedef struct {
 
 
 static CmEnvironment CmEnv;
-
-//void *ExecCode(int arg, VirtualMachine *vm, void **code);
-void *ExecCode(int mode, VirtualMachine *restrict vm, void *restrict *code);
-
-
-void CmEnv_clear_all(void);
-
-
-void CmEnv_Init(int vm_heapsize) {
-  CmEnv.vmStackSize = vm_heapsize;
-
-  void **table;
-  table = ExecCode(0, NULL, NULL);
-  for (int i=0; i<NOP; i++) {
-    CodeAddr[i] = table[i];
-  }
-
-  CmEnv_clear_all();
-}
 
 
 static inline
@@ -2103,6 +2139,9 @@ void CmEnv_clear_all(void)
 
   // reset the index of storage for imtermediate codes.
   IMCode_Init();
+
+  // reset the index of labels;
+  CmEnv.label = 0;
 }
 
 void CmEnv_clear_keeping_rule_properties(void) 
@@ -2121,11 +2160,16 @@ void CmEnv_clear_keeping_rule_properties(void)
   // reset the beginning number for local vars.  
   CmEnv_clear_localnamePtr();  
 
+  /*
   // reset the index of storage for imtermediate codes.
   IMCode_Init();
+  */
 }
 
 
+int CmEnv_get_newlabel(void) {
+  return CmEnv.label++;
+}
 
 
 int CmEnv_set_symbol_as_name(char *name) {
@@ -2147,8 +2191,8 @@ int CmEnv_set_symbol_as_name(char *name) {
     
     result = CmEnv.localNamePtr;
     CmEnv.localNamePtr++;
-    if (CmEnv.localNamePtr > CmEnv.vmStackSize) {
-      puts("SYSTEM ERROR: CmEnv.localNamePtr exceeded CmEnv.vmStackSize.");
+    if (CmEnv.localNamePtr > VM_REG_SIZE) {
+      puts("SYSTEM ERROR: CmEnv.localNamePtr exceeded VM_REG_SIZE.");
       exit(-1);
     }
     
@@ -2195,8 +2239,8 @@ int CmEnv_set_as_INTVAR(char *name) {
     }
 
     CmEnv.localNamePtr++;
-    if (CmEnv.localNamePtr > CmEnv.vmStackSize) {
-      puts("SYSTEM ERROR: CmEnv.localNamePtr exceeded CmEnv.vmStackSize.");
+    if (CmEnv.localNamePtr > VM_REG_SIZE) {
+      puts("SYSTEM ERROR: CmEnv.localNamePtr exceeded VM_REG_SIZE.");
       exit(-1);
     }
 
@@ -2237,8 +2281,8 @@ int CmEnv_newreg(void) {
   int result;
   result = CmEnv.localNamePtr;
   CmEnv.localNamePtr++;
-  if (CmEnv.localNamePtr > CmEnv.vmStackSize) {
-    puts("SYSTEM ERROR: CmEnv.localNamePtr exceeded CmEnv.vmStackSize.");
+  if (CmEnv.localNamePtr > VM_REG_SIZE) {
+    puts("SYSTEM ERROR: CmEnv.localNamePtr exceeded VM_REG_SIZE.");
     exit(-1);
   }
 
@@ -2307,47 +2351,209 @@ void CmEnv_Retrieve_GNAME(void) {
 }
 
 
-int CmEnv_Generate_VMCode(void **code, int offset) {
-  int ptr = offset;
+int CmEnv_Optimise_VMCode_CopyPropagation(int target_imcode_addr) {
+
   struct IMCode_tag *imcode;
+  int load_from, load_to;
 
+  load_from = IMCode[target_imcode_addr].operand2;
+  load_to = IMCode[target_imcode_addr].operand1;
 
-  for (int i=0; i<IMCode_n; i++) {
+  for (int i=target_imcode_addr+1; i<IMCode_n; i++) {
     imcode = &IMCode[i];    
     
     switch (imcode->opcode) {
     case MKNAME:
+    case MKGNAME:
+      break;
+
+    case MKAGENT5:
+    case REUSEAGENT5:
+      if (imcode->operand7 == load_to) {
+	imcode->operand7 = load_from;
+	IMCode[target_imcode_addr].opcode = DEAD_CODE;
+	return 1;
+      }
+    case MKAGENT4:
+    case REUSEAGENT4:
+      if (imcode->operand6 == load_to) {
+	imcode->operand6 = load_from;
+	IMCode[target_imcode_addr].opcode = DEAD_CODE;
+	return 1;
+      }
+    case MKAGENT3:
+    case REUSEAGENT3:
+      if (imcode->operand5 == load_to) {
+	imcode->operand5 = load_from;
+	IMCode[target_imcode_addr].opcode = DEAD_CODE;
+	return 1;
+      }
+    case MKAGENT2:
+    case REUSEAGENT2:
+      if (imcode->operand4 == load_to) {
+	imcode->operand4 = load_from;
+	IMCode[target_imcode_addr].opcode = DEAD_CODE;
+	return 1;
+      }
+    case MKAGENT1:
+    case REUSEAGENT1:
+      if (imcode->operand3 == load_to) {
+	imcode->operand3 = load_from;
+	IMCode[target_imcode_addr].opcode = DEAD_CODE;
+	return 1;
+      }
+    case MKAGENT0:
+    case REUSEAGENT0:
+      break;
+
+
+    case PUSH:
+    case MYPUSH:
+      if (imcode->operand1 == load_to) {
+	imcode->operand1 = load_from;
+	IMCode[target_imcode_addr].opcode = DEAD_CODE;
+	return 1;
+      }
+      if (imcode->operand2 == load_to) {
+	imcode->operand2 = load_from;
+	IMCode[target_imcode_addr].opcode = DEAD_CODE;
+	return 1;
+      }
+      break;
+      
+    case OP_JMPEQ0:
+    case OP_JMPNEQ0:
+    case OP_JMPCNCT_CONS:
+    case OP_JMPCNCT:
+    case PUSHI:
+      if (imcode->operand1 == load_to) {
+	imcode->operand1 = load_from;
+	IMCode[target_imcode_addr].opcode = DEAD_CODE;
+	return 1;
+      }
+      break;
+      
+    case OP_MUL:
+    case OP_DIV:
+    case OP_MOD:
+    case OP_LT:
+    case OP_LE:
+    case OP_EQ:
+    case OP_NE:
+    case OP_ADD:
+    case OP_SUB:
+      if (imcode->operand2 == load_to) {
+	imcode->operand2 = load_from;
+	IMCode[target_imcode_addr].opcode = DEAD_CODE;
+	return 1;
+      }
+      if (imcode->operand3 == load_to) {
+	imcode->operand3 = load_from;
+	IMCode[target_imcode_addr].opcode = DEAD_CODE;
+	return 1;
+      }
+      break;
+
+    case OP_SUBI:
+    case OP_EQI:
+      if (imcode->operand2 == load_to) {
+	imcode->operand2 = load_from;
+	IMCode[target_imcode_addr].opcode = DEAD_CODE;
+	return 1;
+      }
+      break;
+
+    case OP_LT_R0:
+    case OP_LE_R0:
+    case OP_EQ_R0:
+    case OP_NE_R0:
+      if (imcode->operand1 == load_to) {
+	imcode->operand1 = load_from;
+	IMCode[target_imcode_addr].opcode = DEAD_CODE;
+	return 1;
+      }
+      if (imcode->operand2 == load_to) {
+	imcode->operand2 = load_from;
+	IMCode[target_imcode_addr].opcode = DEAD_CODE;
+	return 1;
+      }
+      break;
+      
+    case OP_EQI_R0:
+      if (imcode->operand1 == load_to) {
+	imcode->operand1 = load_from;
+	IMCode[target_imcode_addr].opcode = DEAD_CODE;
+	return 1;
+      }
+      break;
+      
+    }
+    
+  }
+
+  return 0;  
+  
+}
+					   
+
+#define MAX_LABEL 50
+#define MAX_BACKPATCH MAX_LABEL*2
+int CmEnv_generate_VMcode(void **code) {
+  int addr = 0;
+  struct IMCode_tag *imcode;
+
+  int label_table[MAX_LABEL];
+  int backpatch_num = 0;
+  int backpatch_table[MAX_BACKPATCH];
+  
+  for (int i=0; i<IMCode_n; i++) {
+    imcode = &IMCode[i];    
+
+#ifdef OPTIMISE_IMCODE
+
+    // optimisation
+    // Copy Propagation for LOAD reg1, reg2 --> [reg2/reg1]
+    // and Dead Code Optimisation
+    if (imcode->opcode == LOAD) {
+      if (CmEnv_Optimise_VMCode_CopyPropagation(i)) {
+	continue;
+      }
+    }
+#endif    
+
+    switch (imcode->opcode) {
+    case MKNAME:
       //      printf("MKNAME var%d\n", imcode->operand1);
-      code[ptr++] = CodeAddr[imcode->opcode];
-      code[ptr++] = (void *)(unsigned long)imcode->operand1;      
+      code[addr++] = CodeAddr[imcode->opcode];
+      code[addr++] = (void *)(unsigned long)imcode->operand1;      
       break;
 
     case MKGNAME:
       //      printf("MKGNAME var%d sym:%d (as `%s')\n",
       //	     imcode->operand1, imcode->operand2,
       //	     CmEnv.bind[imcode->operand2].name);
-      code[ptr++] = CodeAddr[imcode->opcode];
-      code[ptr++] = (void *)(unsigned long)imcode->operand1;      
-      code[ptr++] = CmEnv.bind[imcode->operand2].name;      
+      code[addr++] = CodeAddr[imcode->opcode];
+      code[addr++] = (void *)(unsigned long)imcode->operand1;      
+      code[addr++] = CmEnv.bind[imcode->operand2].name;      
       break;
 
     case MKAGENT0:
     case REUSEAGENT0:
       //      printf("MKAGENT0 var%d id:%d\n", 
       //	     imcode->operand1, imcode->operand2);
-      code[ptr++] = CodeAddr[imcode->opcode];
-      code[ptr++] = (void *)(unsigned long)imcode->operand1;      
-      code[ptr++] = (void *)(unsigned long)imcode->operand2;      
+      code[addr++] = CodeAddr[imcode->opcode];
+      code[addr++] = (void *)(unsigned long)imcode->operand1;      
+      code[addr++] = (void *)(unsigned long)imcode->operand2;      
       break;
 
     case MKAGENT1:
     case REUSEAGENT1:
       //      printf("MKAGENT1 var%d id:%d var%d\n", 
       //	     imcode->operand1, imcode->operand2, imcode->operand3);
-      code[ptr++] = CodeAddr[imcode->opcode];
-      code[ptr++] = (void *)(unsigned long)imcode->operand1;      
-      code[ptr++] = (void *)(unsigned long)imcode->operand2;      
-      code[ptr++] = (void *)(unsigned long)imcode->operand3;      
+      code[addr++] = CodeAddr[imcode->opcode];
+      code[addr++] = (void *)(unsigned long)imcode->operand1;      
+      code[addr++] = (void *)(unsigned long)imcode->operand2;      
+      code[addr++] = (void *)(unsigned long)imcode->operand3;      
       break;
 
     case MKAGENT2:
@@ -2355,11 +2561,11 @@ int CmEnv_Generate_VMCode(void **code, int offset) {
       //      printf("MKAGENT2 var%d id:%d var%d var%d\n", 
       //	     imcode->operand1, imcode->operand2,
       //	     imcode->operand3, imcode->operand4);
-      code[ptr++] = CodeAddr[imcode->opcode];
-      code[ptr++] = (void *)(unsigned long)imcode->operand1;      
-      code[ptr++] = (void *)(unsigned long)imcode->operand2;      
-      code[ptr++] = (void *)(unsigned long)imcode->operand3;      
-      code[ptr++] = (void *)(unsigned long)imcode->operand4;            
+      code[addr++] = CodeAddr[imcode->opcode];
+      code[addr++] = (void *)(unsigned long)imcode->operand1;      
+      code[addr++] = (void *)(unsigned long)imcode->operand2;      
+      code[addr++] = (void *)(unsigned long)imcode->operand3;      
+      code[addr++] = (void *)(unsigned long)imcode->operand4;            
       break;
 
     case MKAGENT3:
@@ -2367,12 +2573,12 @@ int CmEnv_Generate_VMCode(void **code, int offset) {
       //      printf("MKAGENT3 var%d id:%d var%d var%d var%d\n", 
       //	     imcode->operand1, imcode->operand2,
       //	     imcode->operand3, imcode->operand4, imcode->operand5);
-      code[ptr++] = CodeAddr[imcode->opcode];
-      code[ptr++] = (void *)(unsigned long)imcode->operand1;      
-      code[ptr++] = (void *)(unsigned long)imcode->operand2;      
-      code[ptr++] = (void *)(unsigned long)imcode->operand3;      
-      code[ptr++] = (void *)(unsigned long)imcode->operand4;                  
-      code[ptr++] = (void *)(unsigned long)imcode->operand5;                  
+      code[addr++] = CodeAddr[imcode->opcode];
+      code[addr++] = (void *)(unsigned long)imcode->operand1;      
+      code[addr++] = (void *)(unsigned long)imcode->operand2;      
+      code[addr++] = (void *)(unsigned long)imcode->operand3;      
+      code[addr++] = (void *)(unsigned long)imcode->operand4;                  
+      code[addr++] = (void *)(unsigned long)imcode->operand5;                  
       break;
 
     case MKAGENT4:
@@ -2380,13 +2586,13 @@ int CmEnv_Generate_VMCode(void **code, int offset) {
       //      printf("MKAGENT3 var%d id:%d var%d var%d var%d\n", 
       //	     imcode->operand1, imcode->operand2,
       //	     imcode->operand3, imcode->operand4, imcode->operand5);
-      code[ptr++] = CodeAddr[imcode->opcode];
-      code[ptr++] = (void *)(unsigned long)imcode->operand1;      
-      code[ptr++] = (void *)(unsigned long)imcode->operand2;      
-      code[ptr++] = (void *)(unsigned long)imcode->operand3;      
-      code[ptr++] = (void *)(unsigned long)imcode->operand4;                  
-      code[ptr++] = (void *)(unsigned long)imcode->operand5;                  
-      code[ptr++] = (void *)(unsigned long)imcode->operand6;                  
+      code[addr++] = CodeAddr[imcode->opcode];
+      code[addr++] = (void *)(unsigned long)imcode->operand1;      
+      code[addr++] = (void *)(unsigned long)imcode->operand2;      
+      code[addr++] = (void *)(unsigned long)imcode->operand3;      
+      code[addr++] = (void *)(unsigned long)imcode->operand4;                  
+      code[addr++] = (void *)(unsigned long)imcode->operand5;                  
+      code[addr++] = (void *)(unsigned long)imcode->operand6;                  
       break;
       
     case MKAGENT5:
@@ -2394,29 +2600,49 @@ int CmEnv_Generate_VMCode(void **code, int offset) {
       //      printf("MKAGENT3 var%d id:%d var%d var%d var%d\n", 
       //	     imcode->operand1, imcode->operand2,
       //	     imcode->operand3, imcode->operand4, imcode->operand5);
-      code[ptr++] = CodeAddr[imcode->opcode];
-      code[ptr++] = (void *)(unsigned long)imcode->operand1;      
-      code[ptr++] = (void *)(unsigned long)imcode->operand2;      
-      code[ptr++] = (void *)(unsigned long)imcode->operand3;      
-      code[ptr++] = (void *)(unsigned long)imcode->operand4;                  
-      code[ptr++] = (void *)(unsigned long)imcode->operand5;                  
-      code[ptr++] = (void *)(unsigned long)imcode->operand6;                  
-      code[ptr++] = (void *)(unsigned long)imcode->operand7;                  
+      code[addr++] = CodeAddr[imcode->opcode];
+      code[addr++] = (void *)(unsigned long)imcode->operand1;      
+      code[addr++] = (void *)(unsigned long)imcode->operand2;      
+      code[addr++] = (void *)(unsigned long)imcode->operand3;      
+      code[addr++] = (void *)(unsigned long)imcode->operand4;                  
+      code[addr++] = (void *)(unsigned long)imcode->operand5;                  
+      code[addr++] = (void *)(unsigned long)imcode->operand6;                  
+      code[addr++] = (void *)(unsigned long)imcode->operand7;                  
       break;
       
             
     case PUSH:
     case MYPUSH:
     case LOAD:
-    case OP_JMPEQ0:
     case OP_JMPCNCT_CONS:
       //      printf("PUSH var%d var%d\n",
       //	     imcode->operand1, imcode->operand2);
-      code[ptr++] = CodeAddr[imcode->opcode];
-      code[ptr++] = (void *)(unsigned long)imcode->operand1;      
-      code[ptr++] = (void *)(unsigned long)imcode->operand2;      
+      code[addr++] = CodeAddr[imcode->opcode];
+      code[addr++] = (void *)(unsigned long)imcode->operand1;      
+      code[addr++] = (void *)(unsigned long)imcode->operand2;      
       break;
 
+
+      
+    case OP_JMPEQ0:
+    case OP_JMPNEQ0:
+      // JMPEQ0 reg label
+      code[addr++] = CodeAddr[imcode->opcode];
+      code[addr++] = (void *)(unsigned long)imcode->operand1;
+
+      backpatch_table[backpatch_num++] = addr;
+      code[addr++] = (void *)(unsigned long)imcode->operand2;      
+      break;
+
+      
+    case OP_JMPEQ0_R0:
+      code[addr++] = CodeAddr[imcode->opcode];
+
+      backpatch_table[backpatch_num++] = addr;
+      code[addr++] = (void *)(unsigned long)imcode->operand1;      
+      break;
+
+      
     case OP_ADD:
     case OP_SUB:
     case OP_MUL:
@@ -2428,19 +2654,30 @@ int CmEnv_Generate_VMCode(void **code, int offset) {
     case OP_NE:
     case OP_SUBI:
     case OP_EQI:
-      code[ptr++] = CodeAddr[imcode->opcode];
-      code[ptr++] = (void *)(unsigned long)imcode->operand1;      
-      code[ptr++] = (void *)(unsigned long)imcode->operand2;      
-      code[ptr++] = (void *)(unsigned long)imcode->operand3;      
+      code[addr++] = CodeAddr[imcode->opcode];
+      code[addr++] = (void *)(unsigned long)imcode->operand1;      
+      code[addr++] = (void *)(unsigned long)imcode->operand2;      
+      code[addr++] = (void *)(unsigned long)imcode->operand3;      
       break;
 
+
+    case OP_LT_R0:
+    case OP_LE_R0:
+    case OP_EQ_R0:
+    case OP_NE_R0:
+    case OP_EQI_R0:
+      code[addr++] = CodeAddr[imcode->opcode];
+      code[addr++] = (void *)(unsigned long)imcode->operand1;      
+      code[addr++] = (void *)(unsigned long)imcode->operand2;      
+      break;
+      
       
     case PUSHI:
       //      printf("PUSH var%d $%d\n",
       //	     imcode->operand1, imcode->operand2);
-      code[ptr++] = CodeAddr[imcode->opcode];
-      code[ptr++] = (void *)(unsigned long)imcode->operand1;      
-      code[ptr++] = (void *)INT2FIX(imcode->operand2);      
+      code[addr++] = CodeAddr[imcode->opcode];
+      code[addr++] = (void *)(unsigned long)imcode->operand1;      
+      code[addr++] = (void *)INT2FIX(imcode->operand2);      
       
       break;
 
@@ -2450,16 +2687,16 @@ int CmEnv_Generate_VMCode(void **code, int offset) {
     case RET_FREE_LR:
     case LOOP:
     case NOP:
-      code[ptr++] = CodeAddr[imcode->opcode];
+      code[addr++] = CodeAddr[imcode->opcode];
       break;
       
             
     case LOADI:
       //      printf("LOADI var%d $%d\n",
       //	     imcode->operand1, imcode->operand2);
-      code[ptr++] = CodeAddr[imcode->opcode];
-      code[ptr++] = (void *)(unsigned long)imcode->operand1;      
-      code[ptr++] = (void *)INT2FIX(imcode->operand2);                  
+      code[addr++] = CodeAddr[imcode->opcode];
+      code[addr++] = (void *)(unsigned long)imcode->operand1;      
+      code[addr++] = (void *)INT2FIX(imcode->operand2);                  
       break;
 
 
@@ -2467,54 +2704,77 @@ int CmEnv_Generate_VMCode(void **code, int offset) {
     case LOOP_RREC2:
       //      printf("LOOP_RREC1 var%d\n",
       //	     imcode->operand1);
-      code[ptr++] = CodeAddr[imcode->opcode];
-      code[ptr++] = (void *)(unsigned long)imcode->operand1;      
+      code[addr++] = CodeAddr[imcode->opcode];
+      code[addr++] = (void *)(unsigned long)imcode->operand1;      
       break;
 
     case LOADP:
     case OP_JMPCNCT:
       //      printf("LOADP var%d var%d[%d]\n",
       //	     imcode->operand1, imcode->operand2, imcode->operand3);
-      code[ptr++] = CodeAddr[imcode->opcode];
-      code[ptr++] = (void *)(unsigned long)imcode->operand1;      
-      code[ptr++] = (void *)(unsigned long)imcode->operand2;                  
-      code[ptr++] = (void *)(unsigned long)imcode->operand3;
+      code[addr++] = CodeAddr[imcode->opcode];
+      code[addr++] = (void *)(unsigned long)imcode->operand1;      
+      code[addr++] = (void *)(unsigned long)imcode->operand2;                  
+      code[addr++] = (void *)(unsigned long)imcode->operand3;
       break;
 
       
     case OP_JMP:
       //      printf("JMP $%d\n",
       //	     imcode->operand1);
-      code[ptr++] = CodeAddr[imcode->opcode];
-      code[ptr++] = (void *)(unsigned long)imcode->operand1;            
+      code[addr++] = CodeAddr[imcode->opcode];
+
+      backpatch_table[backpatch_num++] = addr;
+      code[addr++] = (void *)(unsigned long)imcode->operand1;            
       break;
       
     case OP_UNM:
     case OP_RAND:
       //      printf("UNM var%d $%d\n",
       //	     imcode->operand1, imcode->operand2);
-      code[ptr++] = CodeAddr[imcode->opcode];
-      code[ptr++] = (void *)(unsigned long)imcode->operand1;            
-      code[ptr++] = (void *)(unsigned long)imcode->operand2;            
+      code[addr++] = CodeAddr[imcode->opcode];
+      code[addr++] = (void *)(unsigned long)imcode->operand1;            
+      code[addr++] = (void *)(unsigned long)imcode->operand2;            
       break;
       
     case CNCTGN:
     case SUBSTGN:
       //      printf("CNCTGN var%d $%d\n",
       //	     imcode->operand1, imcode->operand2);
-      code[ptr++] = CodeAddr[imcode->opcode];
-      code[ptr++] = (void *)(unsigned long)imcode->operand1;            
-      code[ptr++] = (void *)(unsigned long)imcode->operand2;            
+      code[addr++] = CodeAddr[imcode->opcode];
+      code[addr++] = (void *)(unsigned long)imcode->operand1;            
+      code[addr++] = (void *)(unsigned long)imcode->operand2;            
+      break;
+
+
+    case DEAD_CODE:
+      break;
+
+    case LABEL:
+      if (imcode->operand1 > MAX_LABEL) {
+	printf("Critical Error: Label number overfllow.");
+	exit(-1);
+      }
+      label_table[imcode->operand1] = addr;
       break;
       
     default:
-      printf("Error[CmEnv_Generate_VMCode]: %d does not match any opcode\n",
+      printf("Error[CmEnv_generate_VMcode]: %d does not match any opcode\n",
 	     imcode->opcode);
       exit(-1);
     }
   }
 
-  return (ptr-offset);
+
+  // two pass for label
+  for (int i=0; i<backpatch_num; i++) {
+    int hole_addr = backpatch_table[i];
+    int jmp_label = (unsigned long)code[hole_addr];
+    code[hole_addr] = (void *)(unsigned long)
+      (label_table[jmp_label]-(hole_addr+1));
+  }
+    
+  return addr;
 }
 
 
@@ -2715,35 +2975,67 @@ void IMCode_Puts(int n) {
       printf("MOD var%d var%d var%d\n",
 	     imcode->operand1, imcode->operand2, imcode->operand3);
       break;
-      
+
+
     case OP_LT:
       printf("LT var%d var%d var%d\n",
 	     imcode->operand1, imcode->operand2, imcode->operand3);
+      break;      
+    case OP_LT_R0:
+      printf("LT_R0 var%d var%d\n",
+	     imcode->operand1, imcode->operand2);
       break;
       
     case OP_LE:
       printf("LE var%d var%d var%d\n",
 	     imcode->operand1, imcode->operand2, imcode->operand3);
       break;
+    case OP_LE_R0:
+      printf("LE_R0 var%d var%d\n",
+	     imcode->operand1, imcode->operand2);
+      break;
       
     case OP_EQ:
       printf("EQ var%d var%d var%d\n",
 	     imcode->operand1, imcode->operand2, imcode->operand3);
+      break;
+    case OP_EQ_R0:
+      printf("EQ_R0 var%d var%d\n",
+	     imcode->operand1, imcode->operand2);
       break;
       
     case OP_EQI:
       printf("EQI var%d var%d $%d\n",
 	     imcode->operand1, imcode->operand2, imcode->operand3);
       break;
+    case OP_EQI_R0:
+      printf("EQI_R0 var%d $%d\n",
+	     imcode->operand1, imcode->operand2);
+      break;
       
     case OP_NE:
       printf("NE var%d var%d var%d\n",
 	     imcode->operand1, imcode->operand2, imcode->operand3);
       break;
+    case OP_NE_R0:
+      printf("NE_R0 var%d var%d\n",
+	     imcode->operand1, imcode->operand2);
+      break;
+
+
+    case OP_JMPNEQ0:
+      printf("JMPNEQ0 var%d LABEL%d\n",
+	     imcode->operand1, imcode->operand2);
+      break;
       
     case OP_JMPEQ0:
-      printf("JMPEQ0 var%d $%d\n",
+      printf("JMPEQ0 var%d LABEL%d\n",
 	     imcode->operand1, imcode->operand2);
+      break;
+
+    case OP_JMPEQ0_R0:
+      printf("JMPEQ0_RO LABEL%d\n",
+	     imcode->operand1);
       break;
       
     case OP_JMPCNCT_CONS:
@@ -2757,7 +3049,7 @@ void IMCode_Puts(int n) {
       break;
       
     case OP_JMP:
-      printf("JMP $%d\n",
+      printf("JMP LABEL%d\n",
 	     imcode->operand1);
       break;
       
@@ -2783,6 +3075,15 @@ void IMCode_Puts(int n) {
       
     case NOP:
       printf("NOP\n");
+      break;
+      
+    case DEAD_CODE:
+      printf("DEAD\n");
+      break;
+      
+    case LABEL:
+      printf(":LABEL%d\n",
+	     imcode->operand1);
       break;
       
     default:
@@ -3039,13 +3340,6 @@ void PutsCodeN(void **code, int n) {
 	     (unsigned long)code[i+3]);
       i+=3;
 
-    } else if (code[i] == CodeAddr[OP_LE]) {
-      printf("le var%lu var%lu var%lu\n",
-	     (unsigned long)code[i+1],
-	     (unsigned long)code[i+2],
-	     (unsigned long)code[i+3]);
-      i+=3;
-
     } else if (code[i] == CodeAddr[OP_EQ]) {
       printf("eq var%lu var%lu var%lu\n",
 	     (unsigned long)code[i+1],
@@ -3066,12 +3360,53 @@ void PutsCodeN(void **code, int n) {
 	     (unsigned long)code[i+2],
 	     (unsigned long)code[i+3]);
       i+=3;
+      
+    } else if (code[i] == CodeAddr[OP_LT_R0]) {
+      printf("lt_r0 var%lu var%lu\n",
+	     (unsigned long)code[i+1],
+	     (unsigned long)code[i+2]);
+      i+=2;
+
+    } else if (code[i] == CodeAddr[OP_LE_R0]) {
+      printf("le_r0 var%lu var%lu\n",
+	     (unsigned long)code[i+1],
+	     (unsigned long)code[i+2]);
+      i+=2;
+
+    } else if (code[i] == CodeAddr[OP_EQ_R0]) {
+      printf("eq_r0 var%lu var%lu\n",
+	     (unsigned long)code[i+1],
+	     (unsigned long)code[i+2]);
+      i+=2;
+
+    } else if (code[i] == CodeAddr[OP_EQI_R0]) {
+      printf("eqi_r0 var%lu var%ld\n",
+	     (unsigned long)code[i+1],
+	     (long int)code[i+2]);
+      i+=2;
+
+    } else if (code[i] == CodeAddr[OP_NE_R0]) {
+      printf("ne_r0 var%lu var%lu\n",
+	     (unsigned long)code[i+1],
+	     (unsigned long)code[i+2]);
+      i+=2;
+
+    } else if (code[i] == CodeAddr[OP_JMPNEQ0]) {
+      printf("jmpneq0 var%lu $%lu\n",
+	     (unsigned long)code[i+1],
+	     (unsigned long)code[i+2]);
+      i+=2;
 
     } else if (code[i] == CodeAddr[OP_JMPEQ0]) {
       printf("jmpeq0 var%lu $%lu\n",
 	     (unsigned long)code[i+1],
 	     (unsigned long)code[i+2]);
       i+=2;
+
+    } else if (code[i] == CodeAddr[OP_JMPEQ0_R0]) {
+      printf("jmpeq0_r0 $%lu\n",
+	     (unsigned long)code[i+1]);
+      i+=1;
 
     } else if (code[i] == CodeAddr[OP_JMPCNCT_CONS]) {
       printf("jmpcnct_cons var%lu $%lu\n",
@@ -3188,7 +3523,7 @@ int is_expr(Ast *ptr) {
 
 
 int CompileExprFromAst(Ast *ptr, int target) {
-
+  
   if (ptr == NULL) {
     return 1;
   }
@@ -3276,11 +3611,109 @@ int CompileExprFromAst(Ast *ptr, int target) {
     }
     
     IMCode_genCode3(opcode, target, newreg, newreg2);   
-   return 1;
+    return 1;
     break;
   }
+  case AST_AND: {
+    // compilation of expr1 && expr2
+
+    // if (expr1 == 0) goto L1;
+    // if (expr2 == 0) goto L1;
+    // target = 1;
+    // goto L2;
+    // L1:
+    // target = 0;
+    // L2;
+    
+    int newreg = CmEnv_newreg();
+    if (!CompileExprFromAst(ptr->left, newreg)) return 0;
+    
+    int label1 = CmEnv_get_newlabel();
+    IMCode_genCode2(OP_JMPEQ0, newreg, label1);
+
+    int newreg2 = CmEnv_newreg();
+    if (!CompileExprFromAst(ptr->right, newreg2)) return 0;
+    IMCode_genCode2(OP_JMPEQ0, newreg2, label1);
+
+    IMCode_genCode2(LOADI, target, 1);
+    
+    int label2 = CmEnv_get_newlabel();
+    IMCode_genCode1(OP_JMP, label2);
+
+    IMCode_genCode1(LABEL, label1);
+    IMCode_genCode2(LOADI, target, 0);
+    
+    IMCode_genCode1(LABEL, label2);
+
+    return 1;
+    break;
+  }
+  case AST_OR: {
+    // compilation of expr1 || expr2
+
+    // calc expr1
+    // if (expr1 != 0) goto L1;
+    // if (expr2 != 0) goto L1;
+    // target = 0;
+    // goto L2;
+    // L1:
+    // target = 1;
+    // L2;
+    
+    int newreg = CmEnv_newreg();
+    if (!CompileExprFromAst(ptr->left, newreg)) return 0;
+    
+    int label1 = CmEnv_get_newlabel();
+    IMCode_genCode2(OP_JMPNEQ0, newreg, label1);
+
+    int newreg2 = CmEnv_newreg();
+    if (!CompileExprFromAst(ptr->right, newreg2)) return 0;
+    IMCode_genCode2(OP_JMPNEQ0, newreg2, label1);
+
+    IMCode_genCode2(LOADI, target, 0);
+    
+    int label2 = CmEnv_get_newlabel();
+    IMCode_genCode1(OP_JMP, label2);
+
+    IMCode_genCode1(LABEL, label1);
+    IMCode_genCode2(LOADI, target, 1);
+    
+    IMCode_genCode1(LABEL, label2);
+
+    return 1;
+    break;
+  }
+  case AST_NOT: {
+    // compilation of !(expr1)
+    // if (expr1 == 0) goto L1;
+    // target = 0;
+    // goto L2;
+    // L1:
+    // target = 1;
+    // L2;
+    
+    int newreg = CmEnv_newreg();
+    if (!CompileExprFromAst(ptr->left, newreg)) return 0;
+    
+    int label1 = CmEnv_get_newlabel();
+    IMCode_genCode2(OP_JMPEQ0, newreg, label1);
+
+    IMCode_genCode2(LOADI, target, 0);
+    
+    int label2 = CmEnv_get_newlabel();
+    IMCode_genCode1(OP_JMP, label2);
+
+    IMCode_genCode1(LABEL, label1);
+    IMCode_genCode2(LOADI, target, 1);
+    
+    IMCode_genCode1(LABEL, label2);
+
+    return 1;
+    break;
+  }
+    
   default:
-    puts("System ERROR: Wrong AST was given to CompileExpr.");
+    puts("System ERROR: Wrong AST was given to CompileExpr.\n");
     return 0;
 
   }
@@ -4253,11 +4686,12 @@ int getRuleAgentID(Ast *ruleAgent) {
 
 
 
-int CompileIfSentenceFromAST(Ast *if_sentence_top,
-			      void **code, int offset_code) {
-  // return
-  //  generated codesize
-  //  -1 : compile error
+//int CompileIfSentenceFromAST(Ast *if_sentence_top,
+//			      void **code, int offset_code) {
+
+int CompileIfSentenceFromAST(Ast *if_sentence_top) {
+  // return 1: success
+  //        0: compile error
 
   //      <if-sentence> ::= (AST_IF guard (AST_BRANCH <then> <else>))
   //                      | <body>
@@ -4266,8 +4700,6 @@ int CompileIfSentenceFromAST(Ast *if_sentence_top,
 
   Ast *if_sentence;
   
-  int generated_codesize; // コンパイルで生成されたコード数保存用
-
   if_sentence = if_sentence_top;
 
   CmEnv_clear_keeping_rule_properties();
@@ -4277,83 +4709,103 @@ int CompileIfSentenceFromAST(Ast *if_sentence_top,
     // 通常コンパイル
     Ast *body = if_sentence;
     
-    if (!CompileBodyFromAst(body)) return -1;
+    if (!CompileBodyFromAst(body)) return 0;
     Compile_Put_Ret_ForRuleBody();
       
     CmEnv_Retrieve_GNAME();
-    generated_codesize = CmEnv_Generate_VMCode(code, offset_code);
 
-    
-    if (generated_codesize < 0) {
-      puts("System ERROR: Generated codes were too long.");
-      return -1;
-    }
     
     if (!CmEnv_check_meta_occur_once()) {
       printf("in the rule:\n  %s >< %s.\n", 
 	     IdTable_get_name(CmEnv.idL),
 	     IdTable_get_name(CmEnv.idR));
-      return -1;
+      return 0;
     }
     
-    return generated_codesize;
+    return 1;
       
   } else {
     // if_sentence
     Ast *guard, *then_branch, *else_branch;
-    int label;  // 飛び先指定用
+    int label;  // jump label
 
-    int offset = offset_code;
 
     guard = if_sentence->left;
     then_branch = if_sentence->right->left;
     else_branch = if_sentence->right->right;
 
-    // Gurad のコンパイル
+    // Compilation of Guard expressions
     int newreg = CmEnv_newreg();
     if (!CompileExprFromAst(guard, newreg)) return -1;
-    
-    //    CmEnv_Retrieve_GNAME();
-    generated_codesize = CmEnv_Generate_VMCode(code, offset_code);
-    offset += generated_codesize;
 
 
-    //JMPEQ0 用コードを作成
-    code[offset++] = CodeAddr[OP_JMPEQ0];
-    code[offset++] = (void *)(unsigned long)newreg;
-    label = offset++;  // 飛び先を格納するアドレスを記憶しておく
+#ifdef OPTIMISE_IMCODE    
+    // optimisation for R0
+    int opt = 0;
+    struct IMCode_tag *imcode = &IMCode[IMCode_n-1];
+    switch(imcode->opcode) {
+    case OP_LT:
+      imcode->opcode = OP_LT_R0;
+      opt=1;
+      break;
 
-    // then_branch のコンパイル
-    CmEnv_clear_localnamePtr();  // 局所変数としての reg番号を初期化
+    case OP_LE:
+      imcode->opcode = OP_LE_R0;
+      opt=1;
+      break;
 
-    generated_codesize = CompileIfSentenceFromAST(then_branch, code, offset);
-    if (generated_codesize < 0) return -1;
-    
-    offset += generated_codesize;
+    case OP_EQ:
+      imcode->opcode = OP_EQ_R0;
+      opt=1;
+      break;
 
-    if (offset > MAX_CODE_SIZE) {
-      puts("System ERROR: Generated codes were too big.");
-      return -1;
+    case OP_EQI:
+      imcode->opcode = OP_EQI_R0;
+      opt=1;
+      break;
+
+    case OP_NE:
+      imcode->opcode = OP_NE_R0;
+      opt=1;
     }
+    
+    if (opt == 1) {
+      imcode->operand1 = imcode->operand2;
+      imcode->operand2 = imcode->operand3;
+    }
+#endif
 
-    // JMPEQ0 のとび先を格納（相対ジャンプ）
-    code[label]=(void *)(unsigned long)generated_codesize;
+
+    // CmEnv_Retrieve_GNAME();  // <- no need for guard expressions
+
+    // Generate JMPEQ0 for VM
+    label = CmEnv_get_newlabel();    
+#ifdef OPTIMISE_IMCODE        
+    if (opt != 1) {      
+      IMCode_genCode2(OP_JMPEQ0, newreg, label);
+      
+    } else {
+      IMCode_genCode1(OP_JMPEQ0_R0, label);
+    }
+#else
+    IMCode_genCode2(OP_JMPEQ0, newreg, label);
+#endif
+        
+    
+    // Compilation of then_branch
+    CmEnv_clear_localnamePtr();  // 局所変数としての reg番号を初期化
+    if (!CompileIfSentenceFromAST(then_branch)) return 0;
+
+    
+    IMCode_genCode1(LABEL, label);
+    
 
 
     // else_branch のコンパイル
-    CmEnv_clear_localnamePtr();  // 局所変数としての reg番号を初期化
-    
-    generated_codesize = CompileIfSentenceFromAST(else_branch, code, offset);
-    if (generated_codesize < 0) return -1;
-    
-    offset += generated_codesize;
+    CmEnv_clear_localnamePtr();  // 局所変数としての reg番号を初期化    
+    if (!CompileIfSentenceFromAST(else_branch)) return 0;
 
-    if (offset > MAX_CODE_SIZE) {
-      puts("System ERROR: Generated codes were too big.");
-      return -1;
-    }
-
-    return offset - offset_code;
+    return 1;
   }
 
   
@@ -4377,7 +4829,7 @@ int makeRule(Ast *ast) {
   Ast *ruleL, *ruleR, *if_sentence;
 
   void* code[MAX_CODE_SIZE];
-  int code_offset=0;
+  int gencode_num=0;
 
   ruleL = ast->left->left;
   ruleR = ast->left->right;
@@ -4477,32 +4929,31 @@ int makeRule(Ast *ast) {
     setAnnotateLR(VM_OFFSET_ANNOTATE_R, VM_OFFSET_ANNOTATE_L);
   }
 
-  {
-    int arity;
-
-    // IMPORTANT:
-    // At the first two codes, arities of idL and idR are stored.
-    if (idL == ID_INT) {
-      arity = 0;
-    } else {
-      arity = getArityFromAST(ruleL);
-    }
-    IdTable_set_arity(idL, arity);
-    code[0] = (void *)(unsigned long)arity;
-
-    if (idR == ID_INT) {
-      arity = 0;
-    } else {
-      arity = getArityFromAST(ruleR);
-    }
-    IdTable_set_arity(idR, arity);
-    code[1] = (void *)(unsigned long)arity;
-
-    code_offset = 2;
+  int arity;
+  
+  // IMPORTANT:
+  // The first two codes stores arities of idL and idR, respectively.
+  if (idL == ID_INT) {
+    arity = 0;
+  } else {
+    arity = getArityFromAST(ruleL);
   }
+  IdTable_set_arity(idL, arity);
+  code[0] = (void *)(unsigned long)arity;
   
+  if (idR == ID_INT) {
+    arity = 0;
+  } else {
+    arity = getArityFromAST(ruleR);
+  }
+  IdTable_set_arity(idR, arity);
+  code[1] = (void *)(unsigned long)arity;
+  
+  gencode_num = 2;
   
 
+
+  
   CmEnv_clear_all();
   
   if (idL == ID_INT) {
@@ -4523,31 +4974,29 @@ int makeRule(Ast *ast) {
   CmEnv.idR = idR;
 
 
-  {
-    int generated_codesize = CompileIfSentenceFromAST(if_sentence,
-						      code, code_offset);
-    if (generated_codesize < 0) {
-      return 0;
-    }
-    code_offset += generated_codesize;
-  }  
+  if (!CompileIfSentenceFromAST(if_sentence)) return 0;
+  
+  //  IMCode_Puts(0);
+  gencode_num += CmEnv_generate_VMcode(&code[2]);
 
+  
 #ifdef MYDEBUG
-  PutsCodeN(code, code_offset); exit(1);
+  PutsCodeN(code, gencode_num); exit(1);
 #endif
-  //  PutsCodeN(code, code_offset); exit(1);
+  //    PutsCodeN(code, gencode_num);  exit(1);
 
   //    printf("Rule: %s(id:%d) >< %s(id:%d).\n", 
   //	   IdTable_get_name(idL), idL,
   //	   IdTable_get_name(idR), idR);
-  //    PutsCodeN(&code[2], code_offset-2);
+  //    PutsCodeN(&code[2], gencode_num-2);
   //    exit(1);
   
   //ast_puts(ruleL); printf("><");
   //ast_puts(ruleR); puts("");
+
   
   // Record the rule code for idR >< idL
-  RuleTable_record(idL, idR, code, code_offset); 
+  RuleTable_record(idL, idR, code, gencode_num); 
   
   if (idL != idR) {    
     // Delete the rule code for idR >< idL
@@ -4556,6 +5005,31 @@ int makeRule(Ast *ast) {
     
   }
 
+  
+  //#define DEBUG_PUT_RULE_CODE    
+#ifdef DEBUG_PUT_RULE_CODE  
+  if (((strcmp(IdTable_get_name(idL), "Fib") == 0) &&
+       (idR == ID_INT))
+      ||
+      ((strcmp(IdTable_get_name(idL), "fib") == 0) &&
+       (idR == ID_INT))
+            ||
+            ((strcmp(IdTable_get_name(idL), "MergeCC") == 0) &&
+             (idR == ID_CONS))
+      ) {
+
+      printf("Rule: %s >< %s.\n", 
+	     IdTable_get_name(idL),
+	     IdTable_get_name(idR));
+      
+      PutsCodeN(code, gencode_num+2);
+      //      exit(1);
+    }
+#endif
+
+  
+  
+  
   return 1;
 }
 
@@ -4652,8 +5126,10 @@ void *ExecCode(int mode, VirtualMachine *restrict vm, void *restrict *code) {
     &&E_LOOP, &&E_LOOP_RREC, &&E_LOOP_RREC1, &&E_LOOP_RREC2,
     &&E_LOADI, &&E_LOAD, &&E_LOADP,
     &&E_ADD, &&E_SUB, &&E_SUBI, &&E_MUL, &&E_DIV, &&E_MOD, 
-    &&E_LT, &&E_LE, &&E_EQ, &&E_EQI, &&E_NE,
-    &&E_JMPEQ0, &&E_JMPCNCT_CONS, &&E_JMPCNCT, &&E_JMP,
+    &&E_LT, &&E_LE, &&E_EQ, &&E_EQI, &&E_NE, 
+    &&E_LT_R0, &&E_LE_R0, &&E_EQ_R0, &&E_EQI_R0, &&E_NE_R0,
+    &&E_JMPEQ0, &&E_JMPEQ0_R0, &&E_JMP, &&E_JMPNEQ0,
+    &&E_JMPCNCT_CONS, &&E_JMPCNCT, 
     &&E_UNM, &&E_RAND,
     &&E_CNCTGN, &&E_SUBSTGN,
     &&E_NOP, 
@@ -5177,6 +5653,69 @@ void *ExecCode(int mode, VirtualMachine *restrict vm, void *restrict *code) {
   pc +=4;
   goto *code[pc];
 
+
+
+ E_LT_R0:
+  //    puts("lt_r0 reg reg");
+  if (FIX2INT(reg[(unsigned long)code[pc+1]]) <
+      FIX2INT(reg[(unsigned long)code[pc+2]])) {
+    reg[0] = INT2FIX(1);
+  } else {
+    reg[0] = INT2FIX(0);
+  }    
+  pc +=3;
+  goto *code[pc];
+
+ E_LE_R0:
+  //    puts("SUB reg reg");
+  if (FIX2INT(reg[(unsigned long)code[pc+1]]) <=
+      FIX2INT(reg[(unsigned long)code[pc+2]])) {
+    reg[0] = INT2FIX(1);
+  } else {
+    reg[0] = INT2FIX(0);
+  }    
+  pc +=3;
+  goto *code[pc];
+
+ E_EQ_R0:
+  //    puts("SUB reg reg");
+  if (reg[(unsigned long)code[pc+1]] ==
+      reg[(unsigned long)code[pc+2]]) {
+    reg[0] = INT2FIX(1);
+  } else {
+    reg[0] = INT2FIX(0);
+  }    
+  pc +=3;
+  goto *code[pc];
+
+
+ E_EQI_R0:
+  //    puts("SUB reg int");
+  if (FIX2INT(reg[(unsigned long)code[pc+1]]) ==
+      (unsigned long)code[pc+2]) {
+    reg[0] = INT2FIX(1);
+  } else {
+    reg[0] = INT2FIX(0);
+  }
+  
+  pc +=3;
+  goto *code[pc];
+
+
+  
+ E_NE_R0:
+  //    puts("SUB reg reg");
+  if (reg[(unsigned long)code[pc+1]] !=
+      reg[(unsigned long)code[pc+2]]) {
+    reg[0] = INT2FIX(1);
+  } else {
+    reg[0] = INT2FIX(0);
+  }    
+  pc +=4;
+  goto *code[pc];
+
+
+  
  E_JMPEQ0:
   //    puts("JMPEQ0 reg pc");
   //    pc is a relative address, not absolute one!
@@ -5187,6 +5726,25 @@ void *ExecCode(int mode, VirtualMachine *restrict vm, void *restrict *code) {
   goto *code[pc];
 
 
+ E_JMPEQ0_R0:
+  //    puts("JMPEQ0 pc");
+  if (!FIX2INT(reg[0])) {
+    pc += (unsigned long)code[pc+1];
+  }
+  pc +=2;
+  goto *code[pc];
+
+
+ E_JMPNEQ0:
+  //    puts("JMPNEQ0 reg pc");
+  if (FIX2INT(reg[(unsigned long)code[pc+1]])) {
+    pc += (unsigned long)code[pc+2];
+  }
+  pc +=3;
+  goto *code[pc];
+
+  
+  
  E_JMPCNCT_CONS:
   //    puts("JMPCNCT_CONS reg pc");
 #ifdef COUNT_CNCT    
@@ -5272,8 +5830,8 @@ void *ExecCode(int mode, VirtualMachine *restrict vm, void *restrict *code) {
   
   
  E_JMP:
-  //    puts("JMP pc");
-  pc += reg[(unsigned long)code[pc+1]];
+  //      puts("JMP pc");
+  pc += (unsigned long)code[pc+1];
   pc +=2;
   goto *code[pc];
 
@@ -6402,15 +6960,14 @@ int exec(Ast *at) {
   }
 
   
-  // Generate codes from CmEnv, where '0' means index of the `code',
-  // so here codes are stored from code[0].
-
   CmEnv_Retrieve_GNAME();
   //    IMCode_Puts(0);
-  CmEnv_Generate_VMCode(code, 0);
+  CmEnv_generate_VMcode(code);
   //    PutsCode(code); exit(1);
 
 
+
+  
 #ifdef COUNT_MKAGENT
   NumberOfMkAgent=0;
 #endif
@@ -6494,24 +7051,30 @@ void *tpool_thread(void *arg) {
 
   vm = (VirtualMachine *)arg;
 
+  
 #ifdef CPU_ZERO
   cpu_set_t mask;
   CPU_ZERO(&mask);
   CPU_SET((vm->id)%CpuNum, &mask);
   if(sched_setaffinity(0, sizeof(mask), &mask)==-1) {
-	printf("WARNING:");
-	printf("CPUNUM=%d, id=%d, cpuid=%d\n", CpuNum, vm->id, (vm->id)%CpuNum);
+    printf("WARNING:");
+    printf("Thread%d works on Core%d/%d\n", vm->id, (vm->id)%CpuNum, CpuNum-1);
   }
-  //printf("CPUNUM=%d, id=%d, cpuid=%d\n", CpuNum, vm->id, (vm->id)%CpuNum);
+  //  printf("Thread%d works on Core%d/%d\n", vm->id, (vm->id)%CpuNum, CpuNum-1);  
 #endif
 
+  
   while (1) {
 
     VALUE t1, t2;
     while (!EQStack_Pop(vm, &t1, &t2)) {
+
+      // Not sure, but it works well. Perhaps it can reduce race condition.
+      usleep(CAS_LOCK_USLEEP);  
+
       pthread_mutex_lock(&Sleep_lock);
       SleepingThreadsNum++;
-      
+
       if (SleepingThreadsNum == MaxThreadsNum) {
 	pthread_mutex_lock(&AllSleep_lock);
 	pthread_cond_signal(&ActiveThread_all_sleep);
@@ -6679,12 +7242,13 @@ int exec(Ast *at) {
     return 0;
   }
 
-  // '0' means that generated codes are stored in code[0,...].
   CmEnv_Retrieve_GNAME();
-  CmEnv_Generate_VMCode(code, 0);
+  //  IMCode_Puts(0); exit(1);
 
-  //  int codenum = CmEnv_Generate_VMCode(code, 0);
-  //  PutsCodeN(code, codenum); exit(1);
+  CmEnv_generate_VMcode(code);
+
+  //    int codenum = CmEnv_generate_VMcode(code);
+  //    PutsCodeN(code, codenum-2); //exit(1);
   
 
   ExecCode(1, VMs[0], code);
@@ -6712,8 +7276,9 @@ int exec(Ast *at) {
   pthread_cond_broadcast(&EQStack_not_empty);
   pthread_mutex_unlock(&Sleep_lock);
 
-  //usleep(CAS_LOCK_USLEEP);  // a little wait untill threads start.
-  usleep(10000);
+  // a little wait until all threads start.
+  //usleep(CAS_LOCK_USLEEP);  
+  usleep(10000);  // 0.01 sec wait
 
 
   // if some threads are working, wait for all of these to sleep.
@@ -6768,286 +7333,290 @@ int yywrap() {
 
 int main(int argc, char *argv[])
 { 
-  int retrieve_flag = 1; // 1:エラー時にインタプリタへ復帰, 0:終了
+  int i, param;
+  char *fname = NULL;
+  int max_EQStack=1<<8; // 512
+  int retrieve_flag = 1; // 1: retrieve to interpreter even if error occurs
 
+#ifndef EXPANDABLE_HEAP
+  // v0.5.6
+  unsigned int heap_size=100000;
+#endif
 
+  
 #ifdef MY_YYLINENO
- InfoLineno_Init();
+  InfoLineno_Init();
 #endif
 
  // Pritty printing for local variables
 #ifdef PRETTY_VAR
- Pretty_init();
+  Pretty_init();
 #endif
 
-  {
-    int i, param;
-    char *fname = NULL;
-
-    int max_EQStack=1<<8; // 512
-
-
-#ifndef EXPANDABLE_HEAP
-    // v0.5.6
-    unsigned int heap_size=100000;
-#endif
-    
+  
 
 #ifndef THREAD
-    Init_WHNFinfo();
+  Init_WHNFinfo();
 #endif
 
-    ast_heapInit();
+  ast_heapInit();
 
 
     
-    for (i=1; i<argc; i++) {
-      if (*argv[i] == '-') {
-	switch (*(argv[i] +1)) {
-	case 'v':
-	  printf("Inpla version %s\n", VERSION);
-	  exit(-1);
-	  break;
-	case '-':
-	case 'h':
-	case '?':
-	  printf("Inpla version %s\n", VERSION);	  
-	  puts("Usage: inpla [options]\n");
-	  puts("Options:");
-	  printf(" -f <filename>    Set input file name                 (Defalut:    STDIN)\n");
+  for (i=1; i<argc; i++) {
+    if (*argv[i] == '-') {
+      switch (*(argv[i] +1)) {
+      case 'v':
+	printf("Inpla version %s\n", VERSION);
+	exit(-1);
+	break;
+      case '-':
+      case 'h':
+      case '?':
+	printf("Inpla version %s\n", VERSION);	  
+	puts("Usage: inpla [options]\n");
+	puts("Options:");
+	printf(" -f <filename>    Set input file name                 (Defalut:    STDIN)\n");
+
 #ifndef EXPANDABLE_HEAP
-	  //v0.5.6
-	  printf(" -c <number>      Set the size of heaps               (Defalut: %8u)\n",
-		 heap_size);
+	//v0.5.6
+	printf(" -c <number>      Set the size of heaps               (Defalut: %8u)\n", heap_size);
 #endif
-	  
-	  printf(" -e <number>      Set the unit size of the EQ stack   (Default: %8u)\n",
-		 max_EQStack);
+	
+	printf(" -e <number>      Set the unit size of the EQ stack   (Default: %8u)\n", max_EQStack);
+	
 
-
-	  // Special Options
+	// Special Options
 #ifdef THREAD
-	  printf(" -t <number>      Set the number of threads           (Default: %8d)\n",
-		 MaxThreadsNum);
+	printf(" -t <number>      Set the number of threads           (Default: %8d)\n", MaxThreadsNum);
 
 #else
-	  printf(" -w               Enable Weak Reduction strategy      (Default:    false)\n"
-		 );
-	  
-	  
+	printf(" -w               Enable Weak Reduction strategy      (Default:    false)\n");
 #endif
 	  
-	  printf(" -d <Name>=<val>  Bind <val> to <Name>\n"
-		 );
+	printf(" -d <Name>=<val>  Bind <val> to <Name>\n");
+        printf(" -h               Print this help message\n\n");
+        exit(-1);
+	break;
+
+	
+      case 'd':
+	i++;
+	if (i < argc) {
+	  char varname[100], val[100];
+	  char *tp;
+
+	  tp = strtok(argv[i], "=");
+	    
+	  // parsing for an identifier
+	  snprintf(varname, sizeof(varname)-1, "%s", tp);
+	  if ((varname == NULL) || (varname[0] < 'A') || (varname[0] > 'Z')) {
+      	    puts("ERROR: 'id' in the format 'id=value' must start from a capital letter.");
+      	    exit(-1);
+	  }
+
 	  
-	  printf(" -h               Print this help message\n\n");
+	  tp = strtok(NULL, "=");
+
+	  // parsing for a number
+	  snprintf(val, sizeof(val)-1, "%s", tp);
+	  if (val == NULL) {
+	    puts("ERROR: 'value' in the format 'id=value' must an integer value.");
+	    exit(-1);	      
+	  }
+
+	  int offset = 0;
+	  if (val[0] == '-') {
+	    offset = 1;
+	  }
+	  int valid = 1;
+	  for (int idx = offset; idx < strlen(val); idx++) {
+	    if ((val[idx] < '0') || (val[idx] > '9')) {
+	      valid = 0;
+	      break;
+	    }
+	  }
+
+	  if (!valid) {
+	    puts("ERROR: 'value' in the format 'id=value' must an integer value.");
+	    exit(-1);	      	      
+	  }
+	  
+	  ast_recordConst(varname, atoi(val));
+
+	} else {
+	  puts("ERROR: The option switch '-d' needs a string such as VarName=value.");
 	  exit(-1);
-	  break;
+	}
+	break;
 	  
-	case 'd':
-	  i++;
-	  if (i < argc) {
-	    char varname[100], val[100];
-	    char *tp;
-	    tp = strtok(argv[i], "=");
-	    snprintf(varname, sizeof(varname)-1, "%s", tp);
-	    
-	    if ((varname == NULL)
-		|| (varname[0] < 'A')
-		|| (varname[0] > 'Z')) {
-	      puts("ERROR: 'id' in the format 'id=value' must start from a capital letter.");
-	      exit(-1);
-	    }
-
-	    
-	    tp = strtok(NULL, "=");
-	    snprintf(val, sizeof(val)-1, "%s", tp);
-	    if (val == NULL) {
-	      puts("ERROR: 'value' in the format 'id=value' must an integer value.");
-	      exit(-1);	      
-	    }
-
-	    int offset = 0;
-	    if (val[0] == '-') {
-	      offset = 1;
-	    }
-	    int valid = 1;
-	    for (int idx = offset; idx < strlen(val); idx++) {
-	      if ((val[idx] < '0') || (val[idx] > '9')) {
-		valid = 0;
-		break;
-	      }
-	    }
-
-	    if (!valid) {
-	      puts("ERROR: 'value' in the format 'id=value' must an integer value.");
-	      exit(-1);	      	      
-	    }
-
-	    ast_recordConst(varname, atoi(val));
-
-	    
-			 
-	  } else {
-	    puts("ERROR: The option switch '-d' needs a string such as VarName=value.");
-	    exit(-1);
-	  }
-	  break;
-	  
-	case 'f':
-	  i++;
-	  if (i < argc) {
-	    fname = argv[i];
-	    retrieve_flag = 0;
-	  } else {
-	    printf("ERROR: The option switch '-f' needs a string of an input file name.");
-	    exit(-1);
-	  }
-	  break;
+      case 'f':
+	i++;
+	if (i < argc) {
+	  fname = argv[i];
+	  retrieve_flag = 0;
+	} else {
+	  printf("ERROR: The option switch '-f' needs a string of an input file name.");
+	  exit(-1);
+	}
+	break;
 
 
 #ifndef EXPANDABLE_HEAP
+      case 'c':
 	// v0.5.6
-	case 'c':
-	  i++;
-	  if (i < argc) {
-	    param = atoi(argv[i]);
-	    if (param == 0) {
-	      printf("ERROR: '%s' is illegal parameter for -c\n", argv[i]);
-	      exit(-1);
-	    }
-	  } else {
-	    printf("ERROR: The option switch '-c' needs a number as an argument.");
-	    exit(-1);
-	  }
-	  heap_size=param;
-	  break;
+        i++;
+        if (i < argc) {
+          param = atoi(argv[i]);
+          if (param == 0) {
+            printf("ERROR: '%s' is illegal parameter for -c\n", argv[i]);
+            exit(-1);
+          }
+        } else {
+          printf("ERROR: The option switch '-c' needs a number as an argument.");
+          exit(-1);
+        }
+        heap_size=param;
+        break;
 #endif	  
 	  
 	  
-	case 'e':
-	  i++;
-	  if (i < argc) {
-	    param = atoi(argv[i]);
-	    if (param == 0) {
-	      printf("ERROR: '%s' is illegal parameter for -e\n", argv[i]);
-	      exit(-1);
-	    }
-	  } else {
-	    printf("ERROR: The option switch '-e' needs a natural number.");
-	    exit(-1);
-	  }
-	  max_EQStack=param;
-	  break;
+      case 'e':
+        i++;
+        if (i < argc) {
+          param = atoi(argv[i]);
+          if (param == 0) {
+            printf("ERROR: '%s' is illegal parameter for -e\n", argv[i]);
+            exit(-1);
+          }
+        } else {
+          printf("ERROR: The option switch '-e' needs a natural number.");
+          exit(-1);
+        }
+        max_EQStack=param;
+        break;
 	  
 	  
 #ifdef THREAD
-        case 't':
-	  i++;
-	  if (i < argc) {
-	    param = atoi(argv[i]);
-	    if (param == 0) {
-	      printf("ERROR: '%s' is illegal parameter for -t\n", argv[i]);
-	      exit(-1);
-	    }
-	  } else {
-	    printf("ERROR: The option switch '-t' needs a number of threads.");
-	    exit(-1);
-	  }
-	  
-	  MaxThreadsNum=param;
-	  break;
+      case 't':
+        i++;
+        if (i < argc) {
+          param = atoi(argv[i]);
+          if (param == 0) {
+            printf("ERROR: '%s' is illegal parameter for -t\n", argv[i]);
+            exit(-1);
+          }
+        } else {
+          printf("ERROR: The option switch '-t' needs a number of threads.");
+          exit(-1);
+        }
+  
+        MaxThreadsNum=param;
+        break;
 #else
-        case 'w':
-	  WHNFinfo.enabled = 1;
-	  break;	  
+      case 'w':
+        WHNFinfo.enabled = 1;
+        break;	  
 #endif
 	  
 	  
-	default:
-	  printf("ERROR: Unrecognized option %s\n", argv[i]);
-	  printf("Please use -h option for getting more information.\n\n");
-	  exit(-1);
-	}
-      } else {
-	printf("ERROR: Unrecognized option %s\n", argv[i]);
-	printf("Please use -h option for getting more information.\n\n");
-	exit(-1);
+      default:
+        printf("ERROR: Unrecognized option %s\n", argv[i]);
+        printf("Use -h option for getting more information.\n\n");
+        exit(-1);
       }
-    }
-
-
-    // Dealing with fname
-    if (fname == NULL) {
-      yyin = stdin;
-      
     } else {
-      if (!(yyin = fopen(fname, "r"))) {
-	printf("Error: The file '%s' can not be opened.\n", fname);
-	exit(-1);
-      }
+      printf("ERROR: Unrecognized option %s\n", argv[i]);
+      printf("Use -h option for getting more information.\n\n");
+      exit(-1);
     }
+  }
+
+
+  // Dealing with fname
+  if (fname == NULL) {
+    yyin = stdin;
+    
+  } else {
+    if (!(yyin = fopen(fname, "r"))) {
+      printf("Error: The file '%s' can not be opened.\n", fname);
+      exit(-1);
+    }
+  }
 
     
 #ifndef THREAD
-    if (WHNFinfo.enabled) {
-      printf("Inpla %s (Weak Strategy) : Interaction nets as a programming language",
-	     VERSION);
-      printf(" [%s]\n", BUILT_DATE);
-    } else {
-      printf("Inpla %s : Interaction nets as a programming language",
-	     VERSION);
-      printf(" [built: %s]\n", BUILT_DATE);
-    }
+  if (WHNFinfo.enabled) {
+    printf("Inpla %s (Weak Strategy) : Interaction nets as a programming language", VERSION);
+    printf(" [%s]\n", BUILT_DATE);
+  } else {
+    printf("Inpla %s : Interaction nets as a programming language", VERSION);
+    printf(" [built: %s]\n", BUILT_DATE);
+  }
 #else
-    printf("Inpla %s : Interaction nets as a programming language",
-	   VERSION);
-    printf(" [built: %s]\n", BUILT_DATE);    
+  printf("Inpla %s : Interaction nets as a programming language", VERSION);
+  printf(" [built: %s]\n", BUILT_DATE);    
 #endif
 
 
 
 #ifndef EXPANDABLE_HEAP
-    // v0.5.6
-    heap_size = heap_size/MaxThreadsNum;    
+  // v0.5.6
+  heap_size = heap_size/MaxThreadsNum;    
 #endif
     
     
-    IdTable_init();    
-    NameTable_init();
-    RuleTable_init();
-    
+  IdTable_init();    
+  NameTable_init();
+  RuleTable_init();
+  CodeAddr_init();
+  
 #ifdef THREAD
-    GlobalEQStack_Init(MaxThreadsNum*8);
+  GlobalEQStack_Init(MaxThreadsNum*8);
 #endif
+
     
-    
-    CmEnv_Init(VM_LOCALVAR_SIZE);
     
     
     
 #ifdef EXPANDABLE_HEAP
 
 #ifndef THREAD    
-    VM_Init(&VM, max_EQStack);
+  VM_Init(&VM, max_EQStack);
 #else
-    tpool_init(max_EQStack);    
+  tpool_init(max_EQStack);    
 #endif
 
+  
 #else // ifndef EXPANDABLE_HEAP
-    //v0.5.6
+  //v0.5.6
 
 #ifndef THREAD        
-    VM_Init(&VM, heap_size, max_EQStack);
+  VM_Init(&VM, heap_size, max_EQStack);
 #else    
-    tpool_init(heap_size, max_EQStack);
+  tpool_init(heap_size, max_EQStack);
 #endif
 
+  
 #endif
     
+
+
+
+  
+#ifdef THREAD
+  // if some threads invoked by the initialise are still working,
+  // wait for all of these to sleep.
+  if (SleepingThreadsNum < MaxThreadsNum) {
+    pthread_mutex_lock(&AllSleep_lock);
+    pthread_cond_wait(&ActiveThread_all_sleep, &AllSleep_lock);
+    pthread_mutex_unlock(&AllSleep_lock);
   }
-    
+#endif
+  
+  
   linenoiseHistoryLoad(".inpla.history.txt");
+
   
   // the main loop of parsing and execution
   while(1) {
@@ -7055,26 +7624,26 @@ int main(int argc, char *argv[])
 
     // When errors occur during parsing
     if (yyparse()!=0) {
-
+      
       if (!retrieve_flag) {
-	exit(0);
+      	exit(0);
       }
-
+      
       if (yyin != stdin) {
-	fclose(yyin);
-	while (yyin!=stdin) {
-	  popFP();
-	}
+      	fclose(yyin);
+        while (yyin!=stdin) {
+      	  popFP();
+      	}
 #ifdef MY_YYLINENO
-	InfoLineno_AllDestroy();
+      	InfoLineno_AllDestroy();
 #endif
       }
-
+      
     }
   }
-
+  
   exit(0);
 }
-
+ 
 
 #include "lex.yy.c"
