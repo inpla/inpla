@@ -73,7 +73,7 @@ Inpla is a multi-threaded parallel interpreter of interaction nets. Once you wri
 	
 	```
 	$ ./inpla
-	Inpla 0.6.1 : Interaction nets as a programming language [built: 12 Jan. 2022]
+	Inpla 0.7.0 : Interaction nets as a programming language [built: 30 Jan. 2022]
 	>>> 
 	```
 
@@ -130,7 +130,7 @@ Inpla is a multi-threaded parallel interpreter of interaction nets. Once you wri
   
     ```
     $ ./inpla -f sample/gcd.in
-    Inpla 0.6.1 : Interaction nets as a programming language [built: 12 Jan. 2022]
+    Inpla 0.7.0 : Interaction nets as a programming language [built: 30 Jan. 2022]
     (4 interactions, 0.00 sec)
     7
     
@@ -259,7 +259,7 @@ Inpla is a multi-threaded parallel interpreter of interaction nets. Once you wri
 
   ```
   $ ./inpla -h
-  Inpla version 0.6.1
+  Inpla version 0.7.0
   Usage: inpla [options]
   
   Options:
