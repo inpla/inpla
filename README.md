@@ -643,7 +643,7 @@ The symbol of addition, subtraction, multiplication, division, modulo are `+`, `
 
 
 ### Interaction rules with expressions on attributes
-In interaction rules, attributes that occur in the rule-agent parts are recognised by specifying variables with a modifier `int`, we call these *attribute variables*. **It is OK if we do not care about the Linear restriction for attributes values**, so we can use the same attribute variable as many times as you want. This is because these do not affect keeping the one-to-one connection among agent ports, whereas every ordinary name has to occur exactly twice in interaction rules.
+In interaction rules, attributes that occur in the rule-agent parts are recognised by specifying variables with a modifier `int`, we call these *attribute variables*. **It is OK if we do not care about the Linear restriction for attributes variables**, so we can use the same attribute variable as many times as you want. This is because these do not affect keeping the one-to-one connection among agent ports, whereas every ordinary name has to occur exactly twice in interaction rules.
 
 * Example: Incrementor on an attribute:
 
