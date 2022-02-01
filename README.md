@@ -643,12 +643,13 @@ The symbol of addition, subtraction, multiplication, division, modulo are `+`, `
 
 
 ### Interaction rules with expressions on attributes
-In interaction rules, attributes are recognised by a modifier `int` in order to apply arithmetic expressions. **We can use the same variable with the modifier `int` many times (of course, zero times is also OK) in the connection parts of interaction rules**. This is because these does not affect keeping the one-to-one connection among agent ports.
+In interaction rules, attributes that occur in the rule-agent parts are recognised by specifying variables with a modifier `int`, we call these *attribute variables*. **It is OK if we do not care about the Linear restriction for attributes values**, so we can use the same attribute variable as many times as you want. This is because these do not affect keeping the one-to-one connection among agent ports, whereas every ordinary name has to occur exactly twice in interaction rules.
+
 * Example: Incrementor on an attribute:
 
   ```
-  >>> inc(result) >< (int a) => result~(a+1);
-  >>> inc(r)~10;                             // This is also written as:  r << inc(10)
+  >>> inc(result) >< (int a) => result~(a+1);  // The `a' is a varible for an attribute
+  >>> inc(r)~10;                               // This is also written as:  r << inc(10)
   (1 interactions, 0.00 sec)
   >>> r;
   11
@@ -661,7 +662,7 @@ In interaction rules, attributes are recognised by a modifier `int` in order to 
 
   ![dup_list](pic/dup_list.png)
   
-  We note that, in the first line from the top of the following execution example, there is a rule allowed to have not twice occurrences of *i* (here, it is three times, that is, once as `(int i):xs` in left-hand side, and twice as `(i:xs1)` and `(i:xs2)` in the right-hand side). This is possible because the *i* is a variable for attributes.
+  **We note that**, on the first line from the top of the following execution example, there is a rule allowed to have twice occurrences of *i*  in the right-hand side (here, `(i:xs1)` and `(i:xs2)`). This is possible because the *i* is an attribute variable.
 
   ```
   >>> dup(a1,a2) >< (int i):xs => a1~(i:xs1), a2~(i:xs2), dup(xs1,xs2)~xs;
@@ -825,7 +826,7 @@ See [Changelog.md](Changelog.md) for details.
 #### New Features:
 
 - **Logical operators on integers**: Not `!` (`not`), And `&&` (`and`)  and Or `||` (`or`) are available.  Only `0` is regarded as False and these operators return `1` for Truth, `0` for False.
-- **Bytecode optimisations*: Bytecodes are optimised by methods such as Copy propagation, Delete dead code. See [Changelog.md](Changelog.md) for more details.
+- **Bytecode optimisations*: Bytecodes are optimised by Copy propagation, Dead code elimination methods. See [Changelog.md](Changelog.md) for more details.
 
 
 
