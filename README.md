@@ -194,7 +194,7 @@ Inpla is a multi-threaded parallel interpreter of interaction nets. Once you wri
     
     
     // Nets
-    isort(r)~[3,6,1,9,2];
+    qsort(r)~[3,6,1,9,2];
     r;
     ```
 
@@ -225,7 +225,7 @@ Inpla is a multi-threaded parallel interpreter of interaction nets. Once you wri
                smaller, cnt << part(x,ys);
       
       // Nets
-      r << isort([3,6,1,9,2]);
+      r << qsort([3,6,1,9,2]);
       r;
       ```
     
