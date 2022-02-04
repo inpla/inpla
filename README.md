@@ -6,18 +6,18 @@
 
 Inpla is a multi-threaded parallel interpreter of interaction nets. Once you write programs for sequential execution, it works also in multi-threaded parallel execution. Each thread is managed on each CPU-core with POSIX-thread library. 
 
-* The current version is 0.7.0 released on **30 January 2022**. (See [Changelog.md](Changelog.md) for details.)
+* The current version is 0.7.0 released on **4 February 2022**. (See [Changelog.md](Changelog.md) for details.)
 
-![speedup-ratio](pic/benchmark_reuse_v0.7.0.png)
+![speedup-ratio](pic/benchmark_reuse_v0.7.1.png)
 
 |                | Haskell  |   SML    | Python | Inpla1 | Inpla1_r | Inpla7 | Inpla7_r |
 | -------------- | :------: | :------: | :----: | :----: | :------: | :----: | :------: |
-| ack(3,11)    |   2.31   | **0.41** |   -    |  5.22  |   3.86   |  1.52  |   0.81   |
-| fib 38       |   1.60   | **0.26** |  8.49  |  3.52  |   3.31   |  0.62  |   0.55   |
-| bsort 40000  |  34.81   |  11.17   | 76.72  | 25.76 | 18.21 |  7.36  | **2.87** |
-| isort 40000  | **0.02** |   2.97   | 36.63  | 11.97 |   8.62   |  3.64  |   1.44   |
-| qsort 800000 | **0.15** |   1.16   | 97.30  |  3.55  |   1.87   |  0.82  |   0.35   |
-| msort 800000 | 0.46 |   1.00   | 98.27  |  2.29  |   1.34   |  0.60  |   **0.33**   |
+| ack(3,11)    |   2.31   | **0.41** |   -    |  4.78  |   3.55   |  1.51  |   0.74   |
+| fib 38       |   1.60   | **0.26** |  8.49  |  3.10  |   2.95   |  0.60  |   0.50   |
+| bsort 40000  |  34.81   |  11.17   | 76.72  | 24.85 | 18.22 |  7.39  | **2.92** |
+| isort 40000  | **0.02** |   2.97   | 36.63  | 11.85 |   8.71   |  3.65  |   1.41   |
+| qsort 800000 | **0.15** |   1.16   | 97.30  |  3.54  |   1.88   |  0.83  |   0.34   |
+| msort 800000 | 0.46 |   1.00   | 98.27  |  2.26  |   1.32   |  0.60  |   **0.33**   |
 
 - **Comparison in execution time** with other implementations: **Haskell** (GHC version 8.10.7), **Standard ML of New Jersey** v110.74 (interpreter mode) and **Python** 3.8.5 in execution time.
   
@@ -73,7 +73,7 @@ Inpla is a multi-threaded parallel interpreter of interaction nets. Once you wri
 	
 	```
 	$ ./inpla
-	Inpla 0.7.0 : Interaction nets as a programming language [built: 30 Jan. 2022]
+	Inpla 0.7.1 : Interaction nets as a programming language [built: 4 Feb. 2022]
 	>>> 
 	```
 
@@ -130,7 +130,7 @@ Inpla is a multi-threaded parallel interpreter of interaction nets. Once you wri
   
     ```
     $ ./inpla -f sample/gcd.in
-    Inpla 0.7.0 : Interaction nets as a programming language [built: 30 Jan. 2022]
+    Inpla 0.7.1 : Interaction nets as a programming language [built: 4 Feb. 2022]
     (4 interactions, 0.00 sec)
     7
     
@@ -233,7 +233,7 @@ Inpla is a multi-threaded parallel interpreter of interaction nets. Once you wri
 
       ```
       $ ./inpla -f sample/qsort.in
-      Inpla 0.6.1 : Interaction nets as a programming language [built: 12 Jan. 2022]
+      Inpla 0.7.1 : Interaction nets as a programming language [built: 4 Feb. 2022]
       (22 interactions, 0.00 sec)
       [1,2,3,6,9]
       
@@ -259,14 +259,14 @@ Inpla is a multi-threaded parallel interpreter of interaction nets. Once you wri
 
   ```
   $ ./inpla -h
-  Inpla version 0.7.0
+  Inpla version 0.7.1
   Usage: inpla [options]
   
   Options:
    -f <filename>    Set input file name                 (Defalut:    STDIN)
    -e <number>      Set the unit size of the EQ stack   (Default:      256)
    -w               Enable Weak Reduction strategy      (Default:    false) 
-   -t <number>      Set the number of threads           (Default:        1)
+   -t <number>      Set the number of threads           (Default:        8)
    -d <Name>=<val>  Bind <val> to <Name>
    -h               Print this help message
   ```
@@ -274,7 +274,7 @@ Inpla is a multi-threaded parallel interpreter of interaction nets. Once you wri
 **Note**: 
 
 * The option `-w` is available for the single-thread version.
-* The option ```-t``` is available for the multi-thread version that is compiled by ```make thread```.
+* The option ```-t``` is available for the multi-thread version that is compiled by ```make thread```. The default value is setting for the number of cores, so execution will be automatically scaled without specifying this. 
 
 
 
@@ -826,7 +826,7 @@ See [Changelog.md](Changelog.md) for details.
 #### New Features:
 
 - **Logical operators on integers**: Not `!` (`not`), And `&&` (`and`)  and Or `||` (`or`) are available.  Only `0` is regarded as False and these operators return `1` for Truth, `0` for False.
-- **Bytecode optimisations*: Bytecodes are optimised by Copy propagation, Dead code elimination methods. See [Changelog.md](Changelog.md) for more details.
+- **Bytecode optimisations**: Bytecodes are optimised by Copy propagation, Dead code elimination methods. See [Changelog.md](Changelog.md) for more details.
 
 
 

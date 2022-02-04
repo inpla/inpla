@@ -1,5 +1,21 @@
 # Change log
 
+### v0.7.1 (released on 2 February 2022)
+
+#### Polished:
+
+- **Bytecodes**: Bytecodes of virtual machines are expressed by three address codes, though these are ordered as `op dest src1 src2`. These are changed to the ordinarily order such as `op src1 src2 dest`. 
+
+- **Bytecode optimisation**:
+
+  - A sequence `OP_EQI_RO reg` `OP_JMPEQ0_R0 pc` is optimised into a code `JMPNEQ0 reg pc`.
+  - By introducing a bytecode `OP_INC src dest`, a code `OP_ADDI src $1 dest` and a code`OP_ADDI $1 src dest` are optimised into `OP_INC src dest`. 
+  - By introducing a bytecode `OP_DEC src dest`, a code `OP_SUBI src $1 dest` is optimised into `OP_DEC src dest`.
+
+- **Intermediate code for blocks**: To show areas of blocks, an intermediate code `OP_BEGIN_BLOCK` is introduced. Copy Propagation for `OP_LOAD` and `OP_LOADI` is performed until the next `OP_BEGIN_BLOCK` occurrence.
+
+  
+
 ### v0.7.0 (released on 30 January 2022)
 
 #### New Features:

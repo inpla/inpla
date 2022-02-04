@@ -55,6 +55,10 @@
 #define ID_NAME NUM_AGENTS // 256
 #define START_ID_OF_GNAME  ID_NAME+1
 
+
+#define NUM_NAMES NUM_AGENTS // 256
+
+
 //#define IS_AGENTID(a) (a < ID_NAME)
 #define IS_AGENTID(a) (!(a & 0x100)) // less than 256
 
@@ -73,7 +77,7 @@ typedef struct {
   int arity;
 } IdTableT;
 
-#define IDTABLE_SIZE  (NUM_AGENTS)*2 // AGENT + NAME
+#define IDTABLE_SIZE  (NUM_AGENTS + NUM_NAMES) // AGENT + NAME
 
 void IdTable_init();
 void IdTable_set_name(int id, char *symname);
