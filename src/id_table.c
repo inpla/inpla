@@ -188,7 +188,7 @@ int IdTable_get_arity(int id)
 int IdTable_new_agentid() {
   NextAgentId++;
   if (NextAgentId > ID_NAME) {
-    printf("ERROR: The number of agents exceeded the size of agents in SYMTABLE (%d)\n",
+    printf("ERROR: The number of agents exceeded the size (%d) for agents in IDTABLE\n",
 	 ID_NAME);
     exit(-1);
   }
@@ -201,7 +201,7 @@ int IdTable_new_gnameid() {
     return(NextGnameId);
   } else {
     
-    printf("ERROR: The total number of agents and names exceeded the size of names in IDTABLE (%d)\n",
+    printf("ERROR: The total number of names exceeded the size of IDTABLE (%d)\n",
 	 IDTABLE_SIZE);
     exit(-1);
   }
