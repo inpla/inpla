@@ -96,12 +96,12 @@ Inpla is a multi-threaded parallel interpreter of interaction nets. Once you wri
   ```
 
 ### Interactive mode (multi-thread version)
-* There is an execution option `-t` in order to specify the number of threads in a thread pool. For instance, by invoking with `-t 4` Inpla starts with 4 threads in the pool:
+* There is an execution option `-t` in order to specify the number of threads in a thread pool. For instance, by invoking with `-t 4` Inpla populates 4 threads in the thread pool:
 
   ```
   $ ./inpla -t 4
   ```
-
+  The default value is setting for the number of cores, so **execution will be automatically scaled without specifying this**. This is useful to see the effect by number of threads. 
 
 
 ### Batch mode and sample files
