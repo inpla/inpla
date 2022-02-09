@@ -51,73 +51,9 @@ int getHash(char *key)
 
 
 
-void NameTable_set_heap_id(char *key, VALUE heap, IDTYPE id) {
-  // Set (id, heap) for the key in the name table.
-  
-  int hash;
-  NameList *add;
-  hash = getHash(key);
-    
-  if (NameHashTable[hash] == NULL) {  
-    // When the linear list of the hash table is EMPTY
-
-    // Make a new linear list
-    add = NameList_new(); 
-
-    // Set (id, heap) for the key
-    add->name = key;
-    add->id = id;
-    IdTable_set_name(id, key);
-    add->heap = heap;
-    add->next = NULL;
-
-    // Store the liner list to the hash table
-    NameHashTable[hash] = add;
-    return;
-  }
 
 
-  // linear search for the key
-  NameList *at = NameHashTable[hash];
-
-  while (at != NULL) {
-    
-    if (strcmp(at->name, key) == 0) {
-      // already exists
-
-      // set (id, heap) for the key
-      at->id = id;
-      IdTable_set_name(at->id, key);
-      at->heap = heap;
-      return;
-
-    }
-    at = at->next;
-  }
-
-
-  // The case of no entries
-
-  // Make a new linear list
-  add = NameList_new();
-
-  // Set (id, heap) for the key
-  add->name = key;  
-  add->id = id;
-  IdTable_set_name(add->id, key);
-  add->heap = heap;
-
-  // Change the first element of the hash table into me.
-  add->next = NameHashTable[hash];
-  NameHashTable[hash] = add;
-  
-  return;
-}
-
-
-
-
-void NameTable_erase(char *key) {
+void NameTable_erase_id(char *key) {
   // Delete the entry for the key
   
   int hash;
@@ -140,17 +76,7 @@ void NameTable_erase(char *key) {
     if (strcmp(at->name, key) == 0) {
       // already exists
 
-      // No need to be freed
-      // because it stores just a pointer to the heap,
-      // and this function is expected to remove only the information.
-      at->heap = (VALUE)NULL;
-      //at->id = -1;                  // id stores -1 for the deleted condition.
-                                    // It is not mandatory,
-                                    // but 10% less performance causes
-                                    // if we omit this. WHY?
-                                    // 2021-10-06: it was not caused,
-                                    // so it was commented out.
-
+      at->id = -1;
       return;
       
     }
@@ -162,32 +88,32 @@ void NameTable_erase(char *key) {
 
 
 
-VALUE NameTable_get_heap(char *key) {
+int NameTable_get_id(char *key) {
   int hash;
   
   hash = getHash(key);
   
   if (NameHashTable[hash] == NULL) {
-    return (VALUE)NULL;
+    return -1;
   }
 
   NameList *at = NameHashTable[hash];
   while (at != NULL) {
     if (strcmp(at->name, key) == 0) {
       // already exists
-      return at->heap;
+      return at->id;
     }
     
     at = at->next;
   }
   
   // There is no entry for the key
-  return (VALUE)NULL;
+  return -1;
   
 }
 
 
-IDTYPE NameTable_get_set_id(char *key) {
+IDTYPE NameTable_get_set_id_with_IdTable_forAgent(char *key) {
   int hash;
   NameList *add;
 
@@ -200,7 +126,6 @@ IDTYPE NameTable_get_set_id(char *key) {
     add->name = key;
     add->id = IdTable_new_agentid();
     IdTable_set_name(add->id, add->name);
-    add->heap = (VALUE)NULL;
     add->next = NULL;
     NameHashTable[hash] = add;
     return (add->id);
@@ -221,12 +146,52 @@ IDTYPE NameTable_get_set_id(char *key) {
   add->name = key;  
   add->id = IdTable_new_agentid();
   IdTable_set_name(add->id, add->name);
-  add->heap = (VALUE)NULL;
   
   add->next = NameHashTable[hash];
   NameHashTable[hash] = add;
 
   return (add->id);
+}
+
+
+
+void NameTable_set_id(char *key, IDTYPE id) {
+  int hash;
+  NameList *add;
+
+
+  hash = getHash(key);
+  
+  if (NameHashTable[hash] == NULL) {
+
+    add = NameList_new();
+    add->name = key;
+    add->id = id;
+    add->next = NULL;
+    NameHashTable[hash] = add;
+    return;
+
+  }
+  
+  NameList *at = NameHashTable[hash];
+  while (at != NULL) {
+    if (strcmp(at->name, key) == 0) {
+      at->id = id;
+      return;
+      
+    }
+    at = at->next;
+  }
+  
+
+  add = NameList_new();
+  add->name = key;  
+  add->id = id;
+  
+  add->next = NameHashTable[hash];
+  NameHashTable[hash] = add;
+
+  return;
 }
 
 
@@ -282,12 +247,13 @@ int keynode_exists_in_another_term(VALUE keynode, VALUE *connected_from) {
   for (i=0; i<NAME_HASHSIZE; i++) {
     at = NameHashTable[i];
     while (at != NULL) {
-      if (at->heap != (VALUE)NULL) {
-	if (at->heap != keynode)  {
-	  if (term_has_keynode(keynode, at->heap)) {
+      if (IS_GNAMEID(at->id)) {
+	VALUE heap = IdTable_get_heap(at->id);
+	if (heap != keynode)  {
+	  if (term_has_keynode(keynode, heap)) {
 	    result++;
 	    if (connected_from != NULL) {
-	      *connected_from = at->heap;
+	      *connected_from = heap;
 	    }
 	    /*
 	    PutIndirection=1;
@@ -348,14 +314,19 @@ void global_replace_keynode_in_another_term(VALUE keynode, VALUE term) {
   for (i=0; i<NAME_HASHSIZE; i++) {
     at = NameHashTable[i];
     while (at != NULL) {
-      if (at->heap != (VALUE)NULL) {
-	if (at->heap != keynode)  {
-	  
-	  if (term_has_keynode(keynode, at->heap)) {
+      if (IS_GNAMEID(at->id)) {
+	VALUE heap = IdTable_get_heap(at->id);
 
-	    VALUE replaced = replace_keynode(keynode, term, at->heap);
-	    at->heap = replaced;
-	    
+	if (heap != keynode)  {
+	  
+	  if (term_has_keynode(keynode, heap)) {
+
+	    // replaced <- heap[term/keynode]
+	    VALUE replaced = replace_keynode(keynode, term, heap);
+	    IdTable_set_heap(at->id, replaced);
+
+	    //freeName(keynode); <-- this is called at the calling function.
+
 	    return;
 	  }
 	}
@@ -376,9 +347,10 @@ void NameTable_puts_all() {
   for (i=0; i<NAME_HASHSIZE; i++) {
     at = NameHashTable[i];
     while (at != NULL) {
-      if (at->heap != (VALUE)NULL) {
-	if (IS_NAMEID(BASIC(at->heap)->id))  {
-	  printf("%s ", IdTable_get_name(BASIC(at->heap)->id));
+      if (IS_GNAMEID(at->id)) {
+	VALUE heap = IdTable_get_heap(at->id);
+	if (IS_NAMEID(BASIC(heap)->id))  {
+	  printf("%s ", IdTable_get_name(BASIC(heap)->id));
 	  count++;
 	}
       }
@@ -395,10 +367,11 @@ void NameTable_puts_all() {
   for (i=0; i<NAME_HASHSIZE; i++) {
     at = NameHashTable[i];
     while (at != NULL) {
-      if (at->heap != (VALUE)NULL) {
-	if (IS_NAMEID(BASIC(at->heap)->id))  {
-	  printf("%s ->", IdTable_get_name(BASIC(at->heap)->id));
-	  puts_name_port0(at->heap);
+      if (IS_GNAMEID(at->id)) {
+	VALUE heap = IdTable_get_heap(at->id);	
+	if (IS_NAMEID(BASIC(heap)->id))  {
+	  printf("%s ->", IdTable_get_name(BASIC(heap)->id));
+	  puts_name_port0(heap);
 	  printf("\n");
 	}
       }
@@ -416,9 +389,10 @@ void NameTable_free_all() {
   for (i=0; i<NAME_HASHSIZE; i++) {
     at = NameHashTable[i];
     while (at != NULL) {
-      if (at->heap != (VALUE)NULL) {
-	if (IS_NAMEID(BASIC(at->heap)->id))  {
-	  flush_name_port0(at->heap);
+      if (IS_GNAMEID(at->id)) {
+	VALUE heap = IdTable_get_heap(at->id);	
+	if (IS_NAMEID(BASIC(heap)->id))  {
+	  flush_name_port0(heap);
 	}
       }
       at = at->next;
@@ -430,13 +404,13 @@ void NameTable_free_all() {
 int NameTable_check_if_term_has_gname(VALUE term) {
   int i;
   NameList *at;
-  VALUE ptr;
   
   for (i=0; i<NAME_HASHSIZE; i++) {
     at = NameHashTable[i];
     while (at != NULL) {
-      if (at->heap != (VALUE)NULL) {
-	ptr = at->heap;
+      if (IS_GNAMEID(at->id)) {
+	VALUE ptr = IdTable_get_heap(at->id);	
+	
 	while ((ptr != (VALUE)NULL) &&
 	       (! IS_FIXNUM(ptr)) &&
 	       (IS_NAMEID(BASIC(ptr)->id))) {
@@ -458,3 +432,79 @@ int NameTable_check_if_term_has_gname(VALUE term) {
   return 0;
 }
 
+
+
+/******************************************
+ Mark and Sweep for error recovery
+******************************************/
+#ifndef THREAD
+static VALUE CyclicNameHeap=(VALUE)NULL;
+
+void markHeapRec(VALUE ptr) {
+ loop:  
+  if ((ptr == (VALUE)NULL) || (IS_FIXNUM(ptr))) {
+    return;
+  } else if (IS_NAMEID(BASIC(ptr)->id)) {
+    if (ptr == CyclicNameHeap) return;
+
+    SET_FLAG_MARKED(BASIC(ptr)->id);
+    if (NAME(ptr)->port != (VALUE)NULL) {
+      ptr = NAME(ptr)->port;
+      goto loop;
+    }
+  } else {
+    if (BASIC(ptr)->id == ID_CONS) {
+      if (IS_FIXNUM(AGENT(ptr)->port[0])) {
+	SET_FLAG_MARKED(BASIC(ptr)->id);
+	ptr = AGENT(ptr)->port[1];
+	goto loop;
+      }
+    }      
+
+    int arity = IdTable_get_arity(BASIC(ptr)->id);
+    SET_FLAG_MARKED(BASIC(ptr)->id);
+    if (arity == 1) {
+      ptr = AGENT(ptr)->port[0];
+      goto loop;
+    } else { // it also contains the case that arity = 0.
+      int i;
+      for(i=0; i<arity; i++) {
+	markHeapRec(AGENT(ptr)->port[i]);
+      }
+    }
+  }
+}
+
+
+void mark_name_port0(VALUE ptr) {
+  if (ptr != (VALUE)NULL) {
+
+    SET_FLAG_MARKED(BASIC(ptr)->id);
+    if (NAME(ptr)->port != (VALUE)NULL) {
+      CyclicNameHeap=ptr;
+      markHeapRec(NAME(ptr)->port);
+      CyclicNameHeap=(VALUE)NULL;
+    }      
+  }
+}
+
+
+void mark_allHash(void) {
+  int i;
+  NameList *at;
+
+  for (i=0; i<NAME_HASHSIZE; i++) {
+    at = NameHashTable[i];
+    while (at != NULL) {
+      if (IS_GNAMEID(at->id)) {
+	VALUE heap = IdTable_get_heap(at->id);	
+
+	if (IS_NAMEID(BASIC(heap)->id))  {
+	  mark_name_port0(heap);
+	}
+      }
+      at = at->next;
+    }
+  }
+}
+#endif

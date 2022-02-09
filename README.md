@@ -6,18 +6,18 @@
 
 Inpla is a multi-threaded parallel interpreter of interaction nets. Once you write programs for sequential execution, it works also in multi-threaded parallel execution. Each thread is managed on each CPU-core with POSIX-thread library. 
 
-* The current version is 0.7.1 released on **4 February 2022**. (See [Changelog.md](Changelog.md) for details.)
+* The current version is 0.7.2 released on **9 February 2022**. (See [Changelog.md](Changelog.md) for details.)
 
-![speedup-ratio](pic/benchmark_reuse_v0.7.1.png)
+![speedup-ratio](pic/benchmark_reuse_v0.7.2.png)
 
-|                | Haskell  |   SML    | Python | Inpla1 | Inpla1_r | Inpla7 | Inpla7_r |
+|                | Haskell  |   SML    | Python | Inpla1 | Inpla1_r | Inpla8 | Inpla8_r |
 | -------------- | :------: | :------: | :----: | :----: | :------: | :----: | :------: |
-| ack(3,11)    |   2.31   | **0.41** |   -    |  4.78  |   3.55   |  1.51  |   0.74   |
-| fib 38       |   1.60   | **0.26** |  8.49  |  3.10  |   2.95   |  0.60  |   0.50   |
-| bsort 40000  |  34.81   |  11.17   | 76.72  | 24.85 | 18.22 |  7.39  | **2.92** |
-| isort 40000  | **0.02** |   2.97   | 36.63  | 11.85 |   8.71   |  3.65  |   1.41   |
-| qsort 800000 | **0.15** |   1.16   | 97.30  |  3.54  |   1.88   |  0.83  |   0.34   |
-| msort 800000 | 0.46 |   1.00   | 98.27  |  2.26  |   1.32   |  0.60  |   **0.33**   |
+| ack(3,11)    |   2.31   | **0.41** |   -    |  4.79  |   3.48   |  1.53  |   0.70   |
+| fib 38       |   1.60   | **0.26** |  8.49  |  3.04  |   2.89   |  0.60  |   0.46   |
+| bsort 40000  |  34.81   |  11.17   | 76.72  | 24.37 | 17.10 |  7.39  | **2.50** |
+| isort 40000  | **0.02** |   2.97   | 36.63  | 11.74 |   8.31   |  3.65  |   1.23   |
+| qsort 800000 | **0.15** |   1.16   | 97.30  |  3.41  |   1.79   |  0.81  |   0.33   |
+| msort 800000 | 0.46 |   1.00   | 98.27  |  2.23  |   1.31   |  0.60  |   **0.33**   |
 
 - **Comparison in execution time** with other implementations: **Haskell** (GHC version 8.10.7), **Standard ML of New Jersey** v110.74 (interpreter mode) and **Python** 3.8.5 in execution time.
   
@@ -96,7 +96,7 @@ Inpla is a multi-threaded parallel interpreter of interaction nets. Once you wri
   ```
 
 ### Interactive mode (multi-thread version)
-* There is an execution option `-t` that specifies the number of threads in a thread pool. For instance, by invoking with `-t 4` Inpla populates 4 threads in the thread pool:
+* There is an execution option `-t` that specifies the number of threads in a thread pool. For instance, by invoking with `-t 4` Inpla populates 4 threads in the pool:
 
   ```
   $ ./inpla -t 4
