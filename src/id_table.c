@@ -1,7 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "ast.h"
 #include "id_table.h"
 
 
@@ -19,35 +18,39 @@ void IdTable_init() {
   // START_IS_OF_AGENT .. NUM_AGENTS-1: user defined agents
   // NUM_AGENTS(=ID_NAME) .. : names
 
-  for (i=0; i<IDTABLE_SIZE; i++) {
-    IdTable[i].arity = -1;
+  for (i=0; i<=END_ID_OF_AGENT; i++) {
     IdTable[i].name = NULL;
+    IdTable[i].aux.arity = -1;
+  }
+  for (i=START_ID_OF_GNAME; i<IDTABLE_SIZE; i++) {
+    IdTable[i].name = NULL;
+    IdTable[i].aux.heap = (VALUE)NULL;
   }
 
   // built-in agent
-  IdTable[ID_TUPLE0].arity = 0;
-  IdTable[ID_TUPLE1].arity = 1;
-  IdTable[ID_TUPLE2].arity = 2;
-  IdTable[ID_TUPLE3].arity = 3;
-  IdTable[ID_TUPLE4].arity = 4;
-  IdTable[ID_TUPLE5].arity = 5;
-  IdTable[ID_NIL].arity = 0;
-  IdTable[ID_CONS].arity = 2;
-  IdTable[ID_INTAGENT].arity = 1;
+  IdTable[ID_TUPLE0].aux.arity = 0;
+  IdTable[ID_TUPLE1].aux.arity = 1;
+  IdTable[ID_TUPLE2].aux.arity = 2;
+  IdTable[ID_TUPLE3].aux.arity = 3;
+  IdTable[ID_TUPLE4].aux.arity = 4;
+  IdTable[ID_TUPLE5].aux.arity = 5;
+  IdTable[ID_NIL].aux.arity = 0;
+  IdTable[ID_CONS].aux.arity = 2;
+  IdTable[ID_INTAGENT].aux.arity = 1;
 
-  IdTable[ID_APPEND].arity = 2;
-  IdTable[ID_MERGER].arity = 1;
-  IdTable[ID_MERGER_P].arity = 1;
-  IdTable[ID_ADD].arity = 2;
-  IdTable[ID_ADD2].arity = 2;
-  IdTable[ID_SUB].arity = 2;
-  IdTable[ID_SUB2].arity = 2;
-  IdTable[ID_MUL].arity = 2;
-  IdTable[ID_MUL2].arity = 2;
-  IdTable[ID_DIV].arity = 2;
-  IdTable[ID_DIV2].arity = 2;
-  IdTable[ID_MOD].arity = 2;
-  IdTable[ID_MOD2].arity = 2;
+  IdTable[ID_APPEND].aux.arity = 2;
+  IdTable[ID_MERGER].aux.arity = 1;
+  IdTable[ID_MERGER_P].aux.arity = 1;
+  IdTable[ID_ADD].aux.arity = 2;
+  IdTable[ID_ADD2].aux.arity = 2;
+  IdTable[ID_SUB].aux.arity = 2;
+  IdTable[ID_SUB2].aux.arity = 2;
+  IdTable[ID_MUL].aux.arity = 2;
+  IdTable[ID_MUL2].aux.arity = 2;
+  IdTable[ID_DIV].aux.arity = 2;
+  IdTable[ID_DIV2].aux.arity = 2;
+  IdTable[ID_MOD].aux.arity = 2;
+  IdTable[ID_MOD2].aux.arity = 2;
 
   IdTable[ID_INT].name = "int";
   IdTable[ID_TUPLE0].name = "Tuple0";
@@ -162,28 +165,45 @@ void IdTable_set_name(int id, char *symname)
   IdTable[id].name = symname;
 }
 
-
-void IdTable_set_arity(int id, int arity)
-{
-  if ((IdTable[id].arity == -1) || (IdTable[id].arity == arity)) {
-    IdTable[id].arity = arity;
-  } else {
-    printf("Warning: The agent '%s' has been already defined as whose arity is %d, but now used as the arity is %d.\n",  
-	   IdTable[id].name, IdTable[id].arity, arity);
-    IdTable[id].arity = arity;
-  } 
-}
-
-
 char *IdTable_get_name(int id)
 {
   return IdTable[id].name;
 }
 
+
+void IdTable_set_arity(int id, int arity)
+{
+  if ((IdTable[id].aux.arity == -1) || (IdTable[id].aux.arity == arity)) {
+    IdTable[id].aux.arity = arity;
+  } else {
+    printf("Warning: The agent '%s' has been already defined as whose arity is %d, but now used as the arity is %d.\n",  
+	   IdTable[id].name, IdTable[id].aux.arity, arity);
+    IdTable[id].aux.arity = arity;
+  } 
+}
+
 int IdTable_get_arity(int id)
 {
-  return IdTable[id].arity;
+  return IdTable[id].aux.arity;
 }
+
+
+void IdTable_set_heap(int id, VALUE heap)
+{
+  if (id > IDTABLE_SIZE) {
+    printf("Error: The given id %d was beyond of the size of IdTable (%d)\n",
+	   id, IDTABLE_SIZE);
+    exit(-1);
+  }
+  IdTable[id].aux.heap = heap;
+}
+
+VALUE IdTable_get_heap(int id)
+{
+  return IdTable[id].aux.heap;
+}
+
+
 
 int IdTable_new_agentid() {
   NextAgentId++;

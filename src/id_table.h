@@ -1,6 +1,7 @@
 #ifndef _ID_TABLE_
 #define _ID_TABLE_
-
+#include "ast.h"
+#include "mytype.h"
 
 // When NUM_AGENT is 256:
 // 0 .. 255: AGENT
@@ -52,11 +53,11 @@
 #define END_ID_OF_AGENT 255
 #define NUM_AGENTS END_ID_OF_AGENT+1  // 256
 
-#define ID_NAME NUM_AGENTS // 256
+#define ID_NAME NUM_AGENTS // starts from 256 (NUM_AGENTS)
 #define START_ID_OF_GNAME  ID_NAME+1
 
 
-#define NUM_NAMES NUM_AGENTS // 256
+#define NUM_GNAMES NUM_AGENTS // 256: the same as the size of AGENT
 
 
 //#define IS_AGENTID(a) (a < ID_NAME)
@@ -74,16 +75,27 @@
 **************************************/
 typedef struct {
   char *name;
-  int arity;
+  union {
+    int arity;
+    VALUE heap;
+  } aux;
 } IdTableT;
 
-#define IDTABLE_SIZE  (NUM_AGENTS + NUM_NAMES) // AGENT + NAME
+
+#define IDTABLE_SIZE  (NUM_AGENTS + NUM_GNAMES) // AGENT + GNAME
 
 void IdTable_init();
+
 void IdTable_set_name(int id, char *symname);
-void IdTable_set_arity(int id, int arity);
 char *IdTable_get_name(int id);
+
+void IdTable_set_arity(int id, int arity);
 int IdTable_get_arity(int id);
+
+void IdTable_set_heap(int id, VALUE heap);
+VALUE IdTable_get_heap(int id);
+
+
 int IdTable_new_agentid();
 int IdTable_new_gnameid();
 

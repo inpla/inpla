@@ -13,7 +13,11 @@
 #include "ast.h"
 #include "id_table.h"
 #include "name_table.h"
+#include "name_table.h"
 #include "mytype.h"
+#include "inpla.h"
+
+
 
 
   
@@ -75,7 +79,7 @@ void freeAgent(VALUE ptr);
 
 void puts_names_ast(Ast *ast);
 void free_names_ast(Ast *ast);
-void puts_name_port0_nat(VALUE ptr);
+void puts_name_port0_nat(char *sym);
 void puts_term(VALUE ptr);
 void puts_aplist(EQList *at);
 
@@ -302,7 +306,7 @@ command:
 
 | PRNAT NAME DELIMITER
 { 
-  puts_name_port0_nat(NameTable_get_heap($2)); 
+  puts_name_port0_nat($2); 
 }
 | INTERFACE DELIMITER
 { 
@@ -1278,7 +1282,13 @@ void puts_names_ast(Ast *ast) {
   
   while (param != NULL) {
     char *sym = param->left->sym;
-    puts_name_port0(NameTable_get_heap(sym));
+    int sym_id = NameTable_get_id(sym);
+    if (IS_GNAMEID(sym_id)) {
+      puts_name_port0(IdTable_get_heap(sym_id));
+    } else {
+      puts_name_port0((VALUE)NULL);
+    }
+      
     param = ast_getTail(param);
     if (param != NULL)
       printf(" ");
@@ -1289,11 +1299,22 @@ void puts_names_ast(Ast *ast) {
   PutIndirection = preserve;  
 }
 
-void puts_name_port0_nat(VALUE a1) {
+//void puts_name_port0_nat(VALUE a1) {
+void puts_name_port0_nat(char *sym) {
   int result=0;
   int idS, idZ;
-  idS = NameTable_get_set_id("S");
-  idZ = NameTable_get_set_id("Z");
+
+  int sym_id = NameTable_get_id(sym);
+  if (!IS_GNAMEID(sym_id)) {
+    printf("<NOT-DEFINED>\n");
+    fflush(stdout);
+    return;
+  }
+
+  VALUE a1 = IdTable_get_heap(sym_id);
+  
+  idS = NameTable_get_set_id_with_IdTable_forAgent("S");
+  idZ = NameTable_get_set_id_with_IdTable_forAgent("Z");
   
   if (a1 == (VALUE)NULL) {
     printf("<NUll>");
@@ -1317,6 +1338,7 @@ void puts_name_port0_nat(VALUE a1) {
 	}
       }
       printf("%d\n", result);
+      fflush(stdout);
     }
   }  
   
@@ -1332,12 +1354,6 @@ void puts_eqlist(EQList *at) {
     at=at->next;
   }
 }
-
-
-// ----------------------------------------
-// Flush
-
-
 
 
 
@@ -1595,9 +1611,10 @@ void freeName(VALUE ptr) {
   } else {    
     // Global name
 
-    NameTable_erase(IdTable_get_name(BASIC(ptr)->id));
-    //    BASIC(ptr)->id = ID_NAME;
-    SET_LOCAL_NAMEID(BASIC(ptr)->id);
+    NameTable_erase_id(IdTable_get_name(BASIC(ptr)->id));
+    IdTable_set_heap(BASIC(ptr)->id, (VALUE)NULL);
+    
+    SET_LOCAL_NAMEID(BASIC(ptr)->id); //    BASIC(ptr)->id = ID_NAME;
     myfree(ptr);
   }
 
@@ -1706,22 +1723,16 @@ void free_names_ast(Ast *ast) {
   Ast *param = ast;
 
   while (param != NULL) {
-    char *sym = param->left->sym;
-    VALUE heap = NameTable_get_heap(sym);
-    flush_name_port0(heap);
+    int sym_id = NameTable_get_id(param->left->sym);
+    if (IS_GNAMEID(sym_id)) {
+      flush_name_port0(IdTable_get_heap(sym_id));
+    } else {
+      flush_name_port0((VALUE)NULL);
+    }
     param = ast_getTail(param);		     
   }
 }
 
-
-
-
-/**************************************
- NAME TABLE
-**************************************/
-//#include "name_table.h"
-// Just include it, because the object file version causes *inefficiency* !
-#include "name_table.c"  
 
 
 
@@ -2305,21 +2316,33 @@ int CmEnv_check_name_reference_times(void) {
 
 
 void CmEnv_Retrieve_GNAME(void) {
-  int reg_name;
+  int local_var;
 
   for (int i=0; i<IMCode_n; i++) {
     if (IMCode[i].opcode != OP_MKNAME) {
       continue;
     }
 
-    reg_name = IMCode[i].operand1;
+    local_var = IMCode[i].operand1;
 
     for (int j=0; j<CmEnv.bindPtr; j++) {
       if ((CmEnv.bind[j].type == NB_NAME) &&
-	  (CmEnv.bind[j].reg == reg_name) &&
+	  (CmEnv.bind[j].reg == local_var) &&
 	  (CmEnv.bind[j].refnum  == 0)) {
-	    IMCode[i].opcode = OP_MKGNAME;
-	    IMCode[i].operand2 = j;
+
+	// ==> OP_MKGNAME id dest
+	char *sym = CmEnv.bind[j].name;
+	int sym_id = NameTable_get_id(sym);
+	if (!IS_GNAMEID(sym_id)) {
+	  // new occurrence
+	  sym_id = IdTable_new_gnameid();
+	  NameTable_set_id(sym, sym_id);
+	  IdTable_set_name(sym_id, sym);
+	}
+	
+	IMCode[i].opcode = OP_MKGNAME;
+	IMCode[i].operand2 = IMCode[i].operand1;
+	IMCode[i].operand1 = sym_id;
       }
     }
   }      
@@ -2889,19 +2912,18 @@ int CmEnv_generate_VMCode(void **code) {
       break;
     }
     case OP_MKGNAME: {
-      //      printf("OP_MKGNAME var%d sym:%d (as `%s')\n",
+      //      printf("OP_MKGNAME sym:%d var%d (as `%s')\n",
       //	     imcode->operand1, imcode->operand2,
-      //	     CmEnv.bind[imcode->operand2].name);
-      int dest = imcode->operand1;
+      //	     CmEnv.bind[imcode->operand1].name);
+      int dest = imcode->operand2;
 
 #ifdef OPTIMISE_IMCODE
       dest = CmEnv_get_newreg(dest);
 #endif
       
       code[addr++] = CodeAddr[imcode->opcode];
+      code[addr++] = (void *)(unsigned long)imcode->operand1;
       code[addr++] = (void *)(unsigned long)dest;
-      // char*
-      code[addr++] = CmEnv.bind[imcode->operand2].name;
       
       break;
     }
@@ -3781,9 +3803,9 @@ void IMCode_puts(int n) {
       break;
 
     case OP_MKGNAME:
-      printf("%s var%d sym:%d (as \"%s\")\n", string_opcode[imcode->opcode],
+      printf("%s id:%d var%d; \"%s\"\n", string_opcode[imcode->opcode],
 	     imcode->operand1, imcode->operand2,
-	     CmEnv.bind[imcode->operand2].name);
+	     IdTable_get_name(imcode->operand1));
       break;
 
     case OP_MKAGENT0:
@@ -3992,9 +4014,10 @@ void VMCode_puts(void **code, int n) {
       i+=1;
       
     } else if (code[i] == CodeAddr[OP_MKGNAME]) {
-      printf("mkgname reg%lu \"%s\"\n",
+      printf("mkgname id:%lu reg%lu; \"%s\"\n",
 	     (unsigned long)code[i+1],
-	     (char *)code[i+2]);
+	     (unsigned long)code[i+2],
+	     IdTable_get_name((unsigned long)code[i+1]));
       i+=2;
 
     } else if (code[i] == CodeAddr[OP_MKAGENT0]) {
@@ -4800,7 +4823,7 @@ int CompileTermFromAst(Ast *ptr, int target) {
     
     int id = IdTable_getid_builtin_funcAgent(ptr);
     if (id == -1) {
-      id = NameTable_get_set_id((char *)ptr->left->sym);
+      id = NameTable_get_set_id_with_IdTable_forAgent((char *)ptr->left->sym);
     }
 
     arity=0;
@@ -4954,12 +4977,12 @@ int check_invalid_occurrence(Ast *ast) {
   int count;
 
   if (ast->id == AST_NAME) {
-    char *sym = ast->left->sym;
+    int sym_id = NameTable_get_id(ast->left->sym);
 
     
-    VALUE aheap = NameTable_get_heap(sym);
-    if (aheap != (VALUE)NULL) {
+    if (IS_GNAMEID(sym_id)) {
       // already exists as a global
+      VALUE aheap = IdTable_get_heap(sym_id);
 
       /*
       // it is connected with something.
@@ -4974,7 +4997,7 @@ int check_invalid_occurrence(Ast *ast) {
       count = keynode_exists_in_another_term(aheap, NULL);
       if (count == 2) {
 	// already twice
-	printf("ERROR: '%s' occurs twice already. \n", sym);
+	printf("ERROR: '%s' occurs twice already. \n", ast->left->sym);
 	printf("        Use 'ifce' command to see the occurrence.\n");
 	return 1;	    
       }	  
@@ -5582,7 +5605,7 @@ int getRuleAgentID(Ast *ruleAgent) {
 
     id = IdTable_getid_builtin_funcAgent(ruleAgent);
     if (id == -1) {
-      id=NameTable_get_set_id(ruleAgent->left->sym);
+      id=NameTable_get_set_id_with_IdTable_forAgent(ruleAgent->left->sym);
     }
   }
 
@@ -6077,22 +6100,22 @@ void *ExecCode(int mode, VirtualMachine *restrict vm, void *restrict *code) {
   goto *code[pc];
 
  E_MKGNAME:
-  //    puts("mkgname dest sym");
-
-  //a1 = makeGlobalName(vm, (char *)code[pc+1]);
-
-  a1 = NameTable_get_heap((char *)code[pc+2]);
+  //    puts("mkgname id dest");
+  pc++;
+  
+  i = (unsigned long)code[pc++];
+  a1 = IdTable_get_heap(i);
+  //  a1 = NameTable_get_heap((char *)code[pc+2]);
   if (a1 == (VALUE)NULL) {
     a1 = makeName(vm);
 
     // set GID obtained by IdTable_new_gnameid()    
-    i = IdTable_new_gnameid();
-    BASIC(a1)->id = i;  
-    NameTable_set_heap_id((char *)code[pc+2], a1, i);
+    BASIC(a1)->id = i;
+    IdTable_set_heap(i, a1);
+    
   }
 
-  reg[(unsigned long)code[pc+1]] = a1;
-  pc +=3;
+  reg[(unsigned long)code[pc++]] = a1;
   goto *code[pc];
 
   
@@ -6933,80 +6956,6 @@ void *ExecCode(int mode, VirtualMachine *restrict vm, void *restrict *code) {
 ******************************************/
 #ifndef THREAD
 
-/* 30bit目が 1 ならば、Garbage Collection の Mark&Sweep にて、
-   Mark されたことを意味する*/
-#define FLAG_MARKED 0x01 << 30
-#define IS_FLAG_MARKED(a) ((a) & FLAG_MARKED)
-#define SET_FLAG_MARKED(a) ((a) = ((a) | FLAG_MARKED))
-#define TOGGLE_FLAG_MARKED(a) ((a) = ((a) ^ FLAG_MARKED))
-
-
-void markHeapRec(VALUE ptr) {
- loop:  
-  if ((ptr == (VALUE)NULL) || (IS_FIXNUM(ptr))) {
-    return;
-  } else if (IS_NAMEID(BASIC(ptr)->id)) {
-    if (ptr == ShowNameHeap) return;
-
-    SET_FLAG_MARKED(BASIC(ptr)->id);
-    if (NAME(ptr)->port != (VALUE)NULL) {
-      ptr = NAME(ptr)->port;
-      goto loop;
-    }
-  } else {
-    if (BASIC(ptr)->id == ID_CONS) {
-      if (IS_FIXNUM(AGENT(ptr)->port[0])) {
-	SET_FLAG_MARKED(BASIC(ptr)->id);
-	ptr = AGENT(ptr)->port[1];
-	goto loop;
-      }
-    }      
-
-    int arity = IdTable_get_arity(BASIC(ptr)->id);
-    SET_FLAG_MARKED(BASIC(ptr)->id);
-    if (arity == 1) {
-      ptr = AGENT(ptr)->port[0];
-      goto loop;
-    } else { // it also contains the case that arity = 0.
-      int i;
-      for(i=0; i<arity; i++) {
-	markHeapRec(AGENT(ptr)->port[i]);
-      }
-    }
-  }
-}
-
-
-void mark_name_port0(VALUE ptr) {
-  if (ptr != (VALUE)NULL) {
-
-    SET_FLAG_MARKED(BASIC(ptr)->id);
-    if (NAME(ptr)->port != (VALUE)NULL) {
-      ShowNameHeap=ptr;
-      markHeapRec(NAME(ptr)->port);
-      ShowNameHeap=(VALUE)NULL;
-    }      
-  }
-}
-
-
-void mark_allHash(void) {
-  int i;
-  NameList *at;
-
-  for (i=0; i<NAME_HASHSIZE; i++) {
-    at = NameHashTable[i];
-    while (at != NULL) {
-      if (at->heap != (VALUE)NULL) {
-	if (IS_NAMEID(BASIC(at->heap)->id))  {
-	  mark_name_port0(at->heap);
-	}
-      }
-      at = at->next;
-    }
-  }
-}
-
 #ifdef EXPANDABLE_HEAP
 void sweep_AgentHeap(Heap *hp) {
 
@@ -7832,11 +7781,11 @@ loop_a2IsAgent:
 
 
 void select_kind_of_push(Ast *ast, int p1, int p2) {  
-  char *sym = ast->left->sym;
-  VALUE aheap = NameTable_get_heap(sym);
+  int sym_id = NameTable_get_id(ast->left->sym);
   
-  if (aheap != (VALUE)NULL) {
+  if (IS_GNAMEID(sym_id)) {
     // aheap already exists as a global
+    VALUE aheap = IdTable_get_heap(sym_id);
     
     // aheap is connected with something such as aheap->t
     // ==> p2 should be conncected with t, so OP_CNCTGN(p1,p2)
@@ -7992,11 +7941,11 @@ int exec(Ast *at) {
     return 0;
   }
 
-  
+
   CmEnv_Retrieve_GNAME();
   CmEnv_generate_VMCode(code);
 
-
+  
   /*
   // for debug
   CmEnv_Retrieve_GNAME();
@@ -8006,7 +7955,6 @@ int exec(Ast *at) {
   VMCode_puts(code, codenum-2); //exit(1);
   // end for debug
   */
-
   
   
 #ifdef COUNT_MKAGENT
