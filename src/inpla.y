@@ -41,8 +41,8 @@
 //#define COUNT_MKAGENT // count of execution fo mkagent
 
 
-#define VERSION "0.7.2"
-#define BUILT_DATE  "9 Feb. 2022"  
+#define VERSION "0.7.2-1"
+#define BUILT_DATE  "12 Feb. 2022"  
 // ------------------------------------------------------------------
 
 
@@ -5720,6 +5720,7 @@ int CompileIfSentenceFromAST(Ast *if_sentence_top) {
         
     
     // Compilation of then_branch
+    IMCode_genCode0(OP_BEGIN_BLOCK);
     CmEnv_clear_localnamePtr();  // 局所変数の割り当て番号を初期化
     if (!CompileIfSentenceFromAST(then_branch)) return 0;
 
@@ -6467,8 +6468,8 @@ void *ExecCode(int mode, VirtualMachine *restrict vm, void *restrict *code) {
  E_LOAD:
   //    puts("load src dest");
   pc++;
-  i = reg[(unsigned long)code[pc++]];
-  reg[(unsigned long)code[pc++]] = i;
+  a1 = reg[(unsigned long)code[pc++]];
+  reg[(unsigned long)code[pc++]] = a1;
     
   goto *code[pc];
 
@@ -6610,7 +6611,7 @@ void *ExecCode(int mode, VirtualMachine *restrict vm, void *restrict *code) {
   //    puts("EQI src1 int dest");
   pc++;
   {
-    int i = FIX2INT(reg[(unsigned long)code[pc++]]);
+    int i = reg[(unsigned long)code[pc++]];
     int j = (unsigned long)code[pc++];
 
     if (i==j) {
