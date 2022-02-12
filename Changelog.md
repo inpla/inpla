@@ -2,7 +2,7 @@
 
 ### v0.7.2-1 (released on 12 February 2022)
 
-#### Bug fix:
+#### Bug Fix:
 * **Bytecode generation**: A bytecode sequence for `EQI src fixint dest` was generated as `EQI src int dest`, so it was fixed.
 * **Bytecode optimisation**:  Blocks for scopes of Copy Propagation optimisation were not specified for each guard expression. It was fixed and works well.
 
