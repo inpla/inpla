@@ -1,10 +1,19 @@
 # Change log
 
+### v0.7.2-1 (released on 12 February 2022)
+
+#### Bug Fix:
+* **Bytecode generation**: A bytecode sequence for `EQI src fixint dest` was generated as `EQI src int dest`, so it was fixed.
+* **Bytecode optimisation**:  Blocks for scopes of Copy Propagation optimisation were not specified for each guard expression. It was fixed and works well.
+
+
+
+
 ### v0.7.2 (released on 9 February 2022)
 
 #### Polished:
-- **Bytecode format for global names**: The bytecode format to obtain a global name is changed from `MKGNAME destRegNum (char *)sym` into `MKGNAME (int)id destRegNum`.  Every symbol for agents and global names is assigned the unique ID number which is decided during compilation processes. So, the ID number `id` should have been taken, instead of `(char *)sym`.  
-- **Separation of NameTable codes**: The `NameTable` is used to lookup ID numbers for symbol chars in compilation processes and interpreter executions. By changing the bytecode format of `MKGNAME`, it becomes no need for virtual machine execution directly, so the source codes for the `NameTable` operation is separated from the main source `src/inpla.y`. This contributes a little speed-up at most 1%.
+* **Bytecodes for global names**: To obtain a global name whose name is `sym` on a `dest` register, the following bytecode is executed: `MKGNAME dest sym` where the type of `sym` is `char*`.  Every symbol for agents and global names is assigned to the unique ID number managed by `IdTable`, so by introducing the ID number `id` for the `sym`, the bytecode is changed into `MKGNAME id dest`.
+* **Separation of source codes of NameTable**: The `NameTable` is used to lookup ID numbers for symbol chars in compilation and interpreter execution. By changing the bytecode of `MKGNAME`, there becomes no need to be used in virtual machine execution directly, so the source codes for the `NameTable` is separated from `src/inpla.y`. This contributes quite a little speed-up at most 1%.
 
 
 
@@ -18,7 +27,7 @@
   - By introducing a bytecode `OP_INC src dest`, a code `OP_ADDI src $1 dest` and a code`OP_ADDI $1 src dest` are optimised into `OP_INC src dest`. 
   - By introducing a bytecode `OP_DEC src dest`, a code `OP_SUBI src $1 dest` is optimised into `OP_DEC src dest`.
 
-* **Intermediate code for blocks**: To show areas of blocks, an intermediate code `OP_BEGIN_BLOCK` is introduced. Copy Propagation for `OP_LOAD` and `OP_LOADI` is performed until the next `OP_BEGIN_BLOCK` occurs.
+* **Intermediate code for blocks**: To show scope of blocks, an intermediate code `OP_BEGIN_BLOCK` is introduced. Copy Propagation for `OP_LOAD` and `OP_LOADI` is performed until the next `OP_BEGIN_BLOCK` occurs.
 
   
 
