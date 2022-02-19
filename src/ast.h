@@ -4,8 +4,9 @@
 #define _AST_
 
 typedef enum {
-  AST_SYM=0, AST_NAME, AST_INTVAR, AST_AGENT, AST_CNCT, AST_RULE,
-  AST_BODY, AST_IF, AST_THEN_ELSE,
+  AST_SYM=0, AST_NAME, AST_INTVAR, AST_AGENT,
+  AST_CNCT, AST_CNCT_TRO_INTVAR, AST_CNCT_TRO_CONS, AST_CNCT_TRO,
+  AST_RULE, AST_BODY, AST_IF, AST_THEN_ELSE,
   
   // this is for ASTLIST
   AST_LIST,
@@ -14,14 +15,14 @@ typedef enum {
   AST_ANNOTATION_L, AST_ANNOTATION_R, 
 
   // builtin tuple
-  AST_TUPLE, AST_PPAIR,
+  AST_TUPLE, 
 
   // operation
   AST_INT, AST_LD, AST_PLUS, AST_SUB, AST_MUL, AST_DIV, AST_MOD,
   AST_LT, AST_LE, AST_EQ, AST_NE, AST_UNM, AST_AND, AST_OR, AST_NOT, 
 
   // for built-in lists
-  AST_CONS, AST_NIL, AST_OPCONS,
+  AST_OPCONS, AST_NIL,
 
   // for built-in agents
   

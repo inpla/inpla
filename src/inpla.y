@@ -26,6 +26,14 @@
 #define EXPANDABLE_HEAP    // Expandable heaps for agents and names
 #define OPTIMISE_IMCODE    // Optimise the intermediate codes
 
+
+
+  
+#ifdef OPTIMISE_IMCODE
+  // the following depends on the definition OPTIMISE_IMCODE  
+#define OPTIMISE_IMCODE_TRO   // Optimise option for Tail Recursive Opt.
+#endif
+
   
 //#define VERBOSE_NODE_USE  // Put memory usage of agents and names.
 //#define VERBOSE_HOOP_EXPANSION  // Put messages when hoops are expanded.
@@ -41,8 +49,8 @@
 //#define COUNT_MKAGENT // count of execution fo mkagent
 
 
-#define VERSION "0.7.2-1"
-#define BUILT_DATE  "12 Feb. 2022"  
+#define VERSION "0.7.3"
+#define BUILT_DATE  "20 Feb. 2022"  
 // ------------------------------------------------------------------
 
 
@@ -52,40 +60,44 @@
   
   
 // For threads  ---------------------------------
-int MaxThreadsNum=1;
 
 #ifdef THREAD
 #include <pthread.h>
 extern int pthread_setconcurrency(int concurrency); 
 
-int SleepingThreadsNum=0;
+static int MaxThreadsNum=1;
+static int SleepingThreadsNum=0;
 
 // for cas spinlock
 #include "cas_spinlock.h"
 
 #endif
 
-// ----------------------------------------------
-// For parsing
+
  
-int makeRule(Ast *ast);
-void freeAgentRec(VALUE ptr);
+// ---------------------------------------------------------------
+// For parsing
+// ---------------------------------------------------------------
+ 
+int make_rule(Ast *ast);
 
-//static inline void freeName(VALUE ptr);
-void freeName(VALUE ptr);
+void free_Agent_recursively(VALUE ptr);
+void free_Name(VALUE ptr);
+void free_Agent(VALUE ptr);
 
-//static inline void freeAgent(VALUE ptr);
-void freeAgent(VALUE ptr);
+void puts_Names_ast(Ast *ast);
+void free_Names_ast(Ast *ast);
 
-void puts_names_ast(Ast *ast);
-void free_names_ast(Ast *ast);
-void puts_name_port0_nat(char *sym);
+void puts_Name_port0_nat(char *sym);
+
 void puts_term(VALUE ptr);
 void puts_aplist(EQList *at);
 
 int exec(Ast *st);
 int destroy(void);
 
+
+ 
  
 //#define YYDEBUG 1
 extern FILE *yyin;
@@ -216,7 +228,7 @@ s
   YYACCEPT;
 }
 | rule DELIMITER { 
-  if (makeRule($1)) {
+  if (make_rule($1)) {
     if (yyin == stdin) yylineno=0;
     YYACCEPT;
   } else {
@@ -247,7 +259,7 @@ body
 
 // rule is changed as follows:
 //    (ASTRULE (AST_CNCT agentL agentR)
-//      <if-sentence>)
+//      <if-sentence> | <body>)
 //
 //      WHERE
 //      <if-sentence> ::= (AST_IF guard (AST_BRANCH <then> <else>))
@@ -288,7 +300,7 @@ name_params
 command:
 | FREE name_params DELIMITER
 { 
-  free_names_ast($2);
+  free_Names_ast($2);
 }
 | FREE DELIMITER
 | FREE IFCE DELIMITER
@@ -301,12 +313,12 @@ command:
 }
 | name_params DELIMITER
 { 
-  puts_names_ast($1);
+  puts_Names_ast($1);
 }
 
 | PRNAT NAME DELIMITER
 { 
-  puts_name_port0_nat($2); 
+  puts_Name_port0_nat($2); 
 }
 | INTERFACE DELIMITER
 { 
@@ -572,10 +584,9 @@ int yyerror(char *s) {
 
 
 
-/**********************************
- AGENT and NAME Heaps
-*********************************/
-
+// -------------------------------------------------------
+// AGENT and NAME Heaps
+// -------------------------------------------------------
 #ifdef EXPANDABLE_HEAP
 
 // HOOP_SIZE must be power of two
@@ -605,7 +616,7 @@ typedef struct Heap_tag {
 
 
 
-HoopList *HoopList_New_forName(void) {
+HoopList *HoopList_new_forName(void) {
   int i;
   HoopList *hp_list;
 
@@ -634,7 +645,7 @@ HoopList *HoopList_New_forName(void) {
 
 
 
-HoopList *HoopList_New_forAgent(void) {
+HoopList *HoopList_new_forAgent(void) {
   int i;
   HoopList *hp_list;
 
@@ -713,7 +724,7 @@ unsigned long Heap_GetNum_Usage_forName(Heap *hp) {
 
 
 //static inline
-VALUE myallocAgent(Heap *hp) {
+VALUE myalloc_Agent(Heap *hp) {
 
   int idx;  
   HoopList *hoop_list;
@@ -731,8 +742,9 @@ VALUE myallocAgent(Heap *hp) {
       if (IS_READYFORUSE(hoop[idx].basic.id)) {
 	TOGGLE_HOOPFLAG_READYFORUSE(hoop[idx].basic.id);
 
-	///		hp->last_alloc_idx = idx;
-	hp->last_alloc_idx = (idx-1+HOOP_SIZE)%HOOP_SIZE_MASK;  	
+	hp->last_alloc_idx = idx;
+	//hp->last_alloc_idx = (idx-1+HOOP_SIZE)%HOOP_SIZE_MASK;
+	
 	hp->last_alloc_list = hoop_list;
 
 	//    printf("hit[%d]\n", idx);
@@ -767,7 +779,7 @@ VALUE myallocAgent(Heap *hp) {
 #endif
       
       HoopList *new_hoop_list;
-      new_hoop_list = HoopList_New_forAgent();
+      new_hoop_list = HoopList_new_forAgent();
 
       HoopList *last_alloc = hoop_list->next;
       hoop_list->next = new_hoop_list;
@@ -792,7 +804,7 @@ VALUE myallocAgent(Heap *hp) {
 
 
 //static inline
-VALUE myallocName(Heap *hp) {
+VALUE myalloc_Name(Heap *hp) {
 
   int idx;
   HoopList *hoop_list;
@@ -809,8 +821,9 @@ VALUE myallocName(Heap *hp) {
       if (IS_READYFORUSE(hoop[idx].basic.id)) {
 	TOGGLE_HOOPFLAG_READYFORUSE(hoop[idx].basic.id);
 
-	hp->last_alloc_idx = idx;      
-	//hp->last_alloc_idx = (idx+1) & HOOP_SIZE_MASK;
+	//hp->last_alloc_idx = idx;      
+	hp->last_alloc_idx = (idx-1+HOOP_SIZE) & HOOP_SIZE_MASK;
+	
 	hp->last_alloc_list = hoop_list;
 
 	//    printf("hit[%d]\n", idx);
@@ -844,7 +857,7 @@ VALUE myallocName(Heap *hp) {
 #endif
       
       HoopList *new_hoop_list;
-      new_hoop_list = HoopList_New_forName();
+      new_hoop_list = HoopList_new_forName();
 
       HoopList *last_alloc = hoop_list->next;
       hoop_list->next = new_hoop_list;
@@ -929,7 +942,7 @@ VALUE *MakeNameHeap(int size) {
 
 
 //static inline
-VALUE myallocAgent(Heap *hp) {
+VALUE myalloc_Agent(Heap *hp) {
 
   int i, idx, hp_size;
   Agent *hp_heap;
@@ -963,7 +976,7 @@ VALUE myallocAgent(Heap *hp) {
 
 
 //static inline
-VALUE myallocName(Heap *hp) {
+VALUE myalloc_Name(Heap *hp) {
 
   int i,idx,hp_size;
   Name *hp_heap;
@@ -1000,7 +1013,7 @@ VALUE myallocName(Heap *hp) {
 }
 
 
-unsigned long Heap_GetNum_Usage_forName(Heap *hp) {
+unsigned long Heap_getnum_used_forName(Heap *hp) {
   int i;
   unsigned long total=0;
   for (i=0; i < hp->size; i++) {
@@ -1010,7 +1023,7 @@ unsigned long Heap_GetNum_Usage_forName(Heap *hp) {
   }
   return total;
 }
-unsigned long Heap_GetNum_Usage_forAgent(Heap *hp) {
+unsigned long Heap_getnum_used_forAgent(Heap *hp) {
   int i;
   unsigned long total=0;
   for (i=0; i < hp->size; i++) {
@@ -1037,9 +1050,9 @@ void myfree(VALUE ptr) {
 #endif
 
 
-//-----------------------------------------
+//-----------------------------------------------------------
 // Pretty printing for terms
-//-----------------------------------------
+//-----------------------------------------------------------
 
 static VALUE ShowNameHeap=(VALUE)NULL; // showname で表示するときの cyclic 防止
 // showname 時に、呼び出し変数の heap num を入れておく。
@@ -1145,8 +1158,8 @@ char *Pretty_Name(VALUE a) {
 static int Puts_list_element=0;
 
 
-// put an indirected term t for x such as x->t when `PutIndireaction' is 1
-static int PutIndirection = 1;       
+
+static int PutIndirection = 1; // indirected term t for x is put as x->t
 void puts_term(VALUE ptr) {
   if (IS_FIXNUM(ptr)) {
     printf("%d", FIX2INT(ptr));
@@ -1159,8 +1172,8 @@ void puts_term(VALUE ptr) {
   if (IS_NAMEID(BASIC(ptr)->id)) {
     if (NAME(ptr)->port == (VALUE)NULL) {
       if (IS_GNAMEID(BASIC(ptr)->id)) {
-	//printf("%s", NAME(ptr)->name);
 	printf("%s", IdTable_get_name(BASIC(ptr)->id));
+	
       } else {
 #ifndef PRETTY_VAR
 	printf("<var%lu>", (unsigned long)(ptr));
@@ -1274,7 +1287,7 @@ void puts_name_port0(VALUE ptr) {
   
 }
 
-void puts_names_ast(Ast *ast) {
+void puts_Names_ast(Ast *ast) {
   Ast *param = ast;
 
   int preserve = PutIndirection;
@@ -1299,8 +1312,8 @@ void puts_names_ast(Ast *ast) {
   PutIndirection = preserve;  
 }
 
-//void puts_name_port0_nat(VALUE a1) {
-void puts_name_port0_nat(char *sym) {
+//void puts_Name_port0_nat(VALUE a1) {
+void puts_Name_port0_nat(char *sym) {
   int result=0;
   int idS, idZ;
 
@@ -1333,7 +1346,7 @@ void puts_name_port0_nat(char *sym) {
 	} else if (IS_NAMEID(BASIC(a1)->id)) {
 	  a1=NAME(a1)->port;
 	} else {
-	  puts("ERROR: puts_name_port0_nat");
+	  puts("ERROR: puts_Name_port0_nat");
 	  exit(-1);
 	}
       }
@@ -1358,18 +1371,27 @@ void puts_eqlist(EQList *at) {
 
 
 
-/**********************************
-  VIRTUAL MACHINE 
-*********************************/
+// ------------------------------------------------------------
+//  VIRTUAL MACHINE 
+// ------------------------------------------------------------
 #define VM_REG_SIZE 64
 
 // reg0 is used to store comparison results
 // so, others have to be used from reg1
+/*
+#define VM_OFFSET_R0            (0)
+#define VM_OFFSET_METAVAR_L(a)  (a)
+#define VM_OFFSET_METAVAR_R(a)  (MAX_PORT+(a))
+#define VM_OFFSET_ANNOTATE_L    (MAX_PORT*2)
+#define VM_OFFSET_ANNOTATE_R    (MAX_PORT*2+1)
+*/
+
 #define VM_OFFSET_R0            (0)
 #define VM_OFFSET_METAVAR_L(a)  (1+a)
 #define VM_OFFSET_METAVAR_R(a)  (1+MAX_PORT+(a))
 #define VM_OFFSET_ANNOTATE_L    (1+MAX_PORT*2)
 #define VM_OFFSET_ANNOTATE_R    (1+MAX_PORT*2+1)
+
 #define VM_OFFSET_LOCALVAR      (VM_OFFSET_ANNOTATE_R + 1)
 
 
@@ -1400,6 +1422,13 @@ typedef struct {
   
 } VirtualMachine;
 
+
+#ifndef THREAD
+static VirtualMachine VM;
+#endif
+
+
+
 #ifdef COUNT_INTERACTION
 #define COUNTUP_INTERACTION(vm) vm->count_interaction++
 #else
@@ -1407,26 +1436,22 @@ typedef struct {
 #endif
 
 
-#ifndef THREAD
-static VirtualMachine VM;
-#endif
-
 #ifdef COUNT_MKAGENT
-  unsigned int NumberOfMkAgent;
+unsigned int NumberOfMkAgent;
   //  unsigned int id;
 #endif
 
 
 #ifdef EXPANDABLE_HEAP
-void VM_Buffer_Init(VirtualMachine *vm) {
+void VM_Buffer_Init(VirtualMachine * restrict vm) {
   // Agent Heap
-  vm->agentHeap.last_alloc_list = HoopList_New_forAgent();
+  vm->agentHeap.last_alloc_list = HoopList_new_forAgent();
   vm->agentHeap.last_alloc_list->next = vm->agentHeap.last_alloc_list;
   vm->agentHeap.last_alloc_idx = 0;
 
 
   // Name Heap
-  vm->nameHeap.last_alloc_list = HoopList_New_forName();
+  vm->nameHeap.last_alloc_list = HoopList_new_forName();
   vm->nameHeap.last_alloc_list->next = vm->nameHeap.last_alloc_list;
   vm->nameHeap.last_alloc_idx = 0;
 
@@ -1435,7 +1460,7 @@ void VM_Buffer_Init(VirtualMachine *vm) {
 }  
 #else
 
-void VM_InitBuffer(VirtualMachine *vm, int size) {
+void VM_InitBuffer(VirtualMachine * restrict vm, int size) {
 
   // Name Heap
   vm->agentHeap.heap = MakeAgentHeap(size);
@@ -1458,7 +1483,7 @@ void VM_InitBuffer(VirtualMachine *vm, int size) {
 
 
 
-void VM_EQStack_Init(VirtualMachine *vm, int size) {
+void VM_EQStack_Init(VirtualMachine * restrict vm, int size) {
   vm->nextPtr_eqStack = -1;  
   vm->eqStack = malloc(sizeof(EQ)*size);
   vm->eqStack_size = size;
@@ -1469,7 +1494,7 @@ void VM_EQStack_Init(VirtualMachine *vm, int size) {
 }
 
 
-void VM_EQStack_Push(VirtualMachine *vm, VALUE l, VALUE r) {
+void VM_EQStack_Push(VirtualMachine * restrict vm, VALUE l, VALUE r) {
 
   vm->nextPtr_eqStack++;
 
@@ -1499,7 +1524,7 @@ void VM_EQStack_Push(VirtualMachine *vm, VALUE l, VALUE r) {
 
 }
 
-int VM_EQStack_Pop(VirtualMachine *vm, VALUE *l, VALUE *r) {
+int VM_EQStack_Pop(VirtualMachine * restrict vm, VALUE *l, VALUE *r) {
   if (vm->nextPtr_eqStack >= 0) {
     *l = vm->eqStack[vm->nextPtr_eqStack].l;
     *r = vm->eqStack[vm->nextPtr_eqStack].r;
@@ -1511,14 +1536,14 @@ int VM_EQStack_Pop(VirtualMachine *vm, VALUE *l, VALUE *r) {
 
 
 #ifdef EXPANDABLE_HEAP
-void VM_Init(VirtualMachine *vm, unsigned int eqStackSize) {
+void VM_Init(VirtualMachine * restrict vm, unsigned int eqStackSize) {
   VM_Buffer_Init(vm);
   VM_EQStack_Init(vm, eqStackSize);
 }
 #else
 
 // v0.5.6
-void VM_Init(VirtualMachine *vm, 
+void VM_Init(VirtualMachine * restrict vm, 
 	     unsigned int agentBufferSize, unsigned int eqStackSize) {
   VM_InitBuffer(vm, agentBufferSize);
   VM_EQStack_Init(vm, eqStackSize);
@@ -1530,9 +1555,9 @@ void VM_Init(VirtualMachine *vm,
 
 
 //static inline
-VALUE makeAgent(VirtualMachine *vm, int id) {
+VALUE make_Agent(VirtualMachine * restrict vm, int id) {
   VALUE ptr;
-  ptr = myallocAgent(&vm->agentHeap);
+  ptr = myalloc_Agent(&vm->agentHeap);
 
 #ifdef COUNT_MKAGENT
   NumberOfMkAgent++;
@@ -1545,11 +1570,10 @@ VALUE makeAgent(VirtualMachine *vm, int id) {
 
 
 //static inline
-VALUE makeName(VirtualMachine *vm) {
+VALUE make_Name(VirtualMachine * restrict vm) {
   VALUE ptr;
   
-  ptr = myallocName(&vm->nameHeap);
-  //  AGENT(ptr)->basic.id = ID_NAME;
+  ptr = myalloc_Name(&vm->nameHeap);
   NAME(ptr)->port = (VALUE)NULL;
 
   return ptr;
@@ -1557,9 +1581,9 @@ VALUE makeName(VirtualMachine *vm) {
 
 
 
-/**********************************
-  Counter for Interaction operation
-*********************************/
+// ------------------------------------------------------
+//  Count for Interaction operation
+// ------------------------------------------------------
 #ifdef COUNT_INTERACTION
 int VM_Get_InteractionCount(VirtualMachine *vm) {
   return(vm->count_interaction);
@@ -1584,15 +1608,15 @@ void VM_Clear_InteractionCount(VirtualMachine *vm) {
 
 
 
-/**************************************
- Free node allocation
-**************************************/
+// ------------------------------------------------------
+// Free allocated nodes
+// ------------------------------------------------------
 
 //static inline
-void freeAgent(VALUE ptr) {
+void free_Agent(VALUE ptr) {
   
   if (ptr == (VALUE)NULL) {
-    puts("ERROR: NULL is applied to freeAgent.");
+    puts("ERROR: NULL is applied to free_Agent.");
     return;
   }
 
@@ -1600,9 +1624,9 @@ void freeAgent(VALUE ptr) {
 }
 
 //static inline
-void freeName(VALUE ptr) {
+void free_Name(VALUE ptr) {
   if (ptr == (VALUE)NULL) {
-    puts("ERROR: NULL is applied to freeName.");
+    puts("ERROR: NULL is applied to free_Name.");
     return;
   }
 
@@ -1621,7 +1645,7 @@ void freeName(VALUE ptr) {
 }
 
 
-void freeAgentRec(VALUE ptr) {
+void free_Agent_recursively(VALUE ptr) {
   
  loop:  
   if ((IS_FIXNUM(ptr)) || (ptr == (VALUE)NULL)) {
@@ -1638,20 +1662,20 @@ void freeAgentRec(VALUE ptr) {
 
     if (NAME(ptr)->port != (VALUE)NULL) {
       VALUE port = NAME(ptr)->port;
-      freeName(ptr);
+      free_Name(ptr);
       ptr = port; goto loop;
     } else {
 
       // The name is kept living if it occurs anywhere as a global.
       if (keynode_exists_in_another_term(ptr, NULL) < 2) {
-	freeName(ptr);
+	free_Name(ptr);
       }
     }
   } else {
     if (BASIC(ptr)->id == ID_CONS) {
       if (IS_FIXNUM(AGENT(ptr)->port[0])) {
 	VALUE port1 = AGENT(ptr)->port[1];
-	freeAgent(ptr);
+	free_Agent(ptr);
 	ptr = port1; goto loop;
       }
     }
@@ -1661,14 +1685,14 @@ void freeAgentRec(VALUE ptr) {
     arity = IdTable_get_arity(AGENT(ptr)->basic.id);
     if (arity == 1) {
       VALUE port1 = AGENT(ptr)->port[0];
-      freeAgent(ptr);
+      free_Agent(ptr);
       ptr = port1; goto loop;
     } else {
-      freeAgent(ptr);
+      free_Agent(ptr);
       //      printf(" .");
       int i;
-      for(i=0; i<arity; i++) {
-	freeAgentRec(AGENT(ptr)->port[i]);
+      for (i=0; i<arity; i++) {
+	free_Agent_recursively(AGENT(ptr)->port[i]);
       }
     }
   }
@@ -1700,11 +1724,11 @@ void flush_name_port0(VALUE ptr) {
 
   
   if (NAME(ptr)->port == (VALUE)NULL) {
-    freeName(ptr);
+    free_Name(ptr);
   } else {
     ShowNameHeap=ptr;
-    freeAgentRec(NAME(ptr)->port);
-    freeName(ptr);
+    free_Agent_recursively(NAME(ptr)->port);
+    free_Name(ptr);
     ShowNameHeap=(VALUE)NULL;
   }      
   
@@ -1712,14 +1736,14 @@ void flush_name_port0(VALUE ptr) {
 #ifdef VERBOSE_NODE_USE
 #ifndef THREAD  
   printf("(%lu agents and %lu names nodes are used.)\n", 
-	 Heap_GetNum_Usage_forAgent(&VM.agentHeap),
-	 Heap_GetNum_Usage_forName(&VM.nameHeap));
+	 Heap_getnum_used_forAgent(&VM.agentHeap),
+	 Heap_getnum_used_forName(&VM.nameHeap));
 #endif
 #endif
 
 }
 
-void free_names_ast(Ast *ast) {
+void free_Names_ast(Ast *ast) {
   Ast *param = ast;
 
   while (param != NULL) {
@@ -1740,9 +1764,9 @@ void free_names_ast(Ast *ast) {
 
 
 
-/*************************************
- Global Exec STACK
-**************************************/
+// -----------------------------------------------------
+// The global equation stack
+// -----------------------------------------------------
 
 #ifdef THREAD
 static pthread_cond_t EQStack_not_empty = PTHREAD_COND_INITIALIZER;
@@ -1873,9 +1897,16 @@ void VM_EQStack_allputs(VirtualMachine *vm) {
 
 
 
-/**************************************
- BYTECODE and Compilation
-**************************************/
+
+
+
+
+
+
+
+// -----------------------------------------------------------------
+// BYTECODE and Compilation
+// -----------------------------------------------------------------
 // *** The occurrence order must be the same in labels in ExecCode. ***
 typedef enum {
   OP_PUSH=0, OP_PUSHI, OP_MYPUSH,
@@ -1904,7 +1935,7 @@ typedef enum {
   
   OP_JMPCNCT_CONS, OP_JMPCNCT,
   OP_LOOP, OP_LOOP_RREC, OP_LOOP_RREC1, OP_LOOP_RREC2,
-
+  OP_LOOP_RREC_FREE_R, OP_LOOP_RREC1_FREE_R, OP_LOOP_RREC2_FREE_R,
   
   // Connection operation for global names of given nets in the interactive mode.
   OP_CNCTGN, OP_SUBSTGN,
@@ -1914,7 +1945,8 @@ typedef enum {
   OP_NOP,
 
   // These are used for translation from intermediate codes to Bytecodes
-  OP_LABEL, OP_DEAD_CODE, OP_BEGIN_BLOCK
+  OP_LABEL, OP_DEAD_CODE, OP_BEGIN_BLOCK,
+  OP_LOAD_META // keep dest as it is
 } Code;
 
 
@@ -1922,49 +1954,23 @@ typedef enum {
 static void* CodeAddr[OP_NOP+1];
 
 
-//void *ExecCode(int arg, VirtualMachine *vm, void **code);
-void *ExecCode(int mode, VirtualMachine *restrict vm, void *restrict *code);
+void *exec_code(int mode, VirtualMachine * restrict vm, void * restrict *code);
 
 void CodeAddr_init(void) {
   // Set CodeAddr
   void **table;
-  table = ExecCode(0, NULL, NULL);
+  table = exec_code(0, NULL, NULL);
   for (int i=0; i<OP_NOP; i++) {
     CodeAddr[i] = table[i];
   }
 }
 
-
-
-
-
-typedef enum {
-  NB_NAME=0,
-  NB_META,
-  NB_INTVAR,
-} NB_TYPE;
-
-
-// NBIND 数は meta数(MAX_PORT*2) + 一つの rule（や eqlist） における
-// 最大name出現数(100)
-#define MAX_NBIND MAX_PORT*2+100
-typedef struct {
-  char *name;
-  int reg;
-  int refnum; //  0: global name (thus created only),
-              // >0: local name
-              // (for the bind names: should be 1)
-              // (for the int names: not paticular)
-  NB_TYPE type; // NB_NAME, NB_META or NB_INTVAR
-} NameBind;
-
-
 //http://www.hpcs.cs.tsukuba.ac.jp/~msato/lecture-note/comp-lecture/note10.html
-#define MAX_IMCODE 1024
+#define MAX_IMCODE_SEQUENCE 1024
 struct IMCode_tag {
   int opcode;
   int operand1, operand2, operand3, operand4, operand5, operand6, operand7;
-} IMCode[MAX_IMCODE];
+} IMCode[MAX_IMCODE_SEQUENCE];
 
 int IMCode_n;
 
@@ -1972,7 +1978,7 @@ void IMCode_init(void) {
   IMCode_n = 0;
 }
 
-#define IMCODE_OVERFLOW_CHECK if(IMCode_n>MAX_IMCODE) {puts("IMCODE overflow");exit(1);}
+#define IMCODE_OVERFLOW_CHECK if(IMCode_n>MAX_IMCODE_SEQUENCE) {puts("IMCODE overflow");exit(1);}
 
 void IMCode_genCode0(int opcode) {
   IMCode[IMCode_n++].opcode = opcode;
@@ -2040,7 +2046,710 @@ void IMCode_genCode7(int opcode, int operand1, int operand2, int operand3,
 }
 
 
-#define MAX_CODE_SIZE 1024
+void IMCode_puts(int n) {
+
+  static char *string_opcode[] = {
+    "PUSH", "PUSHI", "MYPUSH",
+    "MKNAME", "MKGNAME",
+
+    "MKAGENT0", "MKAGENT1", "MKAGENT2", "MKAGENT3",
+    "MKAGENT4", "MKAGENT5", 
+
+    "REUSEAGENT0", "REUSEAGENT1", "REUSEAGENT2",
+    "REUSEAGENT3", "REUSEAGENT4", "REUSEAGENT5", 
+
+    "RET", "RET_FREE_LR", "RET_FREE_L", "RET_FREE_R", 
+
+    "LOADI", "LOAD",
+
+    "ADD", "SUB", "ADDI", "SUBI", "MUL", "DIV", "MOD",
+    "LT", "LE", "EQ", "EQI", "NE",
+    "UNM", "RAND", "INC", "DEC",
+
+    "LT_R0", "LE_R0", "EQ_R0", "EQI_R0", "NE_R0",
+    
+    "JMPEQ0", "JMPEQ0_R0", "JMP", "JMPNEQ0",
+  
+    "JMPCNCT_CONS", "JMPCNCT",
+    "LOOP", "LOOP_RREC", "LOOP_RREC1", "LOOP_RREC2",
+    "LOOP_RREC_FREE_R", "LOOP_RREC1_FREE_R", "LOOP_RREC2_FREE_R",
+
+    "CNCTGN", "SUBSTGN",
+
+    "NOP",
+
+    "LABEL", "__DEAD_CODE", "BEGIN_BLOCK",
+    "LOAD_META"
+
+    
+  };
+
+
+  struct IMCode_tag *imcode;
+  
+  puts("[IMCode_puts]");
+  if (n==-1) return;
+
+  for (int i=n; i<IMCode_n; i++) {
+    imcode = &IMCode[i];    
+    printf("%2d: ", i);
+
+    switch (imcode->opcode) {
+      // for indentation
+    case OP_LABEL:
+    case OP_BEGIN_BLOCK:
+      break;
+
+    default:
+      printf("\t");
+    }
+
+
+    
+    switch (imcode->opcode) {
+    case OP_MKNAME:
+      printf("%s var%d\n", string_opcode[imcode->opcode],
+	     imcode->operand1);
+      break;
+
+    case OP_MKGNAME:
+      printf("%s id:%d var%d; \"%s\"\n", string_opcode[imcode->opcode],
+	     imcode->operand1, imcode->operand2,
+	     IdTable_get_name(imcode->operand1));
+      break;
+
+    case OP_MKAGENT0:
+      printf("%s id:%d var%d\n", string_opcode[imcode->opcode],
+	     imcode->operand1, imcode->operand2);
+      break;
+
+    case OP_MKAGENT1:
+      printf("%s id:%d var%d var%d\n", string_opcode[imcode->opcode],
+	     imcode->operand1, imcode->operand2, imcode->operand3);
+      break;
+
+    case OP_MKAGENT2:
+      printf("%s id:%d var%d var%d var%d\n", string_opcode[imcode->opcode],
+	     imcode->operand1, imcode->operand2,
+	     imcode->operand3, imcode->operand4);
+      break;
+
+    case OP_MKAGENT3:
+      printf("%s id:%d var%d var%d var%d var%d\n", string_opcode[imcode->opcode],
+	     imcode->operand1, imcode->operand2,
+	     imcode->operand3, imcode->operand4, imcode->operand5);
+      break;
+
+    case OP_MKAGENT4:
+      printf("%s id:%d var%d var%d var%d var%d var%d \n", string_opcode[imcode->opcode],
+	     imcode->operand1, imcode->operand2,
+	     imcode->operand3, imcode->operand4, imcode->operand5,
+	     imcode->operand6);
+      break;
+
+    case OP_MKAGENT5:
+      printf("%s id:%d var%d var%d var%d var%d var%d var%d \n", string_opcode[imcode->opcode],
+	     imcode->operand1, imcode->operand2,
+	     imcode->operand3, imcode->operand4, imcode->operand5,
+	     imcode->operand6, imcode->operand7);
+      break;
+
+      
+    case OP_REUSEAGENT0:
+      printf("%s var%d id:%d\n", string_opcode[imcode->opcode],
+	     imcode->operand1, imcode->operand2);
+      break;
+
+    case OP_REUSEAGENT1:
+      printf("%s var%d id:%d var%d\n", string_opcode[imcode->opcode],
+	     imcode->operand1, imcode->operand2, imcode->operand3);
+      break;
+
+    case OP_REUSEAGENT2:
+      printf("%s var%d id:%d var%d var%d\n", string_opcode[imcode->opcode],
+	     imcode->operand1, imcode->operand2,
+	     imcode->operand3, imcode->operand4);
+      break;
+
+    case OP_REUSEAGENT3:
+      printf("%s var%d id:%d var%d var%d var%d\n", string_opcode[imcode->opcode],
+	     imcode->operand1, imcode->operand2,
+	     imcode->operand3, imcode->operand4, imcode->operand5);
+      break;
+
+    case OP_REUSEAGENT4:
+      printf("%s var%d id:%d var%d var%d var%d var%d\n", string_opcode[imcode->opcode],
+	     imcode->operand1, imcode->operand2,
+	     imcode->operand3, imcode->operand4, imcode->operand5,
+	     imcode->operand6);
+      break;
+
+    case OP_REUSEAGENT5:
+      printf("%s var%d id:%d var%d var%d var%d var%d var%d\n",
+	     string_opcode[imcode->opcode],
+	     imcode->operand1, imcode->operand2,
+	     imcode->operand3, imcode->operand4, imcode->operand5,
+	     imcode->operand6, imcode->operand7);
+      break;
+
+
+    case OP_LABEL:
+      printf("%s%d:\n", string_opcode[imcode->opcode],
+	     imcode->operand1);
+      break;
+
+      
+      // 0 arity: opcode    
+    case OP_RET:
+    case OP_RET_FREE_L:
+    case OP_RET_FREE_R:
+    case OP_RET_FREE_LR:
+    case OP_LOOP:
+    case OP_NOP:
+    case OP_DEAD_CODE:
+      printf("%s\n", string_opcode[imcode->opcode]);
+      break;
+
+
+    case OP_BEGIN_BLOCK:
+      printf("%s:\n", string_opcode[imcode->opcode]);
+      break;
+      
+      
+      // 1 arity: opcode var1
+    case OP_LOOP_RREC1:
+    case OP_LOOP_RREC2:
+    case OP_LOOP_RREC1_FREE_R:
+    case OP_LOOP_RREC2_FREE_R:
+      printf("%s var%d\n", string_opcode[imcode->opcode],
+	     imcode->operand1);
+      break;
+
+            
+      // arity is 2: opcode var1 var2
+    case OP_UNM:
+    case OP_INC:
+    case OP_DEC:
+    case OP_RAND:
+    case OP_PUSH:
+    case OP_MYPUSH:
+    case OP_LOAD:
+    case OP_LOAD_META:
+    case OP_LT_R0:
+    case OP_LE_R0:
+    case OP_EQ_R0:
+    case OP_NE_R0:
+    case OP_CNCTGN:
+    case OP_SUBSTGN:
+      printf("%s var%d var%d\n", string_opcode[imcode->opcode],
+	     imcode->operand1, imcode->operand2);
+      break;
+
+
+      // arity is 2: opcode var1 $2
+    case OP_PUSHI:
+    case OP_LOADI:
+    case OP_EQI_R0:
+      printf("%s $%d var%d\n", string_opcode[imcode->opcode],
+	     imcode->operand1, imcode->operand2);
+      break;
+
+
+    case OP_LOOP_RREC:
+    case OP_LOOP_RREC_FREE_R:
+      printf("%s var%d $%d\n", string_opcode[imcode->opcode],
+	     imcode->operand1, imcode->operand2);
+      break;
+
+
+      
+      // arity is 3: opcode var1 var2 var3
+    case OP_ADD:
+    case OP_SUB:
+    case OP_MUL:
+    case OP_DIV:
+    case OP_MOD:
+    case OP_LT:
+    case OP_LE:
+    case OP_EQ:
+    case OP_NE:
+      printf("%s var%d var%d var%d\n", string_opcode[imcode->opcode],
+	     imcode->operand1, imcode->operand2, imcode->operand3);
+      break;
+      
+      
+      // arity is 3: opcode var1 var2 $3
+    case OP_ADDI:
+    case OP_SUBI:
+    case OP_EQI:
+      printf("%s var%d $%d var%d\n", string_opcode[imcode->opcode],
+	     imcode->operand1, imcode->operand2, imcode->operand3);
+      break;
+
+
+      // arity is 2: opcode var1 LABEL2
+    case OP_JMPEQ0:
+    case OP_JMPNEQ0:
+    case OP_JMPCNCT_CONS:
+      printf("%s var%d %s%d\n", string_opcode[imcode->opcode],	     
+	     imcode->operand1,
+	     string_opcode[OP_LABEL],imcode->operand2);
+      break;
+
+      
+      // arity is 3: opcode var1 id2 LABEL3
+    case OP_JMPCNCT:
+      printf("%s var%d id:%d %s%d\n", string_opcode[imcode->opcode],
+	     imcode->operand1, imcode->operand2,
+	     string_opcode[OP_LABEL],imcode->operand3);
+      break;
+      
+      // others      
+    case OP_JMPEQ0_R0:
+      printf("%s %s%d\n", string_opcode[imcode->opcode],
+	     string_opcode[OP_LABEL],imcode->operand1);
+      break;
+      
+            
+    case OP_JMP:
+      printf("%s %s%d\n", string_opcode[imcode->opcode],
+	     string_opcode[OP_LABEL],imcode->operand1);
+      break;
+      
+            
+    default:
+      printf("CODE %d %d %d %d %d %d\n",
+	     imcode->operand1, imcode->operand2, imcode->operand3, 
+	     imcode->operand4, imcode->operand5, imcode->operand6);
+    }
+  }
+}
+
+
+
+
+
+#define MAX_VMCODE_SEQUENCE 1024  
+void VMCode_puts(void **code, int n) {
+  
+  puts("[PutsCode]");
+  if (n==-1) n = MAX_VMCODE_SEQUENCE;
+
+  printf("Addr.\n");
+  for (int i=0; i<n; i++) {
+    printf("%04d: ", i);
+    
+    if (code[i] == CodeAddr[OP_MKNAME]) {
+      printf("mkname reg%lu\n",
+	     (unsigned long)code[i+1]);
+      i+=1;
+      
+    } else if (code[i] == CodeAddr[OP_MKGNAME]) {
+      printf("mkgname id:%lu reg%lu; \"%s\"\n",
+	     (unsigned long)code[i+1],
+	     (unsigned long)code[i+2],
+	     IdTable_get_name((unsigned long)code[i+1]));
+      i+=2;
+
+    } else if (code[i] == CodeAddr[OP_MKAGENT0]) {
+      printf("mkagent0 id:%lu reg%lu\n", 
+	     (unsigned long)code[i+1],
+	     (unsigned long)code[i+2]);
+      i+=2;
+
+    } else if (code[i] == CodeAddr[OP_MKAGENT1]) {
+      printf("mkagent1 id:%lu reg%lu reg%lu\n", 
+	     (unsigned long)code[i+1],
+	     (unsigned long)code[i+2],
+	     (unsigned long)code[i+3]);
+      i+=3;
+
+    } else if (code[i] == CodeAddr[OP_MKAGENT2]) {
+      printf("mkagent2 id:%lu reg%lu reg%lu reg%lu\n", 
+	     (unsigned long)code[i+1],
+	     (unsigned long)code[i+2],
+	     (unsigned long)code[i+3],
+	     (unsigned long)code[i+4]);
+      i+=4;
+
+    } else if (code[i] == CodeAddr[OP_MKAGENT3]) {
+      printf("mkagent3 id:%lu reg%lu reg%lu reg%lu reg%lu\n", 
+	     (unsigned long)code[i+1],
+	     (unsigned long)code[i+2],
+	     (unsigned long)code[i+3],
+	     (unsigned long)code[i+4],
+	     (unsigned long)code[i+5]);
+      i+=5;
+
+    } else if (code[i] == CodeAddr[OP_MKAGENT4]) {
+      printf("mkagent4 id:%lu reg%lu reg%lu reg%lu reg%lu reg%lu\n", 
+	     (unsigned long)code[i+1],
+	     (unsigned long)code[i+2],
+	     (unsigned long)code[i+3],
+	     (unsigned long)code[i+4],
+	     (unsigned long)code[i+5],
+	     (unsigned long)code[i+6]);
+      i+=6;
+
+    } else if (code[i] == CodeAddr[OP_MKAGENT5]) {
+      printf("mkagent5 id:%lu reg%lu reg%lu reg%lu reg%lu reg%lu reg%lu\n", 
+	     (unsigned long)code[i+1],
+	     (unsigned long)code[i+2],
+	     (unsigned long)code[i+3],
+	     (unsigned long)code[i+4],
+	     (unsigned long)code[i+5],
+	     (unsigned long)code[i+6],
+	     (unsigned long)code[i+7]);
+      i+=7;
+      
+    } else if (code[i] == CodeAddr[OP_REUSEAGENT0]) {
+      printf("reuseagent0 reg%lu as id=%lu", 
+	     (unsigned long)code[i+1],
+	     (unsigned long)code[i+2]);
+      puts("");
+      i+=2;
+
+    } else if (code[i] == CodeAddr[OP_REUSEAGENT1]) {
+      printf("reuseagent0 reg%lu as id=%lu", 
+	     (unsigned long)code[i+1],
+	     (unsigned long)code[i+2]);
+      printf(" reg%lu", (unsigned long)code[i+3]);
+      puts("");
+      i+=3;
+      
+    } else if (code[i] == CodeAddr[OP_REUSEAGENT2]) {
+      printf("reuseagent2 reg%lu as id=%lu", 
+	     (unsigned long)code[i+1],
+	     (unsigned long)code[i+2]);
+      printf(" reg%lu", (unsigned long)code[i+3]);
+      printf(" reg%lu", (unsigned long)code[i+4]);
+      puts("");
+      i+=4;
+
+    } else if (code[i] == CodeAddr[OP_REUSEAGENT3]) {
+      printf("reuseagent3 reg%lu as id=%lu", 
+	     (unsigned long)code[i+1],
+	     (unsigned long)code[i+2]);
+      printf(" reg%lu", (unsigned long)code[i+3]);
+      printf(" reg%lu", (unsigned long)code[i+4]);
+      printf(" reg%lu", (unsigned long)code[i+5]);
+      puts("");
+      i+=5;
+      
+    } else if (code[i] == CodeAddr[OP_REUSEAGENT4]) {
+      printf("reuseagent4 reg%lu as id=%lu", 
+	     (unsigned long)code[i+1],
+	     (unsigned long)code[i+2]);
+      printf(" reg%lu", (unsigned long)code[i+3]);
+      printf(" reg%lu", (unsigned long)code[i+4]);
+      printf(" reg%lu", (unsigned long)code[i+5]);
+      printf(" reg%lu", (unsigned long)code[i+6]);
+      puts("");
+      i+=6;
+
+    } else if (code[i] == CodeAddr[OP_REUSEAGENT5]) {
+      printf("reuseagent5 reg%lu as id=%lu", 
+	     (unsigned long)code[i+1],
+	     (unsigned long)code[i+2]);
+      printf(" reg%lu", (unsigned long)code[i+3]);
+      printf(" reg%lu", (unsigned long)code[i+4]);
+      printf(" reg%lu", (unsigned long)code[i+5]);
+      printf(" reg%lu", (unsigned long)code[i+6]);
+      printf(" reg%lu", (unsigned long)code[i+7]);
+      puts("");
+      i+=7;
+      
+    } else if (code[i] == CodeAddr[OP_PUSH]) {
+      printf("push reg%lu reg%lu\n",
+	     (unsigned long)code[i+1],
+	     (unsigned long)code[i+2]);
+      i+=2;
+
+    } else if (code[i] == CodeAddr[OP_PUSHI]) {
+      printf("pushi reg%lu $%d\n",
+	     (unsigned long)code[i+1],
+	     FIX2INT((unsigned long)code[i+2]));
+      i+=2;
+
+    } else if (code[i] == CodeAddr[OP_MYPUSH]) {
+      printf("mypush reg%lu reg%lu\n",
+	     (unsigned long)code[i+1],
+	     (unsigned long)code[i+2]);
+      i+=2;
+
+    } else if (code[i] == CodeAddr[OP_RET]) {
+      puts("ret");
+
+    } else if (code[i] == CodeAddr[OP_RET_FREE_L]) {
+      puts("ret_free_l");
+
+    } else if (code[i] == CodeAddr[OP_RET_FREE_R]) {
+      puts("ret_free_r");
+
+    } else if (code[i] == CodeAddr[OP_RET_FREE_LR]) {
+      puts("ret_free_lr");
+
+    } else if (code[i] == CodeAddr[OP_LOADI]) {
+      printf("loadi $%d reg%lu\n",
+	     FIX2INT((unsigned long)code[i+1]),
+	     (unsigned long)code[i+2]);
+      i+=2;
+      
+    } else if (code[i] == CodeAddr[OP_LOOP]) {
+      puts("loop");
+
+    } else if (code[i] == CodeAddr[OP_LOOP_RREC]) {
+      printf("loop_rrec reg%lu $%lu\n",
+	     (unsigned long)code[i+1],
+	     (unsigned long)code[i+2]);
+      i+=2;
+
+    } else if (code[i] == CodeAddr[OP_LOOP_RREC_FREE_R]) {
+      printf("loop_rrec_free_r reg%lu $%lu\n",
+	     (unsigned long)code[i+1],
+	     (unsigned long)code[i+2]);
+      i+=2;
+
+    } else if (code[i] == CodeAddr[OP_LOOP_RREC1]) {
+      printf("loop_rrec1 reg%lu\n",
+	     (unsigned long)code[i+1]);
+      i+=1;
+
+    } else if (code[i] == CodeAddr[OP_LOOP_RREC1_FREE_R]) {
+      printf("loop_rrec1_free_r reg%lu\n",
+	     (unsigned long)code[i+1]);
+      i+=1;
+
+    } else if (code[i] == CodeAddr[OP_LOOP_RREC2]) {
+      printf("loop_rrec2 reg%lu\n",
+	     (unsigned long)code[i+1]);
+      i+=1;
+
+    } else if (code[i] == CodeAddr[OP_LOOP_RREC2_FREE_R]) {
+      printf("loop_rrec2_free_r reg%lu\n",
+	     (unsigned long)code[i+1]);
+      i+=1;
+
+    } else if (code[i] == CodeAddr[OP_LOAD]) {
+      printf("load reg%lu reg%lu\n",
+	     (unsigned long)code[i+1],
+	     (unsigned long)code[i+2]);
+      i+=2;
+
+
+    } else if (code[i] == CodeAddr[OP_ADD]) {
+      printf("add reg%lu reg%lu reg%lu\n",
+	     (unsigned long)code[i+1],
+	     (unsigned long)code[i+2],
+	     (unsigned long)code[i+3]);
+      i+=3;
+
+    } else if (code[i] == CodeAddr[OP_SUB]) {
+      printf("sub reg%lu reg%lu reg%lu\n", 
+	     (unsigned long)code[i+1],
+	     (unsigned long)code[i+2],
+	     (unsigned long)code[i+3]);
+      i+=3;
+
+    } else if (code[i] == CodeAddr[OP_ADDI]) {
+      printf("addi reg%lu $%lu reg%lu\n",
+	     (unsigned long)code[i+1],
+	     (unsigned long)code[i+2],
+	     (unsigned long)code[i+3]);
+      i+=3;
+    } else if (code[i] == CodeAddr[OP_SUBI]) {
+      printf("subi reg%lu $%lu reg%lu\n",
+	     (unsigned long)code[i+1],
+	     (unsigned long)code[i+2],
+	     (unsigned long)code[i+3]);
+      i+=3;
+
+    } else if (code[i] == CodeAddr[OP_MUL]) {
+      printf("mul reg%lu reg%lu reg%lu\n", 
+	     (unsigned long)code[i+1],
+	     (unsigned long)code[i+2],
+	     (unsigned long)code[i+3]);
+      i+=3;
+
+    } else if (code[i] == CodeAddr[OP_DIV]) {
+      printf("div reg%lu reg%lu reg%lu\n", 
+	     (unsigned long)code[i+1],
+	     (unsigned long)code[i+2],
+	     (unsigned long)code[i+3]);
+      i+=3;
+
+    } else if (code[i] == CodeAddr[OP_MOD]) {
+      printf("mod reg%lu reg%lu reg%lu\n", 
+	     (unsigned long)code[i+1],
+	     (unsigned long)code[i+2],
+	     (unsigned long)code[i+3]);
+      i+=3;
+
+    } else if (code[i] == CodeAddr[OP_LT]) {
+      printf("lt reg%lu reg%lu reg%lu\n",
+	     (unsigned long)code[i+1],
+	     (unsigned long)code[i+2],
+	     (unsigned long)code[i+3]);
+      i+=3;
+
+    } else if (code[i] == CodeAddr[OP_EQ]) {
+      printf("eq reg%lu reg%lu reg%lu\n",
+	     (unsigned long)code[i+1],
+	     (unsigned long)code[i+2],
+	     (unsigned long)code[i+3]);
+      i+=3;
+
+    } else if (code[i] == CodeAddr[OP_EQI]) {
+      printf("eqi reg%lu $%d reg%lu\n",
+	     (unsigned long)code[i+1],
+	     FIX2INT((unsigned long)code[i+2]),
+	     (unsigned long)code[i+3]);
+      i+=3;
+
+    } else if (code[i] == CodeAddr[OP_NE]) {
+      printf("ne reg%lu reg%lu reg%lu\n",
+	     (unsigned long)code[i+1],
+	     (unsigned long)code[i+2],
+	     (unsigned long)code[i+3]);
+      i+=3;
+      
+    } else if (code[i] == CodeAddr[OP_LT_R0]) {
+      printf("lt_r0 reg%lu reg%lu\n",
+	     (unsigned long)code[i+1],
+	     (unsigned long)code[i+2]);
+      i+=2;
+
+    } else if (code[i] == CodeAddr[OP_LE_R0]) {
+      printf("le_r0 reg%lu reg%lu\n",
+	     (unsigned long)code[i+1],
+	     (unsigned long)code[i+2]);
+      i+=2;
+
+    } else if (code[i] == CodeAddr[OP_EQ_R0]) {
+      printf("eq_r0 reg%lu reg%lu\n",
+	     (unsigned long)code[i+1],
+	     (unsigned long)code[i+2]);
+      i+=2;
+
+    } else if (code[i] == CodeAddr[OP_EQI_R0]) {
+      printf("eqi_r0 reg%lu $%d\n",
+	     (unsigned long)code[i+1],
+	     FIX2INT((unsigned long)code[i+2]));
+      i+=2;
+
+    } else if (code[i] == CodeAddr[OP_NE_R0]) {
+      printf("ne_r0 reg%lu reg%lu\n",
+	     (unsigned long)code[i+1],
+	     (unsigned long)code[i+2]);
+      i+=2;
+
+    } else if (code[i] == CodeAddr[OP_JMPNEQ0]) {
+      printf("jmpneq0 reg%lu $%lu\n",
+	     (unsigned long)code[i+1],
+	     (unsigned long)code[i+2]);
+      i+=2;
+
+    } else if (code[i] == CodeAddr[OP_JMPEQ0]) {
+      printf("jmpeq0 reg%lu $%lu\n",
+	     (unsigned long)code[i+1],
+	     (unsigned long)code[i+2]);
+      i+=2;
+
+    } else if (code[i] == CodeAddr[OP_JMPEQ0_R0]) {
+      printf("jmpeq0_r0 $%lu\n",
+	     (unsigned long)code[i+1]);
+      i+=1;
+
+    } else if (code[i] == CodeAddr[OP_JMPCNCT_CONS]) {
+      printf("jmpcnct_cons reg%lu $%lu\n",
+	     (unsigned long)code[i+1],
+	     (unsigned long)code[i+2]);
+      i+=2;
+
+    } else if (code[i] == CodeAddr[OP_JMPCNCT]) {
+      printf("jmpcnct reg%lu id:%lu $%lu\n",
+	     (unsigned long)code[i+1],
+	     (unsigned long)code[i+2],
+	     (unsigned long)code[i+3]);
+      i+=3;
+
+    } else if (code[i] == CodeAddr[OP_JMP]) {
+      printf("jmp $%lu\n", (unsigned long)code[i+1]);
+      i+=1;
+
+    } else if (code[i] == CodeAddr[OP_UNM]) {
+      printf("unm reg%lu reg%lu\n",
+	     (unsigned long)code[i+1],
+	     (unsigned long)code[i+2]);
+      i+=2;
+
+    } else if (code[i] == CodeAddr[OP_INC]) {
+      printf("inc reg%lu reg%lu\n",
+	     (unsigned long)code[i+1],
+	     (unsigned long)code[i+2]);
+      i+=2;
+
+    } else if (code[i] == CodeAddr[OP_DEC]) {
+      printf("dec reg%lu reg%lu\n",
+	     (unsigned long)code[i+1],
+	     (unsigned long)code[i+2]);
+      i+=2;
+
+    } else if (code[i] == CodeAddr[OP_RAND]) {
+      printf("rnd reg%lu reg%lu\n",
+	     (unsigned long)code[i+1],
+	     (unsigned long)code[i+2]);
+      i+=2;
+
+    } else if (code[i] == CodeAddr[OP_CNCTGN]) {
+      printf("cnctgn reg%lu reg%lu\n",
+	     (unsigned long)code[i+1],
+	     (unsigned long)code[i+2]);
+      i+=2;
+
+    } else if (code[i] == CodeAddr[OP_SUBSTGN]) {
+      printf("substgn reg%lu reg%lu\n",
+	     (unsigned long)code[i+1],
+	     (unsigned long)code[i+2]);
+      i+=2;
+
+    } else if (code[i] == CodeAddr[OP_NOP]) {
+      puts("nop");
+
+    } else {
+      printf("code %lu\n", (unsigned long)code[i]);      
+    }
+  }
+}
+
+
+
+
+typedef enum {
+  NB_NAME=0,
+  NB_META_L,
+  NB_META_R,
+  NB_INTVAR,
+} NB_TYPE;
+
+
+// NBIND 数は meta数(MAX_PORT*2) + 一つの rule（や eqlist） における
+// 最大name出現数(100)
+#define MAX_NBIND MAX_PORT*2+100
+typedef struct {
+  char *name;
+  int reg;
+  int refnum; //  0: global name (thus created only),
+              // >0: local name
+              // (for the bind names: should be 1)
+              // (for the int names: not paticular)
+  NB_TYPE type; // NB_NAME, NB_META_L, NB_META_R or NB_INTVAR
+} NameBind;
+
+
+
+
+
 typedef struct {
   
   // Management table for local and global names
@@ -2062,18 +2771,17 @@ typedef struct {
 
   // for compilation to VMCode
   int label;                    // labels
-
   int tmpRegState[VM_REG_SIZE]; // register assignments
                                 // store localvar numbers. -1 is no assignment.
   
 } CmEnvironment;
 
 
-// The annotation properties
-#define ANNOTATE_NOTHING  0     // The rule agent is not reused,
-#define ANNOTATE_REUSE 1        // annotation (*L), (*R) is specified,
-#define ANNOTATE_AS_INT_AGENT 2 // (int i), therefore it should not be freed.
-
+// Annotation states
+#define ANNOTATE_NOTHING      0 // The rule agent is not reused.
+#define ANNOTATE_REUSE        1 // Annotation (*L), (*R) is specified.
+#define ANNOTATE_INT_MODIFIER 2 // (int i), therefore it must not be freed.
+#define ANNOTATE_TRO          3 // Annotated and reused as TRO.
 
 static CmEnvironment CmEnv;
 
@@ -2137,10 +2845,10 @@ void CmEnv_clear_keeping_rule_properties(void)
   // clear the information of names EXCEPT meta ones.
   CmEnv_clear_bind(CmEnv.bindPtr_metanames);
   
-  if (CmEnv.annotateL != ANNOTATE_AS_INT_AGENT) {
+  if (CmEnv.annotateL != ANNOTATE_INT_MODIFIER) {
     CmEnv.annotateL = ANNOTATE_NOTHING;
   }
-  if (CmEnv.annotateR != ANNOTATE_AS_INT_AGENT) {
+  if (CmEnv.annotateR != ANNOTATE_INT_MODIFIER) {
     CmEnv.annotateR = ANNOTATE_NOTHING;
   }
 
@@ -2242,7 +2950,16 @@ int CmEnv_find_var(char *key) {
   int i;
   for (i=0; i<CmEnv.bindPtr; i++) {
     if (strcmp(key, CmEnv.bind[i].name) == 0) {
+
+#ifndef OPTIMISE_IMCODE_TRO
       CmEnv.bind[i].refnum++;
+#else
+      // During compilation on ANNOTATE_TRO, ignore counting up.
+      if (CmEnv.annotateL != ANNOTATE_TRO) {
+	CmEnv.bind[i].refnum++;
+      }	
+#endif
+      
       return CmEnv.bind[i].reg;
     }
   }
@@ -2282,16 +2999,12 @@ int CmEnv_check_meta_occur_once(void) {
 
   for (i=0; i<CmEnv.bindPtr; i++) {
 
-    if (CmEnv.bind[i].type == NB_META) {
+    if ((CmEnv.bind[i].type == NB_META_L) || (CmEnv.bind[i].type == NB_META_R)) {
       if (CmEnv.bind[i].refnum != 1) { // Be just once!
 	printf("ERROR: '%s' is referred not once in the right-hand side of the rule definition", CmEnv.bind[i].name);
 	return 0;
       }
-      //    } else if (CmEnv.bind[i].type == NB_INTVAR) {
-      //      if (CmEnv.bind[i].refnum == 0) {
-      //	printf("Error: %s does not occur at RHS.\n", CmEnv.bind[i].name);
-      //	return 0;
-      //      }
+      
     }
   }
 
@@ -2315,7 +3028,7 @@ int CmEnv_check_name_reference_times(void) {
 }
 
 
-void CmEnv_Retrieve_GNAME(void) {
+void CmEnv_retrieve_MKGNAME(void) {
   int local_var;
 
   for (int i=0; i<IMCode_n; i++) {
@@ -2466,6 +3179,7 @@ int CmEnv_Optimise_check_occurence_in_block(int localvar,
 
     case OP_LOAD:
     case OP_LOADI:
+    case OP_LOAD_META:
       // OP src1 dest
       if (imcode->operand1 == localvar) {
 	return 1;
@@ -2672,6 +3386,13 @@ int CmEnv_Optimise_VMCode_CopyPropagation(int target_imcode_addr) {
     IMCode[target_imcode_addr].opcode = OP_DEAD_CODE;
     return 1;
   }
+  // When the given line is: LOAD_META src src
+  if ((load_from == load_to) &&
+      (IMCode[target_imcode_addr].opcode == OP_LOAD_META)) {
+    IMCode[target_imcode_addr].opcode = OP_DEAD_CODE;
+    return 1;
+  }
+
   
   for (int i=target_imcode_addr+1; i<IMCode_n; i++) {
     imcode = &IMCode[i];    
@@ -2887,6 +3608,11 @@ int CmEnv_generate_VMCode(void **code) {
     // Copy Propagation for OP_LOAD reg1, reg2 --> [reg2/reg1]
     // and Dead Code Elimination
     if (imcode->opcode == OP_LOAD) {
+      if (CmEnv_Optimise_VMCode_CopyPropagation(i)) {
+	continue;
+      }
+    }
+    if (imcode->opcode == OP_LOAD_META) {
       if (CmEnv_Optimise_VMCode_CopyPropagation(i)) {
 	continue;
       }
@@ -3377,6 +4103,27 @@ int CmEnv_generate_VMCode(void **code) {
       
     }
 
+    case OP_LOAD_META: {
+      // OP_LOAD_META src1 dest
+      // the dest is used as it is
+      int src1 = imcode->operand1;
+      int dest = imcode->operand2;
+      
+#ifdef OPTIMISE_IMCODE
+      src1 = CmEnv_using_reg(src1);
+      if (!CmEnv_Optimise_check_occurence_in_block(imcode->operand1, i))
+	CmEnv_free_reg(src1);
+      
+      //      dest = CmEnv_get_newreg(dest);
+#endif
+      
+      code[addr++] = CodeAddr[OP_LOAD];
+      code[addr++] = (void *)(unsigned long)src1;      
+      code[addr++] = (void *)(unsigned long)dest;      
+      break;
+      
+    }
+
       
     case OP_LOADI: {
       // OP_LOADI int1 dest
@@ -3636,7 +4383,9 @@ int CmEnv_generate_VMCode(void **code) {
       
 
     case OP_LOOP_RREC1:
-    case OP_LOOP_RREC2: {
+    case OP_LOOP_RREC2:
+    case OP_LOOP_RREC1_FREE_R:
+    case OP_LOOP_RREC2_FREE_R: {
       //      printf("OP_LOOP_RREC1 var%d\n",
       //	     imcode->operand1);
       int src1 = imcode->operand1;
@@ -3651,8 +4400,28 @@ int CmEnv_generate_VMCode(void **code) {
       code[addr++] = (void *)(unsigned long)src1;      
       break;
     }
+
+
+    case OP_LOOP_RREC:
+    case OP_LOOP_RREC_FREE_R: {
+      //      printf("OP_LOOP_RREC1 var%d $%d\n",
+      //	     imcode->operand1, imcode->operand2);
+      int src1 = imcode->operand1;
+
+#ifdef OPTIMISE_IMCODE
+      src1 = CmEnv_using_reg(src1);
+      if (!CmEnv_Optimise_check_occurence_in_block(imcode->operand1, i))
+	CmEnv_free_reg(src1);
+#endif
+            
+      code[addr++] = CodeAddr[imcode->opcode];
+      code[addr++] = (void *)(unsigned long)src1;      
+      code[addr++] = (void *)(unsigned long)imcode->operand2;                  
+      break;
+    }
       
     case OP_JMPCNCT: {
+      // OP_JMPCNCT var id label
       //      printf("OP_JMPCNCT var%d id:%d $%d\n",
       //	     imcode->operand1, imcode->operand2, imcode->operand3);
       int src1 = imcode->operand1;
@@ -3667,6 +4436,8 @@ int CmEnv_generate_VMCode(void **code) {
       code[addr++] = (void *)(unsigned long)src1;      
       // int
       code[addr++] = (void *)(unsigned long)imcode->operand2;                  
+      // for label
+      backpatch_table[backpatch_num++] = addr;
       code[addr++] = (void *)(unsigned long)imcode->operand3;
       break;
     }
@@ -3742,7 +4513,7 @@ int CmEnv_generate_VMCode(void **code) {
 }
 
 
-void CopyCode(int byte, void **source, void **target) {
+void CmEnv_copy_VMCode(int byte, void **source, void **target) {
   int i;
   for (i=0; i<byte; i++) {
     target[i]=source[i];
@@ -3750,635 +4521,102 @@ void CopyCode(int byte, void **source, void **target) {
 }
 
 
-void IMCode_puts(int n) {
-
-  static char *string_opcode[] = {
-    "OP_PUSH", "OP_PUSHI", "OP_MYPUSH",
-    "OP_MKNAME", "OP_MKGNAME",
-
-    "OP_MKAGENT0", "OP_MKAGENT1", "OP_MKAGENT2", "OP_MKAGENT3",
-    "OP_MKAGENT4", "OP_MKAGENT5", 
-
-    "OP_REUSEAGENT0", "OP_REUSEAGENT1", "OP_REUSEAGENT2",
-    "OP_REUSEAGENT3", "OP_REUSEAGENT4", "OP_REUSEAGENT5", 
-
-    "OP_RET", "OP_RET_FREE_LR", "OP_RET_FREE_L", "OP_RET_FREE_R", 
-
-    "OP_LOADI", "OP_LOAD",
-
-    "OP_ADD", "OP_SUB", "OP_ADDI", "OP_SUBI", "OP_MUL", "OP_DIV", "OP_MOD",
-    "OP_LT", "OP_LE", "OP_EQ", "OP_EQI", "OP_NE",
-    "OP_UNM", "OP_RAND", "OP_INC", "OP_DEC",
-
-    "OP_LT_R0", "OP_LE_R0", "OP_EQ_R0", "OP_EQI_R0", "OP_NE_R0",
-    
-    "OP_JMPEQ0", "OP_JMPEQ0_R0", "OP_JMP", "OP_JMPNEQ0",
-  
-    "OP_JMPCNCT_CONS", "OP_JMPCNCT",
-    "OP_LOOP", "OP_LOOP_RREC", "OP_LOOP_RREC1", "OP_LOOP_RREC2", 
-
-    "OP_CNCTGN", "OP_SUBSTGN",
-
-    "OP_NOP",
-
-    "OP_LABEL", "DEAD_CODE", "BEGIN_BLOCK"
-
-    
-  };
 
 
-  struct IMCode_tag *imcode;
-  
-  puts("[IMCode_puts]");
-  if (n==-1) return;
-
-  for (int i=n; i<IMCode_n; i++) {
-    imcode = &IMCode[i];    
-    printf("%2d: ", i);
-    
-    switch (imcode->opcode) {
-    case OP_MKNAME:
-      printf("%s var%d\n", string_opcode[imcode->opcode],
-	     imcode->operand1);
-      break;
-
-    case OP_MKGNAME:
-      printf("%s id:%d var%d; \"%s\"\n", string_opcode[imcode->opcode],
-	     imcode->operand1, imcode->operand2,
-	     IdTable_get_name(imcode->operand1));
-      break;
-
-    case OP_MKAGENT0:
-      printf("%s id:%d var%d\n", string_opcode[imcode->opcode],
-	     imcode->operand1, imcode->operand2);
-      break;
-
-    case OP_MKAGENT1:
-      printf("%s id:%d var%d var%d\n", string_opcode[imcode->opcode],
-	     imcode->operand1, imcode->operand2, imcode->operand3);
-      break;
-
-    case OP_MKAGENT2:
-      printf("%s id:%d var%d var%d var%d\n", string_opcode[imcode->opcode],
-	     imcode->operand1, imcode->operand2,
-	     imcode->operand3, imcode->operand4);
-      break;
-
-    case OP_MKAGENT3:
-      printf("%s id:%d var%d var%d var%d var%d\n", string_opcode[imcode->opcode],
-	     imcode->operand1, imcode->operand2,
-	     imcode->operand3, imcode->operand4, imcode->operand5);
-      break;
-
-    case OP_MKAGENT4:
-      printf("%s id:%d var%d var%d var%d var%d var%d \n", string_opcode[imcode->opcode],
-	     imcode->operand1, imcode->operand2,
-	     imcode->operand3, imcode->operand4, imcode->operand5,
-	     imcode->operand6);
-      break;
-
-    case OP_MKAGENT5:
-      printf("%s id:%d var%d var%d var%d var%d var%d var%d \n", string_opcode[imcode->opcode],
-	     imcode->operand1, imcode->operand2,
-	     imcode->operand3, imcode->operand4, imcode->operand5,
-	     imcode->operand6, imcode->operand7);
-      break;
-
-      
-    case OP_REUSEAGENT0:
-      printf("%s var%d id:%d\n", string_opcode[imcode->opcode],
-	     imcode->operand1, imcode->operand2);
-      break;
-
-    case OP_REUSEAGENT1:
-      printf("%s var%d id:%d var%d\n", string_opcode[imcode->opcode],
-	     imcode->operand1, imcode->operand2, imcode->operand3);
-      break;
-
-    case OP_REUSEAGENT2:
-      printf("%s var%d id:%d var%d var%d\n", string_opcode[imcode->opcode],
-	     imcode->operand1, imcode->operand2,
-	     imcode->operand3, imcode->operand4);
-      break;
-
-    case OP_REUSEAGENT3:
-      printf("%s var%d id:%d var%d var%d var%d\n", string_opcode[imcode->opcode],
-	     imcode->operand1, imcode->operand2,
-	     imcode->operand3, imcode->operand4, imcode->operand5);
-      break;
-
-    case OP_REUSEAGENT4:
-      printf("%s var%d id:%d var%d var%d var%d var%d\n", string_opcode[imcode->opcode],
-	     imcode->operand1, imcode->operand2,
-	     imcode->operand3, imcode->operand4, imcode->operand5,
-	     imcode->operand6);
-      break;
-
-    case OP_REUSEAGENT5:
-      printf("%s var%d id:%d var%d var%d var%d var%d var%d\n", string_opcode[imcode->opcode],
-	     imcode->operand1, imcode->operand2,
-	     imcode->operand3, imcode->operand4, imcode->operand5,
-	     imcode->operand6, imcode->operand7);
-      break;
-
-
-    case OP_LABEL:
-      printf(":LABEL%d\n",
-	     imcode->operand1);
-      break;
-
-      
-      // 0 arity: opcode    
-    case OP_RET:
-    case OP_RET_FREE_L:
-    case OP_RET_FREE_R:
-    case OP_RET_FREE_LR:
-    case OP_LOOP:
-    case OP_NOP:
-    case OP_DEAD_CODE:
-    case OP_BEGIN_BLOCK:
-      printf("%s\n", string_opcode[imcode->opcode]);
-      break;
-
-      
-      // 1 arity: opcode var1
-    case OP_LOOP_RREC1:
-    case OP_LOOP_RREC2:
-      printf("%s var%d\n", string_opcode[imcode->opcode],
-	     imcode->operand1);
-      break;
-
-            
-      // arity is 2: opcode var1 var2
-    case OP_UNM:
-    case OP_INC:
-    case OP_DEC:
-    case OP_RAND:
-    case OP_PUSH:
-    case OP_MYPUSH:
-    case OP_LOAD:
-    case OP_LT_R0:
-    case OP_LE_R0:
-    case OP_EQ_R0:
-    case OP_NE_R0:
-    case OP_CNCTGN:
-    case OP_SUBSTGN:
-      printf("%s var%d var%d\n", string_opcode[imcode->opcode],
-	     imcode->operand1, imcode->operand2);
-      break;
-
-
-      // arity is 2: opcode var1 $2
-    case OP_PUSHI:
-    case OP_LOADI:
-    case OP_LOOP_RREC:
-    case OP_EQI_R0:
-      printf("%s $%d var%d\n", string_opcode[imcode->opcode],
-	     imcode->operand1, imcode->operand2);
-      break;
-
-
-      // arity is 3: opcode var1 var2 var3
-    case OP_ADD:
-    case OP_SUB:
-    case OP_MUL:
-    case OP_DIV:
-    case OP_MOD:
-    case OP_LT:
-    case OP_LE:
-    case OP_EQ:
-    case OP_NE:
-      printf("%s var%d var%d var%d\n", string_opcode[imcode->opcode],
-	     imcode->operand1, imcode->operand2, imcode->operand3);
-      break;
-      
-      
-      // arity is 3: opcode var1 var2 $3
-    case OP_ADDI:
-    case OP_SUBI:
-    case OP_EQI:
-      printf("%s var%d $%d var%d\n", string_opcode[imcode->opcode],
-	     imcode->operand1, imcode->operand2, imcode->operand3);
-      break;
-
-
-      // arity is 2: opcode var1 LABEL2
-    case OP_JMPEQ0:
-    case OP_JMPNEQ0:
-    case OP_JMPCNCT_CONS:
-      printf("%s var%d LABEL%d\n", string_opcode[imcode->opcode],
-	     imcode->operand1, imcode->operand2);
-      break;
-
-      
-      // arity is 3: opcode var1 id2 LABEL3
-    case OP_JMPCNCT:
-      printf("%s var%d id:%d LABEL%d\n", string_opcode[imcode->opcode],
-	     imcode->operand1, imcode->operand2, imcode->operand3);
-
-      
-      // others      
-    case OP_JMPEQ0_R0:
-      printf("OP_JMPEQ0_RO LABEL%d\n",
-	     imcode->operand1);
-      break;
-      
-            
-    case OP_JMP:
-      printf("OP_JMP LABEL%d\n",
-	     imcode->operand1);
-      break;
-      
-            
-    default:
-      printf("CODE %d %d %d %d %d %d\n",
-	     imcode->operand1, imcode->operand2, imcode->operand3, 
-	     imcode->operand4, imcode->operand5, imcode->operand6);
-    }
+// Operation on Ast ----------------------------------------------
+int Ast_has_the_ID(Ast *ptr, IDTYPE id) {
+  if (ptr == NULL) {
+    return 0;
   }
+
+    if (ptr->id == id) {
+    return 1;
+  }
+  
+  switch (ptr->id) {
+  case AST_TUPLE:
+  case AST_OPCONS:
+  case AST_AGENT:
+    ptr=ptr->right;
+
+    for (int i=0; i<MAX_PORT; i++) {
+      if (ptr == NULL) return 0;
+
+      if (Ast_has_the_ID(ptr->left, id))
+	return 1;
+
+      ptr = ast_getTail(ptr);
+    }
+    return 0;
+    break;
+  
+    
+  case AST_ANNOTATION_L:
+  case AST_ANNOTATION_R:
+    return Ast_has_the_ID(ptr->left, id);
+    break;
+
+  default:
+    return 0;
+  }
+
+}
+
+int Ast_eqs_has_agentID(Ast *eqs, IDTYPE id) {
+  Ast *at = eqs;
+
+  while (at != NULL) {
+    Ast *eq = at->left;
+    if (Ast_has_the_ID(eq->left, id))
+      return 1;
+
+    if (Ast_has_the_ID(eq->right, id))
+      return 1;
+    
+    at = ast_getTail(at);
+  }
+  return 0;
+
+}
+
+int Ast_is_agent(Ast *ptr) {
+  if (ptr == NULL) {
+    return 0;
+  }
+
+  switch (ptr->id) {
+  case AST_NIL:
+  case AST_OPCONS:
+  case AST_AGENT:
+    return 1;
+    break;
+    
+  case AST_TUPLE: {
+    int arity = ptr->intval;
+
+    if (arity == 1) {      
+      // The case of the single tuple such as `(A)'.
+      // The `A' is recognised as not an argument, but as a first-class object.
+      ptr=ptr->right;
+      return Ast_is_agent(ptr->right);
+    }
+
+    return 1;
+    break;
+  }    
+  case AST_ANNOTATION_L:
+  case AST_ANNOTATION_R:
+    return Ast_is_agent(ptr->left);
+    break;
+
+  default:
+    return 0;
+  }
+
 }
 
 
-
-void VMCode_puts(void **code, int n) {
-  
-  puts("[PutsCode]");
-  if (n==-1) n = MAX_CODE_SIZE;
-  
-  for (int i=0; i<n; i++) {
-    printf("%2d: ", i);
-    
-    if (code[i] == CodeAddr[OP_MKNAME]) {
-      printf("mkname reg%lu\n",
-	     (unsigned long)code[i+1]);
-      i+=1;
-      
-    } else if (code[i] == CodeAddr[OP_MKGNAME]) {
-      printf("mkgname id:%lu reg%lu; \"%s\"\n",
-	     (unsigned long)code[i+1],
-	     (unsigned long)code[i+2],
-	     IdTable_get_name((unsigned long)code[i+1]));
-      i+=2;
-
-    } else if (code[i] == CodeAddr[OP_MKAGENT0]) {
-      printf("mkagent0 id:%lu reg%lu\n", 
-	     (unsigned long)code[i+1],
-	     (unsigned long)code[i+2]);
-      i+=2;
-
-    } else if (code[i] == CodeAddr[OP_MKAGENT1]) {
-      printf("mkagent1 id:%lu reg%lu reg%lu\n", 
-	     (unsigned long)code[i+1],
-	     (unsigned long)code[i+2],
-	     (unsigned long)code[i+3]);
-      i+=3;
-
-    } else if (code[i] == CodeAddr[OP_MKAGENT2]) {
-      printf("mkagent2 id:%lu reg%lu reg%lu reg%lu\n", 
-	     (unsigned long)code[i+1],
-	     (unsigned long)code[i+2],
-	     (unsigned long)code[i+3],
-	     (unsigned long)code[i+4]);
-      i+=4;
-
-    } else if (code[i] == CodeAddr[OP_MKAGENT3]) {
-      printf("mkagent3 id:%lu reg%lu reg%lu reg%lu reg%lu\n", 
-	     (unsigned long)code[i+1],
-	     (unsigned long)code[i+2],
-	     (unsigned long)code[i+3],
-	     (unsigned long)code[i+4],
-	     (unsigned long)code[i+5]);
-      i+=5;
-
-    } else if (code[i] == CodeAddr[OP_MKAGENT4]) {
-      printf("mkagent4 id:%lu reg%lu reg%lu reg%lu reg%lu reg%lu\n", 
-	     (unsigned long)code[i+1],
-	     (unsigned long)code[i+2],
-	     (unsigned long)code[i+3],
-	     (unsigned long)code[i+4],
-	     (unsigned long)code[i+5],
-	     (unsigned long)code[i+6]);
-      i+=6;
-
-    } else if (code[i] == CodeAddr[OP_MKAGENT5]) {
-      printf("mkagent5 id:%lu reg%lu reg%lu reg%lu reg%lu reg%lu reg%lu\n", 
-	     (unsigned long)code[i+1],
-	     (unsigned long)code[i+2],
-	     (unsigned long)code[i+3],
-	     (unsigned long)code[i+4],
-	     (unsigned long)code[i+5],
-	     (unsigned long)code[i+6],
-	     (unsigned long)code[i+7]);
-      i+=7;
-      
-    } else if (code[i] == CodeAddr[OP_REUSEAGENT0]) {
-      printf("reuseagent0 reg%lu as id=%lu", 
-	     (unsigned long)code[i+1],
-	     (unsigned long)code[i+2]);
-      puts("");
-      i+=2;
-
-    } else if (code[i] == CodeAddr[OP_REUSEAGENT1]) {
-      printf("reuseagent0 reg%lu as id=%lu", 
-	     (unsigned long)code[i+1],
-	     (unsigned long)code[i+2]);
-      printf(" reg%lu", (unsigned long)code[i+3]);
-      puts("");
-      i+=3;
-      
-    } else if (code[i] == CodeAddr[OP_REUSEAGENT2]) {
-      printf("reuseagent2 reg%lu as id=%lu", 
-	     (unsigned long)code[i+1],
-	     (unsigned long)code[i+2]);
-      printf(" reg%lu", (unsigned long)code[i+3]);
-      printf(" reg%lu", (unsigned long)code[i+4]);
-      puts("");
-      i+=4;
-
-    } else if (code[i] == CodeAddr[OP_REUSEAGENT3]) {
-      printf("reuseagent3 reg%lu as id=%lu", 
-	     (unsigned long)code[i+1],
-	     (unsigned long)code[i+2]);
-      printf(" reg%lu", (unsigned long)code[i+3]);
-      printf(" reg%lu", (unsigned long)code[i+4]);
-      printf(" reg%lu", (unsigned long)code[i+5]);
-      puts("");
-      i+=5;
-      
-    } else if (code[i] == CodeAddr[OP_REUSEAGENT4]) {
-      printf("reuseagent4 reg%lu as id=%lu", 
-	     (unsigned long)code[i+1],
-	     (unsigned long)code[i+2]);
-      printf(" reg%lu", (unsigned long)code[i+3]);
-      printf(" reg%lu", (unsigned long)code[i+4]);
-      printf(" reg%lu", (unsigned long)code[i+5]);
-      printf(" reg%lu", (unsigned long)code[i+6]);
-      puts("");
-      i+=6;
-
-    } else if (code[i] == CodeAddr[OP_REUSEAGENT5]) {
-      printf("reuseagent5 reg%lu as id=%lu", 
-	     (unsigned long)code[i+1],
-	     (unsigned long)code[i+2]);
-      printf(" reg%lu", (unsigned long)code[i+3]);
-      printf(" reg%lu", (unsigned long)code[i+4]);
-      printf(" reg%lu", (unsigned long)code[i+5]);
-      printf(" reg%lu", (unsigned long)code[i+6]);
-      printf(" reg%lu", (unsigned long)code[i+7]);
-      puts("");
-      i+=7;
-      
-    } else if (code[i] == CodeAddr[OP_PUSH]) {
-      printf("push reg%lu reg%lu\n",
-	     (unsigned long)code[i+1],
-	     (unsigned long)code[i+2]);
-      i+=2;
-
-    } else if (code[i] == CodeAddr[OP_PUSHI]) {
-      printf("pushi reg%lu $%d\n",
-	     (unsigned long)code[i+1],
-	     FIX2INT((unsigned long)code[i+2]));
-      i+=2;
-
-    } else if (code[i] == CodeAddr[OP_MYPUSH]) {
-      printf("mypush reg%lu reg%lu\n",
-	     (unsigned long)code[i+1],
-	     (unsigned long)code[i+2]);
-      i+=2;
-
-    } else if (code[i] == CodeAddr[OP_RET]) {
-      puts("ret");
-
-    } else if (code[i] == CodeAddr[OP_RET_FREE_L]) {
-      puts("ret_free_l");
-
-    } else if (code[i] == CodeAddr[OP_RET_FREE_R]) {
-      puts("ret_free_r");
-
-    } else if (code[i] == CodeAddr[OP_RET_FREE_LR]) {
-      puts("ret_free_lr");
-
-    } else if (code[i] == CodeAddr[OP_LOADI]) {
-      printf("loadi $%d reg%lu\n",
-	     FIX2INT((unsigned long)code[i+1]),
-	     (unsigned long)code[i+2]);
-      i+=2;
-      
-    } else if (code[i] == CodeAddr[OP_LOOP]) {
-      puts("loop\n");
-
-    } else if (code[i] == CodeAddr[OP_LOOP_RREC]) {
-      printf("loop_rrec reg%lu $%lu\n",
-	     (unsigned long)code[i+1],
-	     (unsigned long)code[i+2]);
-      i+=2;
-
-    } else if (code[i] == CodeAddr[OP_LOOP_RREC1]) {
-      printf("loop_rrec1 reg%lu\n",
-	     (unsigned long)code[i+1]);
-      i+=1;
-
-    } else if (code[i] == CodeAddr[OP_LOOP_RREC2]) {
-      printf("loop_rrec2 reg%lu\n",
-	     (unsigned long)code[i+1]);
-      i+=1;
-
-    } else if (code[i] == CodeAddr[OP_LOAD]) {
-      printf("load reg%lu reg%lu\n",
-	     (unsigned long)code[i+1],
-	     (unsigned long)code[i+2]);
-      i+=2;
-
-
-    } else if (code[i] == CodeAddr[OP_ADD]) {
-      printf("add reg%lu reg%lu reg%lu\n",
-	     (unsigned long)code[i+1],
-	     (unsigned long)code[i+2],
-	     (unsigned long)code[i+3]);
-      i+=3;
-
-    } else if (code[i] == CodeAddr[OP_SUB]) {
-      printf("sub reg%lu reg%lu reg%lu\n", 
-	     (unsigned long)code[i+1],
-	     (unsigned long)code[i+2],
-	     (unsigned long)code[i+3]);
-      i+=3;
-
-    } else if (code[i] == CodeAddr[OP_ADDI]) {
-      printf("addi reg%lu $%lu reg%lu\n",
-	     (unsigned long)code[i+1],
-	     (unsigned long)code[i+2],
-	     (unsigned long)code[i+3]);
-      i+=3;
-    } else if (code[i] == CodeAddr[OP_SUBI]) {
-      printf("subi reg%lu $%lu reg%lu\n",
-	     (unsigned long)code[i+1],
-	     (unsigned long)code[i+2],
-	     (unsigned long)code[i+3]);
-      i+=3;
-
-    } else if (code[i] == CodeAddr[OP_MUL]) {
-      printf("mul reg%lu reg%lu reg%lu\n", 
-	     (unsigned long)code[i+1],
-	     (unsigned long)code[i+2],
-	     (unsigned long)code[i+3]);
-      i+=3;
-
-    } else if (code[i] == CodeAddr[OP_DIV]) {
-      printf("div reg%lu reg%lu reg%lu\n", 
-	     (unsigned long)code[i+1],
-	     (unsigned long)code[i+2],
-	     (unsigned long)code[i+3]);
-      i+=3;
-
-    } else if (code[i] == CodeAddr[OP_MOD]) {
-      printf("mod reg%lu reg%lu reg%lu\n", 
-	     (unsigned long)code[i+1],
-	     (unsigned long)code[i+2],
-	     (unsigned long)code[i+3]);
-      i+=3;
-
-    } else if (code[i] == CodeAddr[OP_LT]) {
-      printf("lt reg%lu reg%lu reg%lu\n",
-	     (unsigned long)code[i+1],
-	     (unsigned long)code[i+2],
-	     (unsigned long)code[i+3]);
-      i+=3;
-
-    } else if (code[i] == CodeAddr[OP_EQ]) {
-      printf("eq reg%lu reg%lu reg%lu\n",
-	     (unsigned long)code[i+1],
-	     (unsigned long)code[i+2],
-	     (unsigned long)code[i+3]);
-      i+=3;
-
-    } else if (code[i] == CodeAddr[OP_EQI]) {
-      printf("eqi reg%lu $%d reg%lu\n",
-	     (unsigned long)code[i+1],
-	     FIX2INT((unsigned long)code[i+2]),
-	     (unsigned long)code[i+3]);
-      i+=3;
-
-    } else if (code[i] == CodeAddr[OP_NE]) {
-      printf("ne reg%lu reg%lu reg%lu\n",
-	     (unsigned long)code[i+1],
-	     (unsigned long)code[i+2],
-	     (unsigned long)code[i+3]);
-      i+=3;
-      
-    } else if (code[i] == CodeAddr[OP_LT_R0]) {
-      printf("lt_r0 reg%lu reg%lu\n",
-	     (unsigned long)code[i+1],
-	     (unsigned long)code[i+2]);
-      i+=2;
-
-    } else if (code[i] == CodeAddr[OP_LE_R0]) {
-      printf("le_r0 reg%lu reg%lu\n",
-	     (unsigned long)code[i+1],
-	     (unsigned long)code[i+2]);
-      i+=2;
-
-    } else if (code[i] == CodeAddr[OP_EQ_R0]) {
-      printf("eq_r0 reg%lu reg%lu\n",
-	     (unsigned long)code[i+1],
-	     (unsigned long)code[i+2]);
-      i+=2;
-
-    } else if (code[i] == CodeAddr[OP_EQI_R0]) {
-      printf("eqi_r0 reg%lu $%d\n",
-	     (unsigned long)code[i+1],
-	     FIX2INT((unsigned long)code[i+2]));
-      i+=2;
-
-    } else if (code[i] == CodeAddr[OP_NE_R0]) {
-      printf("ne_r0 reg%lu reg%lu\n",
-	     (unsigned long)code[i+1],
-	     (unsigned long)code[i+2]);
-      i+=2;
-
-    } else if (code[i] == CodeAddr[OP_JMPNEQ0]) {
-      printf("jmpneq0 reg%lu $%lu\n",
-	     (unsigned long)code[i+1],
-	     (unsigned long)code[i+2]);
-      i+=2;
-
-    } else if (code[i] == CodeAddr[OP_JMPEQ0]) {
-      printf("jmpeq0 reg%lu $%lu\n",
-	     (unsigned long)code[i+1],
-	     (unsigned long)code[i+2]);
-      i+=2;
-
-    } else if (code[i] == CodeAddr[OP_JMPEQ0_R0]) {
-      printf("jmpeq0_r0 $%lu\n",
-	     (unsigned long)code[i+1]);
-      i+=1;
-
-    } else if (code[i] == CodeAddr[OP_JMPCNCT_CONS]) {
-      printf("jmpcnct_cons reg%lu $%lu\n",
-	     (unsigned long)code[i+1],
-	     (unsigned long)code[i+2]);
-      i+=2;
-
-    } else if (code[i] == CodeAddr[OP_JMPCNCT]) {
-      printf("jmpcnct reg%lu $%lu $%lu\n",
-	     (unsigned long)code[i+1],
-	     (unsigned long)code[i+2],
-	     (unsigned long)code[i+3]);
-      i+=3;
-
-    } else if (code[i] == CodeAddr[OP_JMP]) {
-      printf("jmp $%lu\n", (unsigned long)code[i+1]);
-      i+=1;
-
-    } else if (code[i] == CodeAddr[OP_UNM]) {
-      printf("unm reg%lu reg%lu\n",
-	     (unsigned long)code[i+1],
-	     (unsigned long)code[i+2]);
-      i+=2;
-
-    } else if (code[i] == CodeAddr[OP_INC]) {
-      printf("inc reg%lu reg%lu\n",
-	     (unsigned long)code[i+1],
-	     (unsigned long)code[i+2]);
-      i+=2;
-
-    } else if (code[i] == CodeAddr[OP_DEC]) {
-      printf("dec reg%lu reg%lu\n",
-	     (unsigned long)code[i+1],
-	     (unsigned long)code[i+2]);
-      i+=2;
-
-    } else if (code[i] == CodeAddr[OP_RAND]) {
-      printf("rnd reg%lu reg%lu\n",
-	     (unsigned long)code[i+1],
-	     (unsigned long)code[i+2]);
-      i+=2;
-
-    } else if (code[i] == CodeAddr[OP_CNCTGN]) {
-      printf("cnctgn reg%lu reg%lu\n",
-	     (unsigned long)code[i+1],
-	     (unsigned long)code[i+2]);
-      i+=2;
-
-    } else if (code[i] == CodeAddr[OP_SUBSTGN]) {
-      printf("substgn reg%lu reg%lu\n",
-	     (unsigned long)code[i+1],
-	     (unsigned long)code[i+2]);
-      i+=2;
-
-    } else if (code[i] == CodeAddr[OP_NOP]) {
-      puts("nop");
-
-    } else {
-      printf("code %lu\n", (unsigned long)code[i]);      
-    }
-  }
-}
-
-
-
-
-int is_expr(Ast *ptr) {
+int Ast_is_expr(Ast *ptr) {
 
   if (ptr == NULL) {
     return 0;
@@ -4393,7 +4631,7 @@ int is_expr(Ast *ptr) {
     NB_TYPE type;
     int result = CmEnv_gettype_forname(ptr->left->sym, &type);
     if (result == 0) {
-      return 9;
+      return 0;
     }
     if (type != NB_INTVAR) {
       return 0;
@@ -4405,7 +4643,7 @@ int is_expr(Ast *ptr) {
     
   case AST_RAND: 
   case AST_UNM: {
-    if (!is_expr(ptr->left)) return 0;
+    if (!Ast_is_expr(ptr->left)) return 0;
 
     return 1;
     break;
@@ -4420,8 +4658,8 @@ int is_expr(Ast *ptr) {
   case AST_LE:
   case AST_EQ:
   case AST_NE: {
-    if (!is_expr(ptr->left)) return 0;
-    if (!is_expr(ptr->right)) return 0;
+    if (!Ast_is_expr(ptr->left)) return 0;
+    if (!Ast_is_expr(ptr->right)) return 0;
 
     return 1;
     break;
@@ -4433,7 +4671,325 @@ int is_expr(Ast *ptr) {
 
 
 
-int CompileExprFromAst(Ast *ptr, int target) {
+
+// BEGIN: Rewrite Optimisation  ------
+Ast* Ast_subst_term(char *sym, Ast *aterm, Ast *target, int *result) {
+  // target is astterm: (AST asttermL asttermR)
+  // this function replaces sym with aterm in target, i.e. tgs[aterm/sym].
+  
+  switch (target->id) {
+  case AST_NAME:
+    
+    if (strcmp(target->left->sym, sym) == 0) {
+      *result = 1;
+      return aterm;
+      
+    } else {
+      return target;
+    }
+    break;
+
+
+  case AST_ANNOTATION_L:
+  case AST_ANNOTATION_R:
+    
+  case AST_OPCONS:
+  case AST_TUPLE:
+  case AST_AGENT:
+    {
+      Ast *port;
+      if ((target->id == AST_ANNOTATION_L) ||
+	  (target->id == AST_ANNOTATION_R)) {
+
+	// (AST_ANNOTATION (AST_AGENT (ID_SYM sym NULL) paramlist) NULL)
+	port = target->left->right;
+
+      } else {
+	
+	// (AST_AGENT (ID_SYM sym NULL) paramlist)
+	port = target->right;
+      }
+      
+      for (int i=0; i<MAX_PORT; i++) {      
+	if (port == NULL) break;
+	
+	port->left = Ast_subst_term(sym, aterm, port->left, result);      
+	if (*result) break;
+	
+	port = ast_getTail(port);
+      }
+    }
+    return target;
+
+    
+  default:
+    return target;
+  }
+
+}
+
+
+int Ast_subst_eqlist(int nth, char *sym, Ast *aterm, Ast *eqlist) {
+  // eqlist[aterm/sym] except for n-th eq
+
+  Ast *eq, *at = eqlist;
+  int ct = 0;
+  int result;
+
+  while (at != NULL) {
+    eq = at->left;
+
+    if (ct == nth) {
+      ct++;
+      at = ast_getTail(at);
+      continue;
+    }
+    
+    result=0;
+    eq->left = Ast_subst_term(sym, aterm, eq->left, &result);    
+    if (result) {
+      return 1;
+    }
+    
+    result=0;
+    eq->right = Ast_subst_term(sym, aterm, eq->right, &result);
+    if (result) {
+      return 1;
+    }
+
+    ct++;
+    at = ast_getTail(at);
+
+  }
+
+  return 0;
+}
+
+
+void Ast_RewriteOptimisation_eqlist(Ast *eqlist) {
+  // Every eq such as x~t in eqlist is replaced as eqlist[t/x].
+  //
+  // Structure
+  // eqlist : (AST_LIST eq1 (AST_LIST eq2 (AST_LIST eq3 NULL)))
+  // eq : (AST_CNCT astterm1 astterm2)
+  
+  Ast *at, *prev, *term;
+  char *sym;
+  int nth=0, exists_in_table;
+  NB_TYPE type = NB_NAME;
+
+  at = prev = eqlist;
+  
+  while (at != NULL) {
+    // (id, left, right)
+    // at : (AST_LIST, x1, NULL)
+    // at : (AST_LIST, x1, (AST_LIST, x2, NULL))    
+    Ast *target_eq = at->left;
+
+    //            printf("\n[target_eq] "); ast_puts(target_eq);
+    //            printf("\n%dnth in ", nth); ast_puts(eqlist); printf("\n\n");
+
+    Ast *name_term = target_eq->left;
+    if (name_term->id == AST_NAME) {
+
+      sym = name_term->left->sym;
+      exists_in_table = CmEnv_gettype_forname(sym, &type);
+      
+      if ((!exists_in_table) ||
+	  (type == NB_NAME)){
+	// When no entry in CmEnv table or its type is NB_NAME,
+	// it is a local name, so it is the candidate.
+	
+	term = target_eq->right;
+	//	printf("%s~",sym); ast_puts(term); puts("");
+      
+	if (Ast_subst_eqlist(nth, sym, term, eqlist)) {
+	  //		 printf("=== hit %dth\n", nth);
+	
+	  if (prev != at) {
+	    // 前のリストの接続先を、現在地を省いて、その次の要素に変更。
+	    prev->right = at->right;  
+	    at = at->right;	  
+	  } else {
+	    // 先頭の要素が代入に使われたので、
+	    // body 内の eqlist から先頭を削除
+	    // (AST_LIST, x1, (AST_LIST, x2, *next)) ==> (AST_LIST, x2, *next)  
+	    eqlist->left = eqlist->right->left;
+	    eqlist->right = eqlist->right->right;
+	    eqlist = eqlist->right;
+	    // 対象 at を次の要素に更新し、prev も at とする
+	    prev = at = at->right;
+	  }
+	
+	  continue;
+	}
+      }
+      
+    }
+
+    name_term = target_eq->right;
+    if (name_term->id == AST_NAME) {
+      sym = name_term->left->sym;
+      exists_in_table = CmEnv_gettype_forname(sym, &type);      
+
+      if ((!exists_in_table) ||
+	  (type == NB_NAME)){
+	// When no entry in CmEnv table or its type is NB_NAME
+	
+	term = target_eq->left;
+	//	ast_puts(term); printf("~%s",sym);puts("");
+
+	if (Ast_subst_eqlist(nth, sym, term, eqlist)) {
+	  //	 printf("=== hit %dth\n", nth);
+	
+	  if (prev != at) {
+	    // 前のリストの接続先を、現在地を省いて、その次の要素に変更。
+	    prev->right = at->right;  
+	    at = at->right;	  
+	  } else {
+	    // 先頭の要素が代入に使われたので、
+	    // body 内の eqlist から先頭を削除
+	    // (AST_LIST, x1, (AST_LIST, x2, *next)) ==> (AST_LIST, x2, *next)  
+	    eqlist->left = eqlist->right->left;
+	    eqlist->right = eqlist->right->right;
+	    eqlist = eqlist->right;
+	    // 対象 at を次の要素に更新し、prev も at とする
+	    prev = at = at->right;
+	  }
+
+	  continue;      
+
+	}
+      }
+    }
+
+    nth++;
+    prev = at;
+    at = ast_getTail(at);
+    
+  }
+}
+// END: Rewrite Optimisation  ------
+
+
+
+void Ast_make_annotation_TailRecursionOptimisation(Ast *mainbody) {
+
+  int idL = CmEnv.idL;
+  
+  Ast *eq_TRO = NULL;
+  Ast *agent_TRO = NULL;
+  AST_ID astID_of_TRO = idL;  // idL is dummy
+
+  
+  if ((mainbody == NULL) || (mainbody->id == AST_BODY)) {
+    Ast *body = mainbody;
+
+    //    int idR = CmEnv.idR;
+    //    printf("LeftID:%d, RightID:%d\n", idL, idR);
+    
+    Ast *eqs = body->right;
+
+    Ast_RewriteOptimisation_eqlist(eqs);        
+    //    ast_puts(eqs);puts("");
+    
+    if (Ast_eqs_has_agentID(eqs, AST_ANNOTATION_L)) {
+      //          puts("has AST_ANNOTATION_L");
+      return;
+    }
+    //        puts("has no AST_ANNOTATION_L");
+      
+    
+    while (eqs != NULL) {
+      Ast *eq = eqs->left;
+      Ast *recursion_agent = eq->left;
+      Ast *constructor_agent = eq->right;
+
+      // --- Find  ruleagent_L ~ (int i)  or  ruleAgent_L ~ name
+      // --- If such eq occurs many times,
+      //      the last occurrence is used
+      //      by overwriting the recursion_agent and constructor_agent.
+      if (recursion_agent->id != AST_AGENT) {
+
+	recursion_agent = eq->right;
+	constructor_agent = eq->left;
+	if (recursion_agent->id != AST_AGENT) {
+	  // --- both terms are not Agent
+	  eqs = ast_getTail(eqs);
+	  continue;
+	}
+	
+	// --- left will be recursion_agent, right will be constructor agent	
+	eq->left = recursion_agent;
+	eq->right = constructor_agent;
+      }
+
+      
+      // --- recursion_agent ~ constructor_agent
+      if (idL == NameTable_get_id(recursion_agent->left->sym)) {
+
+	if (Ast_is_expr(constructor_agent)) {
+	  // --- CASE 1: rule_left_agent ~ expression	  
+	  eq_TRO = eq;
+	  agent_TRO = recursion_agent;
+	  astID_of_TRO = AST_CNCT_TRO_INTVAR;
+
+	} else if (constructor_agent->id == AST_NAME) {
+	  // --- CASE 2: rule_left_agent ~ name   where the name is meta_R
+	  char *sym = constructor_agent->left->sym;
+	  NB_TYPE type = 0;
+	  int exists_in_table = CmEnv_gettype_forname(sym, &type);      
+	  if ((exists_in_table)
+	      && ((type == NB_META_R) || (type == NB_META_L))
+	      ) {	  
+	    eq_TRO = eq;
+	    agent_TRO = recursion_agent;
+	    astID_of_TRO = AST_CNCT_TRO;
+	  }
+	  
+	}
+      }
+      
+      eqs = ast_getTail(eqs);
+    }	
+
+
+    
+    if (eq_TRO != NULL) {
+      //      puts("Target:");
+      //      ast_puts(eq_TRO); puts("");
+
+      eq_TRO->id = astID_of_TRO;
+
+      // Foo ==> (*L)Foo
+      Ast *annotationL = ast_makeAST(AST_ANNOTATION_L, agent_TRO, NULL);
+      eq_TRO->left = annotationL;
+
+      //                  ast_puts(eq_TRO); puts("");
+      //	          exit(1);
+    }
+
+    
+  } else {
+    // if_sentence
+    
+    Ast *if_sentence = mainbody;    
+    Ast *then_branch = if_sentence->right->left;
+    Ast *else_branch = if_sentence->right->right;
+    
+    Ast_make_annotation_TailRecursionOptimisation(then_branch);
+    Ast_make_annotation_TailRecursionOptimisation(else_branch);
+    
+  }
+  
+  //  exit(1);
+
+}
+
+
+
+// Compilation functions ------------------------------------------
+int Compile_expr_on_ast(Ast *ptr, int target) {
   
   if (ptr == NULL) {
     return 1;
@@ -4460,7 +5016,7 @@ int CompileExprFromAst(Ast *ptr, int target) {
   }
   case AST_RAND: {
     int newreg = CmEnv_newvar();
-    if (!CompileExprFromAst(ptr->left, newreg)) return 0;
+    if (!Compile_expr_on_ast(ptr->left, newreg)) return 0;
     
     IMCode_genCode2(OP_RAND, newreg, target);
     return 1;
@@ -4468,7 +5024,7 @@ int CompileExprFromAst(Ast *ptr, int target) {
   }
   case AST_UNM: {
     int newreg = CmEnv_newvar();
-    if (!CompileExprFromAst(ptr->left, newreg)) return 0;
+    if (!Compile_expr_on_ast(ptr->left, newreg)) return 0;
     
     IMCode_genCode2(OP_UNM, newreg, target);
     return 1;
@@ -4485,8 +5041,8 @@ int CompileExprFromAst(Ast *ptr, int target) {
   case AST_NE: {
     int newreg = CmEnv_newvar();
     int newreg2 = CmEnv_newvar();
-    if (!CompileExprFromAst(ptr->left, newreg)) return 0;
-    if (!CompileExprFromAst(ptr->right, newreg2)) return 0;
+    if (!Compile_expr_on_ast(ptr->left, newreg)) return 0;
+    if (!Compile_expr_on_ast(ptr->right, newreg2)) return 0;
 
     int opcode;
     switch (ptr->id) {
@@ -4537,13 +5093,13 @@ int CompileExprFromAst(Ast *ptr, int target) {
     // L2;
     
     int newreg = CmEnv_newvar();
-    if (!CompileExprFromAst(ptr->left, newreg)) return 0;
+    if (!Compile_expr_on_ast(ptr->left, newreg)) return 0;
     
     int label1 = CmEnv_get_newlabel();
     IMCode_genCode2(OP_JMPEQ0, newreg, label1);
 
     int newreg2 = CmEnv_newvar();
-    if (!CompileExprFromAst(ptr->right, newreg2)) return 0;
+    if (!Compile_expr_on_ast(ptr->right, newreg2)) return 0;
     IMCode_genCode2(OP_JMPEQ0, newreg2, label1);
 
     IMCode_genCode2(OP_LOADI, 1, target);
@@ -4572,13 +5128,13 @@ int CompileExprFromAst(Ast *ptr, int target) {
     // L2;
     
     int newreg = CmEnv_newvar();
-    if (!CompileExprFromAst(ptr->left, newreg)) return 0;
+    if (!Compile_expr_on_ast(ptr->left, newreg)) return 0;
     
     int label1 = CmEnv_get_newlabel();
     IMCode_genCode2(OP_JMPNEQ0, newreg, label1);
 
     int newreg2 = CmEnv_newvar();
-    if (!CompileExprFromAst(ptr->right, newreg2)) return 0;
+    if (!Compile_expr_on_ast(ptr->right, newreg2)) return 0;
     IMCode_genCode2(OP_JMPNEQ0, newreg2, label1);
 
     IMCode_genCode2(OP_LOADI, 0, target);
@@ -4604,7 +5160,7 @@ int CompileExprFromAst(Ast *ptr, int target) {
     // L2;
     
     int newreg = CmEnv_newvar();
-    if (!CompileExprFromAst(ptr->left, newreg)) return 0;
+    if (!Compile_expr_on_ast(ptr->left, newreg)) return 0;
     
     int label1 = CmEnv_get_newlabel();
     IMCode_genCode2(OP_JMPEQ0, newreg, label1);
@@ -4631,8 +5187,8 @@ int CompileExprFromAst(Ast *ptr, int target) {
 
 }
 
-// Rule や eq の中の term をコンパイルするときに使う
-int CompileTermFromAst(Ast *ptr, int target) {
+
+int Compile_term_on_ast(Ast *ptr, int target) {
   // input:
   // target == -1  => a new node is allocated from localHeap.
   //   otherwise   => a node specified by the `target' is reused as a new node.
@@ -4681,29 +5237,14 @@ int CompileTermFromAst(Ast *ptr, int target) {
     return result;
     break;
 
-    
-  case AST_CONS:
-    alloc[0] = CompileTermFromAst(ptr->left, -1);
-    alloc[1] = CompileTermFromAst(ptr->right, -1);
-    
-    if (target == -1) {      
-      result = CmEnv_newvar();
-      mkagent = OP_MKAGENT2;
-      IMCode_genCode4(mkagent, ID_CONS, alloc[0], alloc[1], result);
-    } else {
-      result = target;
-      mkagent = OP_REUSEAGENT2;
-      IMCode_genCode4(mkagent, result, ID_CONS, alloc[0], alloc[1]);
-    }
-    
-    return result;
-    break;
 
+    
     
   case AST_OPCONS:
     ptr = ptr->right;
-    alloc[0] = CompileTermFromAst(ptr->left, -1);
-    alloc[1] = CompileTermFromAst(ptr->right->left, -1);
+    alloc[0] = Compile_term_on_ast(ptr->left, -1);
+    alloc[1] = Compile_term_on_ast(ptr->right->left, -1);
+
     
     if (target == -1) {      
       result = CmEnv_newvar();
@@ -4727,14 +5268,14 @@ int CompileTermFromAst(Ast *ptr, int target) {
       // The case of the single tuple such as `(A)'.
       // The `A' is recognised as not an argument, but as a first-class object.
       ptr=ptr->right;
-      alloc[0] = CompileTermFromAst(ptr->left, target);      
+      alloc[0] = Compile_term_on_ast(ptr->left, target);      
       result = alloc[0];
       
     } else {      
       // normal case
       ptr=ptr->right;
-      for(i=0; i< arity; i++) {
-	alloc[i] = CompileTermFromAst(ptr->left, -1);
+      for (i=0; i< arity; i++) {
+	alloc[i] = Compile_term_on_ast(ptr->left, -1);
 	ptr = ast_getTail(ptr);
       }
 
@@ -4828,9 +5369,9 @@ int CompileTermFromAst(Ast *ptr, int target) {
 
     arity=0;
     ptr=ptr->right;
-    for(i=0; i< MAX_PORT; i++) {
+    for (i=0; i<MAX_PORT; i++) {
       if (ptr == NULL) break;
-      alloc[i] = CompileTermFromAst(ptr->left, -1);
+      alloc[i] = Compile_term_on_ast(ptr->left, -1);
       arity++;
       ptr = ast_getTail(ptr);
     }
@@ -4918,7 +5459,7 @@ int CompileTermFromAst(Ast *ptr, int target) {
     }
 
     
-    result = CompileTermFromAst(ptr->left, result);
+    result = Compile_term_on_ast(ptr->left, result);
     return result;
     break;
 
@@ -4927,11 +5468,11 @@ int CompileTermFromAst(Ast *ptr, int target) {
   default:
     // expression case
     result = CmEnv_newvar();    
-    int compile_result = CompileExprFromAst(ptr, result);
+    int compile_result = Compile_expr_on_ast(ptr, result);
     if (compile_result != 0) {
       return result;
     } else {
-      puts("ERROR: something strange in CompileTermFromAst.");
+      puts("ERROR: something strange in Compile_term_on_ast.");
       ast_puts(ptr);
       exit(1);      
     }
@@ -5011,44 +5552,11 @@ int check_invalid_occurrence(Ast *ast) {
 
 
 
-int CompileEQListFromAst(Ast *at) {
-  int t1,t2;
-  Ast *next;
-  
-  while (at!=NULL) {
-    if (!check_invalid_occurrence_as_rule(at->left->left) ||
-	!check_invalid_occurrence_as_rule(at->left->right)) {
-      return 0;
-    }
+void Compile_gen_RET_for_rulebody(void) {
 
-    t1 = CompileTermFromAst(at->left->left, -1);
-    t2 = CompileTermFromAst(at->left->right, -1);
-
-    next = ast_getTail(at);
-
-    // 2021/9/6: It seems, always EnvAddCodePUSH is selected
-    // because at is not NULL in this step. Should be (next == NULL)?
-    //
-    // 2021/9/12: It is found that at==NULL faster than next==NULL
-    // in parallel execution.
-
-    /*
-    if (at == NULL) {
-      EnvAddCodeMYPUSH((void *)(unsigned long)t1, (void *)(unsigned long)t2);
-    } else {
-      EnvAddCodePUSH((void *)(unsigned long)t1, (void *)(unsigned long)t2);     
-    }
-    */
-    IMCode_genCode2(OP_PUSH, t1, t2);
-
-    
-    at = next;
+  if (CmEnv.annotateL == ANNOTATE_TRO) {    
+    return;
   }
-
-  return 1;
-}
-
-void Compile_Put_Ret_ForRuleBody(void) {
   
   if ((CmEnv.annotateL == ANNOTATE_NOTHING) &&
       (CmEnv.annotateR == ANNOTATE_NOTHING)) {
@@ -5082,7 +5590,240 @@ void Compile_Put_Ret_ForRuleBody(void) {
 }
 
 
-int CompileStmListFromAst(Ast *at) {
+int Compile_eqlist_on_ast(Ast *at) {
+  
+  while (at!=NULL) {
+    Ast *eq = at->left;
+    if (!check_invalid_occurrence_as_rule(eq->left) ||
+	!check_invalid_occurrence_as_rule(eq->right)) {
+      return 0;
+    }
+
+    Ast *next = ast_getTail(at);
+
+    
+#ifndef OPTIMISE_IMCODE_TRO
+    
+    // 2021/9/6: It seems, always EnvAddCodePUSH is selected
+    // because at is not NULL in this step. Should be (next == NULL)?
+    //
+    // 2021/9/12: It is faster
+    // when we choose OP_PUSH always in parallel execution,
+    // though I am not sure the reason.
+
+    int var1 = Compile_term_on_ast(eq->left, -1);
+    int var2 = Compile_term_on_ast(eq->right, -1);
+
+    /*
+    if (next == NULL) {
+      IMCode_genCode2(OP_MYPUSH, var1, var2);
+    } else {
+      IMCode_genCode2(OP_PUSH, var1, var2);
+    }
+    */
+    
+    IMCode_genCode2(OP_PUSH, var1, var2);
+
+    at = next;
+
+    
+#else    
+    
+    if ((next != NULL) 
+	|| ((next == NULL) && (eq->id == AST_CNCT))) {
+      int var1 = Compile_term_on_ast(eq->left, -1);
+      int var2 = Compile_term_on_ast(eq->right, -1);
+      IMCode_genCode2(OP_PUSH, var1, var2);
+      
+    } else {
+      // operation for the last placed equation.
+     
+
+      if (eq->id == AST_CNCT_TRO_INTVAR) {
+	
+	int var2 = Compile_term_on_ast(eq->right, -1);
+	IMCode_genCode2(OP_LOAD_META, var2, VM_OFFSET_ANNOTATE_R);
+
+	
+	int alloc[MAX_PORT];
+	int arity = 0;
+
+	// Pealing (*L)
+	Ast *eq_lhs = eq->left;               // (*L)(AGENT(Fib, arglist))
+	Ast *deconst_term = eq_lhs->left;      // (AGENT(Fib, arglist))
+	Ast *arg_list = deconst_term->right;   // arglist
+
+	
+	//	printf("TRO: %s><int\n", deconst_term->left->sym);
+
+	
+	for (int i=0; i<MAX_PORT; i++) {
+	  if (arg_list == NULL) break;
+	  arity++;	  
+
+	  //	  ast_puts(arg_list->left); puts("");
+	  
+	  alloc[i] = Compile_term_on_ast(arg_list->left, -1);
+	  arg_list = ast_getTail(arg_list);
+	}
+	for (int i=0; i<arity; i++) {
+	  IMCode_genCode2(OP_LOAD_META, alloc[i], VM_OFFSET_METAVAR_L(i));  
+	}
+	
+	IMCode_genCode0(OP_LOOP);
+
+	// prevent putting FREE_L, and ignore counting up for name ref
+	CmEnv.annotateL = ANNOTATE_TRO;   
+	
+
+	//	IMCode_puts(0); exit(1);
+
+
+	
+      } else if (eq->id == AST_CNCT_TRO) {
+	
+
+	// Pealing (*L)
+	Ast *eq_lhs = eq->left;               // (*L)(AGENT(Fib, arglist))
+	Ast *deconst_term = eq_lhs->left;      // (AGENT(Fib, arglist))
+	  
+
+	//	printf("TRO: %s><%s\n", deconst_term->left->sym, eq->right->left->sym);
+	       
+	
+	
+	int eq_rhs_name_reg = CmEnv_find_var(eq->right->left->sym);
+	  
+
+	int label1 = CmEnv_get_newlabel();	
+	if (CmEnv.idR == ID_CONS) {
+	  // JMPCNCT_CONS reg pc
+	  IMCode_genCode2(OP_JMPCNCT_CONS,
+			  eq_rhs_name_reg, label1);
+	  
+	} else {
+	  // JMPCNCT reg id pc
+	  IMCode_genCode3(OP_JMPCNCT,
+			  eq_rhs_name_reg, CmEnv.idR, label1);
+	}
+
+	
+	//	int var1 = Compile_term_on_ast(deconst_term, -1);
+	int var1 = Compile_term_on_ast(eq_lhs, -1);
+	IMCode_genCode2(OP_PUSH, var1, eq_rhs_name_reg);
+	Compile_gen_RET_for_rulebody();
+
+	// From now on,
+	// prevent putting FREE_L, and ignore counting up for name ref
+	CmEnv.annotateL = ANNOTATE_TRO;
+	
+	IMCode_genCode1(OP_LABEL, label1);
+
+	
+	Ast *arg_list = deconst_term->right;   // arglist
+	int arity = 0;
+	int alloc[MAX_PORT];
+	
+	for (int i=0; i<MAX_PORT; i++) {
+	  if (arg_list == NULL) break;
+	  arity++;	  
+	  
+	  alloc[i] = Compile_term_on_ast(arg_list->left, -1);
+	  arg_list = ast_getTail(arg_list);
+	}
+	for (int i=0; i<arity; i++) {
+
+	  if (eq_rhs_name_reg == VM_OFFSET_METAVAR_L(i)) {
+	    // preserve eq_rhs_name_reg to be overwritten
+	    // because it is used for OP_LOOP_RREC.
+	    // Ex.
+	    // MergeCC(ret, int y, ys) >< (int x):xs
+	    // | _      => ret~(y:cnt), MergeCC(cnt, x, xs) ~ ys;
+	    // The `ys' is stored in reg(3), but it is overwritten by `xs',
+	    // though `ys' is required by LOOP_RREC2 `ys' placed later.
+	    // So, the `ys' must be preserved.
+
+	    int newreg = CmEnv_newvar();
+	    IMCode_genCode2(OP_LOAD, eq_rhs_name_reg, newreg);
+	    eq_rhs_name_reg = newreg;
+	  }
+
+	  
+	  for (int j=i; j<arity; j++) {
+	    if (alloc[j] == VM_OFFSET_METAVAR_L(i)) {
+	      // preserve VM_OFFSET_METAVAR_L(i)
+	      // if it is used later.
+	      // Ex.
+	      // LD 3,1
+	      // LD 1,3  <-- 1 is disappeared.
+	      // ==>
+	      // It must be as follows:
+	      // LD 1, newreg
+	      // LD 3, 1
+	      // LD newreg, 3
+	      //
+	      // Ex.2  A(a,b,c)>< (int x):xs => A(c,a,b)~xs;
+	      //
+	      
+	      int newreg = CmEnv_newvar();
+	      IMCode_genCode2(OP_LOAD, VM_OFFSET_METAVAR_L(i), newreg);
+	      alloc[j] = newreg;
+	      break;
+	    }
+	  }
+
+	  
+	  IMCode_genCode2(OP_LOAD_META, alloc[i], VM_OFFSET_METAVAR_L(i));  
+	}
+
+	
+	int arityR = IdTable_get_arity(CmEnv.idR);
+	if (CmEnv.annotateR == ANNOTATE_REUSE) {
+	  switch (arityR) {
+	  case 1:
+	    IMCode_genCode1(OP_LOOP_RREC1, eq_rhs_name_reg);
+	    break;
+	  case 2:
+	    IMCode_genCode1(OP_LOOP_RREC2, eq_rhs_name_reg);
+	    break;
+	  default:
+	    IMCode_genCode2(OP_LOOP_RREC, eq_rhs_name_reg, arityR);
+	  }
+	} else {
+	  switch (arityR) {
+	  case 1:
+	    IMCode_genCode1(OP_LOOP_RREC1_FREE_R, eq_rhs_name_reg);
+	    break;
+	  case 2:
+	    IMCode_genCode1(OP_LOOP_RREC2_FREE_R, eq_rhs_name_reg);
+	    break;
+	  default:
+	    IMCode_genCode2(OP_LOOP_RREC_FREE_R, eq_rhs_name_reg, arityR);
+	  }	  
+	}
+
+	//		IMCode_puts(0); //exit(1);
+	
+	
+      } else {
+	// unknown AST id
+	puts("!!!!!!!"); exit(1);
+      }
+      
+    } 
+
+    
+    at = next;
+  }
+#endif
+  
+  return 1;
+}
+
+
+
+
+int Compile_stmlist_on_ast(Ast *at) {
   Ast *ptr;
   int toRegLeft;
 
@@ -5120,7 +5861,7 @@ int CompileStmListFromAst(Ast *at) {
       
     } else {
       // y is an expression
-      if (!CompileExprFromAst(ptr->right, toRegLeft)) return 0;
+      if (!Compile_expr_on_ast(ptr->right, toRegLeft)) return 0;
 
     }
 
@@ -5135,236 +5876,10 @@ int CompileStmListFromAst(Ast *at) {
 
 
 
-// --- BEGIN: Rewrite Optimisation  ---
-Ast* Ast_Subst(char *sym, Ast *aterm, Ast *target, int *result) {
-  // target is astterm: (AST asttermL asttermR)
-  // this function replaces sym with aterm in target, i.e. tgs[aterm/sym].
-  
-  switch (target->id) {
-  case AST_NAME:
-    
-    if (strcmp(target->left->sym, sym) == 0) {
-      *result = 1;
-      return aterm;
-      
-    } else {
-      return target;
-    }
-    break;
-
-  case AST_OPCONS:
-    target->right = Ast_Subst(sym, aterm, target->right, result);
-    return target;
-  
-  case AST_CONS:
-    target->left = Ast_Subst(sym, aterm, target->left, result);
-    if (*result) {
-      return target;
-    } else {
-      target->right = Ast_Subst(sym, aterm, target->right, result);
-      return target;
-    }
-
-
-  case AST_ANNOTATION_L:
-  case AST_ANNOTATION_R:
-
-    
-  case AST_TUPLE:
-  case AST_AGENT:
-    {
-      Ast *port;
-      if ((target->id == AST_ANNOTATION_L) ||
-	  (target->id == AST_ANNOTATION_R)) {
-
-	// (AST_ANNOTATION (AST_AGENT (ID_SYM sym NULL) paramlist) NULL)
-	port = target->left->right;
-      } else {
-	
-	// (AST_AGENT (ID_SYM sym NULL) paramlist)
-	port = target->right;
-      }
-      
-      for(int i=0; i< MAX_PORT; i++) {      
-	if (port == NULL) break;
-	
-	port->left = Ast_Subst(sym, aterm, port->left, result);      
-	if (*result) break;
-	
-      port = ast_getTail(port);
-      }
-    }
-    return target;
-    
-  case AST_LIST:
-    {
-      Ast *elem = target->right;
-
-      while (elem != NULL) {
-	elem = Ast_Subst(sym, aterm, elem, result);
-	if (*result) break;
-	
-	elem = ast_getTail(elem);
-      }
-    }
-    return target;
-
-  default:
-    return target;
-  }
-
-}
-
-
-int Ast_Subst_EQList(int nth, char *sym, Ast *aterm, Ast *eqlist) {
-  // eqlist[aterm/sym] except for n-th eq
-
-  Ast *eq, *at = eqlist;
-  int ct = 0;
-  int result;
-
-  while (at != NULL) {
-    eq = at->left;
-
-    if (ct == nth) {
-      ct++;
-      at = ast_getTail(at);
-      continue;
-    }
-    
-    result=0;
-    eq->left = Ast_Subst(sym, aterm, eq->left, &result);
-    
-    if (result) {
-      return 1;
-    }
-    
-    result=0;
-    eq->right = Ast_Subst(sym, aterm, eq->right, &result);
-
-    if (result) {
-      return 1;
-    }
-
-    ct++;
-    at = ast_getTail(at);
-
-  }
-
-  return 0;
-}
-
-
-void Ast_RewriteOptimisation_EQList(Ast *eqlist) {
-  // Every eq such as x~t in eqlist is replaced as eqlist[t/x].
-  //
-  // Structure
-  // eqlist : (AST_LIST eq1 (AST_LIST eq2 (AST_LIST eq3 NULL)))
-  // eq : (AST_CNCT astterm1 astterm2)
-  
-  Ast *at, *prev, *target, *term;
-  char *sym;
-  int nth=0, exists_in_table;
-  NB_TYPE type = NB_NAME;
-
-  at = prev = eqlist;
-  
-  while (at != NULL) {
-    // (id, left, right)
-    // at : (AST_LIST, x1, NULL)
-    // at : (AST_LIST, x1, (AST_LIST, x2, NULL))    
-    target = at->left;
-
-    //            printf("\n[target] "); ast_puts(target);
-    //            printf("\n%dnth in ", nth); ast_puts(eqlist); printf("\n\n");
-
-
-    if (target->left->id == AST_NAME) {
-
-      sym = target->left->left->sym;
-      exists_in_table=CmEnv_gettype_forname(sym, &type);
-      
-      if ((!exists_in_table) ||
-	  (type == NB_NAME)){
-	// When no entry in CmEnv table or its type is NB_NAME,
-	// it is a local name, so it is the candidate.
-	
-	term = target->right;
-	//	printf("%s~",sym); ast_puts(term); puts("");
-      
-	if (Ast_Subst_EQList(nth, sym, term, eqlist)) {
-	  //		 printf("=== hit %dth\n", nth);
-	
-	  if (prev != at) {
-	    // 前のリストの接続先を、現在地を省いて、その次の要素に変更。
-	    prev->right = at->right;  
-	    at = at->right;	  
-	  } else {
-	    // 先頭の要素が代入に使われたので、
-	    // body 内の eqlist から先頭を削除
-	    // (AST_LIST, x1, (AST_LIST, x2, *next)) ==> (AST_LIST, x2, *next)  
-	    eqlist->left = eqlist->right->left;
-	    eqlist->right = eqlist->right->right;
-	    eqlist = eqlist->right;
-	    // 対象 at を次の要素に更新し、prev も at とする
-	    prev = at = at->right;
-	  }
-	
-	  continue;
-	}
-      }
-      
-    }
-
-      
-    if (target->right->id == AST_NAME) {
-      sym = target->right->left->sym;
-      exists_in_table=CmEnv_gettype_forname(sym, &type);      
-
-      if ((!exists_in_table) ||
-	  (type == NB_NAME)){
-	// When no entry in CmEnv table or its type is NB_NAME
-	
-	term = target->left;
-	//	ast_puts(term); printf("~%s",sym);puts("");
-
-	if (Ast_Subst_EQList(nth, sym, term, eqlist)) {
-	  //	 printf("=== hit %dth\n", nth);
-	
-	  if (prev != at) {
-	    // 前のリストの接続先を、現在地を省いて、その次の要素に変更。
-	    prev->right = at->right;  
-	    at = at->right;	  
-	  } else {
-	    // 先頭の要素が代入に使われたので、
-	    // body 内の eqlist から先頭を削除
-	    // (AST_LIST, x1, (AST_LIST, x2, *next)) ==> (AST_LIST, x2, *next)  
-	    eqlist->left = eqlist->right->left;
-	    eqlist->right = eqlist->right->right;
-	    eqlist = eqlist->right;
-	    // 対象 at を次の要素に更新し、prev も at とする
-	    prev = at = at->right;
-	  }
-
-	  continue;      
-
-	}
-      }
-    }
-
-    nth++;
-    prev = at;
-    at = at->right;
-    
-  }
-}
-// --- END: Rewrite Optimisation  ---
 
 
 
-
-
-int CompileBodyFromAst(Ast *body) {
+int Compile_body_on_ast(Ast *body) {
   Ast *stms, *eqs;
 
   if (body == NULL) return 1;
@@ -5372,10 +5887,10 @@ int CompileBodyFromAst(Ast *body) {
   stms = body->left;
   eqs = body->right;
   
-  Ast_RewriteOptimisation_EQList(eqs);
+  Ast_RewriteOptimisation_eqlist(eqs);
 
-  if (!CompileStmListFromAst(stms)) return 0;
-  if (!CompileEQListFromAst(eqs)) {
+  if (!Compile_stmlist_on_ast(stms)) return 0;
+  if (!Compile_eqlist_on_ast(eqs)) {
     printf("in the rule:\n  %s >< %s\n",
 	   IdTable_get_name(CmEnv.idL),
 	   IdTable_get_name(CmEnv.idR));
@@ -5388,15 +5903,142 @@ int CompileBodyFromAst(Ast *body) {
 
 
 
+int Compile_rule_mainbody_on_ast(Ast *mainbody) {
+  // return 1: success
+  //        0: compile error
+  //
+  //      <if-sentence> ::= (AST_IF guard (AST_BRANCH <then> <else>))
+  //                      | <body>
+  //      <then> ::= <if-sentence>
+  //      <else> ::= <if-sentence>
+  //
+  //      <body> ::= (AST_BODY stmlist aplist)
+
+  
+  CmEnv_clear_keeping_rule_properties();
 
 
-/**************************************
- TABLE for RULES
-**************************************/
+  if ((mainbody == NULL) || (mainbody->id == AST_BODY)) {
+    // Compilation without guards
+    
+    Ast *body = mainbody;
+    
+    if (!Compile_body_on_ast(body)) return 0;
+
+    Compile_gen_RET_for_rulebody();
+      
+    CmEnv_retrieve_MKGNAME();
+
+    
+    if (!CmEnv_check_meta_occur_once()) {
+      printf("in the rule:\n  %s >< %s.\n", 
+	     IdTable_get_name(CmEnv.idL),
+	     IdTable_get_name(CmEnv.idR));
+      return 0;
+    }
+    
+    return 1;
+      
+  } else {
+    // if_sentence
+    
+    int label;  // jump label
+
+    Ast *if_sentence = mainbody;    
+    Ast *guard = if_sentence->left;
+    Ast *then_branch = if_sentence->right->left;
+    Ast *else_branch = if_sentence->right->right;
+
+    
+    //    IMCode_genCode0(OP_BEGIN_BLOCK);
+
+    
+    // Compilation of Guard expressions
+    int newreg = CmEnv_newvar();
+    if (!Compile_expr_on_ast(guard, newreg)) return -1;
+
+
+#ifdef OPTIMISE_IMCODE    
+    // optimisation for R0
+    // OP src1 src2 dest ==> OP_R0 src1 src2
+    int opt = 0;
+    struct IMCode_tag *imcode = &IMCode[IMCode_n-1];
+    switch(imcode->opcode) {
+    case OP_LT:
+      imcode->opcode = OP_LT_R0;
+      opt=1;
+      break;
+
+    case OP_LE:
+      imcode->opcode = OP_LE_R0;
+      opt=1;
+      break;
+
+    case OP_EQ:
+      imcode->opcode = OP_EQ_R0;
+      opt=1;
+      break;
+
+    case OP_EQI:
+      imcode->opcode = OP_EQI_R0;
+      opt=1;
+      break;
+
+    case OP_NE:
+      imcode->opcode = OP_NE_R0;
+      opt=1;
+    }    
+#endif
+
+
+    // CmEnv_retrieve_MKGNAME();  // <- no need for guard expressions
+
+    // Generate OP_JMPEQ0 for VM
+    label = CmEnv_get_newlabel();    
+#ifdef OPTIMISE_IMCODE        
+    if (opt != 1) {      
+      IMCode_genCode2(OP_JMPEQ0, newreg, label);
+      
+    } else {
+      IMCode_genCode1(OP_JMPEQ0_R0, label);
+    }
+#else
+    IMCode_genCode2(OP_JMPEQ0, newreg, label);
+#endif
+        
+    
+    // Compilation of then_branch
+    IMCode_genCode0(OP_BEGIN_BLOCK);
+    CmEnv_clear_localnamePtr();  // 局所変数の割り当て番号を初期化
+    if (!Compile_rule_mainbody_on_ast(then_branch)) return 0;
+
+    
+    
+
+    // Compilation of else_branch
+    IMCode_genCode1(OP_LABEL, label);
+    IMCode_genCode0(OP_BEGIN_BLOCK);
+        
+    CmEnv_clear_localnamePtr();  // 局所変数の割り当て番号を初期化    
+    if (!Compile_rule_mainbody_on_ast(else_branch)) return 0;
+
+    return 1;
+  }
+
+  
+}
+
+
+
+
+
+// ------------------------------------------------------------
+// TABLE for RULES
+// ------------------------------------------------------------
 typedef struct RuleList {
   int sym;
   int available;
-  void* code[MAX_CODE_SIZE];
+  void* code[MAX_VMCODE_SEQUENCE];
   struct RuleList *next;
 } RuleList;
 
@@ -5414,7 +6056,7 @@ RuleList *RuleList_new(void) {
 void RuleList_set_code(RuleList *at, int sym, void **code, int byte, RuleList *next) {
   at->sym = sym;
   at->available = 1;
-  CopyCode(byte, code, at->code);
+  CmEnv_copy_VMCode(byte, code, at->code);
   at->next = next;
 }
 
@@ -5460,7 +6102,7 @@ void RuleTable_record(int symlID, int symrID, void **code, int byte) {
       // already exists
 
       // overwrite 
-      CopyCode(byte, code, at->code);
+      CmEnv_copy_VMCode(byte, code, at->code);
       return;
     }
     at = at->next;
@@ -5503,481 +6145,7 @@ void RuleTable_delete(int symlID, int symrID) {
 }
 
 
-
-
-
-// -------------------------------------------------------------
-
-int getArityFromAST(Ast *ast) {
-  int i;
-  Ast *ptr;
-
-  ptr = ast->right;
-  for (i=0; i<MAX_PORT; i++) {
-    if (ptr == NULL) break;
-    ptr = ast_getTail(ptr);
-  }
-  return i;
-}
-  
-
-// setMetaL(Ast *ast)
-// A(x1,x2) が ast に与えられれば、rule 内で x1, x2 が
-// VM のレジスタである VM_OFFSET_METAVAR_L(0)番、VM_OFFSET_METAVAR_L(1)番を
-// 参照できるようにする。
-void setMetaL(Ast *ast) {
-  int i; 
-  Ast *ptr;
-  NB_TYPE type;
-  
-  ptr = ast->right;
-  for (i=0; i<MAX_PORT; i++) {
-    if (ptr == NULL) break;
-    if (ptr->left->id == AST_NAME) {
-      type = NB_META;
-    } else {
-      type = NB_INTVAR;
-    }      
-    CmEnv_set_symbol_as_meta(ptr->left->left->sym, VM_OFFSET_METAVAR_L(i), type);
-    
-    ptr = ast_getTail(ptr);
-  }
-}
-void setMetaR(Ast *ast) {
-  int i; 
-  Ast *ptr;
-  NB_TYPE type;
-  
-  ptr = ast->right;
-  for (i=0; i<MAX_PORT; i++) {
-    if (ptr == NULL) break;
-    if (ptr->left->id == AST_NAME) {
-      type = NB_META;
-    } else {
-      type = NB_INTVAR;
-    }      
-    CmEnv_set_symbol_as_meta(ptr->left->left->sym, VM_OFFSET_METAVAR_R(i), type);    
-    ptr = ast_getTail(ptr);
-  }
-}
-
-void setMetaL_asIntName(Ast *ast) {
-  //CmEnv_set_symbol_as_meta(ast->left->sym, VM_OFFSET_METAVAR_L(0), NB_INTVAR);
-  CmEnv_set_symbol_as_meta(ast->left->sym, CmEnv.reg_agentL, NB_INTVAR);
-  
-}
-
-void setMetaR_asIntName(Ast *ast) {
-  //  CmEnv_set_symbol_as_meta(ast->left->sym, VM_OFFSET_METAVAR_R(0), NB_INTVAR);      
-  CmEnv_set_symbol_as_meta(ast->left->sym, CmEnv.reg_agentR, NB_INTVAR);
-}
-
-
-
-void setAnnotateLR(int left, int right) {
-  CmEnv.reg_agentL = left;
-  CmEnv.reg_agentR = right;  
-}
-
-
-
-int getRuleAgentID(Ast *ruleAgent) {
-  // Returns agents ids of ast type.
-  // This is called from makeRule to get ids of rule agents.
-  
-  int id;
-
-  if (ruleAgent->id == AST_TUPLE) {
-    id = GET_TUPLEID(ruleAgent->intval);
-    
-  } else if (ruleAgent->id == AST_OPCONS) {
-    id = ID_CONS;
-    
-  } else if (ruleAgent->id == AST_NIL) {
-    id = ID_NIL;
-    
-  } else if (ruleAgent->id == AST_INTVAR) {
-    id = ID_INT;
-
-  } else if (strcmp((char *)ruleAgent->left->sym, "Int") == 0) {
-    id = ID_INTAGENT;
-  } else {
-
-    id = IdTable_getid_builtin_funcAgent(ruleAgent);
-    if (id == -1) {
-      id=NameTable_get_set_id_with_IdTable_forAgent(ruleAgent->left->sym);
-    }
-  }
-
-  return id;
-}
-  
-
-
-
-
-
-int CompileIfSentenceFromAST(Ast *if_sentence_top) {
-  // return 1: success
-  //        0: compile error
-
-  //      <if-sentence> ::= (AST_IF guard (AST_BRANCH <then> <else>))
-  //                      | <body>
-  //      <then> ::= <if-sentence>
-  //      <else> ::= <if-sentence>
-
-  Ast *if_sentence;
-  
-  if_sentence = if_sentence_top;
-
-  CmEnv_clear_keeping_rule_properties();
-
-
-  if ((if_sentence == NULL) || (if_sentence->id == AST_BODY)) {
-    // 通常コンパイル
-    Ast *body = if_sentence;
-
-    
-    if (!CompileBodyFromAst(body)) return 0;
-    Compile_Put_Ret_ForRuleBody();
-      
-    CmEnv_Retrieve_GNAME();
-
-    
-    if (!CmEnv_check_meta_occur_once()) {
-      printf("in the rule:\n  %s >< %s.\n", 
-	     IdTable_get_name(CmEnv.idL),
-	     IdTable_get_name(CmEnv.idR));
-      return 0;
-    }
-    
-    return 1;
-      
-  } else {
-    // if_sentence
-    Ast *guard, *then_branch, *else_branch;
-    int label;  // jump label
-
-    IMCode_genCode0(OP_BEGIN_BLOCK);
-
-    
-    guard = if_sentence->left;
-    then_branch = if_sentence->right->left;
-    else_branch = if_sentence->right->right;
-
-    // Compilation of Guard expressions
-    int newreg = CmEnv_newvar();
-    if (!CompileExprFromAst(guard, newreg)) return -1;
-
-
-#ifdef OPTIMISE_IMCODE    
-    // optimisation for R0
-    // OP src1 src2 dest ==> OP_R0 src1 src2
-    int opt = 0;
-    struct IMCode_tag *imcode = &IMCode[IMCode_n-1];
-    switch(imcode->opcode) {
-    case OP_LT:
-      imcode->opcode = OP_LT_R0;
-      opt=1;
-      break;
-
-    case OP_LE:
-      imcode->opcode = OP_LE_R0;
-      opt=1;
-      break;
-
-    case OP_EQ:
-      imcode->opcode = OP_EQ_R0;
-      opt=1;
-      break;
-
-    case OP_EQI:
-      imcode->opcode = OP_EQI_R0;
-      opt=1;
-      break;
-
-    case OP_NE:
-      imcode->opcode = OP_NE_R0;
-      opt=1;
-    }    
-#endif
-
-
-    // CmEnv_Retrieve_GNAME();  // <- no need for guard expressions
-
-    // Generate OP_JMPEQ0 for VM
-    label = CmEnv_get_newlabel();    
-#ifdef OPTIMISE_IMCODE        
-    if (opt != 1) {      
-      IMCode_genCode2(OP_JMPEQ0, newreg, label);
-      
-    } else {
-      IMCode_genCode1(OP_JMPEQ0_R0, label);
-    }
-#else
-    IMCode_genCode2(OP_JMPEQ0, newreg, label);
-#endif
-        
-    
-    // Compilation of then_branch
-    IMCode_genCode0(OP_BEGIN_BLOCK);
-    CmEnv_clear_localnamePtr();  // 局所変数の割り当て番号を初期化
-    if (!CompileIfSentenceFromAST(then_branch)) return 0;
-
-    
-    
-
-    // Compilation of else_branch
-    IMCode_genCode0(OP_BEGIN_BLOCK);
-    IMCode_genCode1(OP_LABEL, label);
-        
-    CmEnv_clear_localnamePtr();  // 局所変数の割り当て番号を初期化    
-    if (!CompileIfSentenceFromAST(else_branch)) return 0;
-
-    return 1;
-  }
-
-  
-}
-
-
-
-
-int makeRule(Ast *ast) {
-  //    (ASTRULE (AST_CNCT agentL agentR)
-  //      <if-sentence>)
-  //
-  //      WHERE
-  //      <if-sentence> ::= (AST_IF guard (AST_BRANCH <then> <else>))
-  //                      | <body>
-  //      <then> ::= <if-sentence>
-  //      <else> ::= <if-sentence>
-
-  
-  int idR, idL;
-  Ast *ruleL, *ruleR, *if_sentence;
-
-  void* code[MAX_CODE_SIZE];
-  int gencode_num=0;
-
-  ruleL = ast->left->left;
-  ruleR = ast->left->right;
-
-  if (ruleL->id == AST_NAME) {
-    printf("ERROR: The name '%s' was specified as the left-hand side of rule agents. It should be an agent.\n", ruleL->left->sym);
-    return 0;
-  }
-  if (ruleR->id == AST_NAME) {
-    printf("ERROR: The name '%s' was specified as the right-hand side of rule agents. It should be an agent.\n", ruleR->left->sym);
-    return 0;
-  }
-  
-  
-  if_sentence = ast->right;
-
-  ruleL = ast_remove_tuple1(ruleL);
-  ruleR = ast_remove_tuple1(ruleR);
-  
-  
-    //    #define MYDEBUG1
-#ifdef MYDEBUG1
-  ast_puts(ruleL); puts("");
-  ast_puts(ruleR); puts("");
-  ast_puts(bodies);
-  exit(1);
-#endif
-
-  
-
-  // store ids of rule agent
-  idL = getRuleAgentID(ruleL);
-  idR = getRuleAgentID(ruleR);  
-
-
-  /*
-  // prevent re-defining of built-in agents.
-  if (IdTable_is_builtin_rule(ruleL, ruleR)) {
-      printf("Warning: %s >< %s is already defined as built-in.\n",
-	     IdTable_get_name(idL), IdTable_get_name(idR));
-
-  } else  {
-  
-    if (IdTable_is_builtin_rule(ruleR, ruleL)) {
-      printf("Warning: %s >< %s is already defined as built-in.\n",
-	     IdTable_get_name(idR), IdTable_get_name(idL));
-    }
-
-  }
-  */
-  
-  
-  // >< (int i) 対策
-  // int i は (AST_INTVAR (AST_SYM sym NULL) NULL) として構築されているので
-  // ID_TUPLE1 である間は読み飛ばす
-  while (idL == ID_TUPLE1) {
-    ruleL = ruleL->right->left;
-    idL = getRuleAgentID(ruleL);    
-  }
-  while (idR == ID_TUPLE1) {
-    ruleR = ruleR->right->left;
-    idR = getRuleAgentID(ruleR);    
-  }
-  
-  
-  // Annotation (*L)、(*R) の処理があるため
-  // 単純に ruleAgentL、ruleAgentR を入れ替えれば良いわけではない。
-
-  if (idL > idR) {
-    // Generally the order should be as Append(xs,r) >< y:ys,
-    // so idL should be greater than idR.
-    
-    // JAPANESE: 標準では Append(xs, r) >< [y|ys] なので
-    // idL の方が大きくなって欲しい
-
-    
-    // (*L) is interpreted as the left-hand side agent, (*R) is the right one.
-    // JAPANESE: annotation が (*L) なら左側、(*R) なら右側を指すものとする
-    setAnnotateLR(VM_OFFSET_ANNOTATE_L, VM_OFFSET_ANNOTATE_R);
-    
-  } else {
-    Ast *tmp;
-    tmp = ruleL;
-    ruleL = ruleR;
-    ruleR = tmp;
-
-    int idTmp;
-    idTmp = idL;
-    idL = idR;
-    idR = idTmp;
-
-    // Keep the occurrence (*L) and (*R) in aplist,
-    // change the interpretation of (*L) as (*R), vice versa.
-
-    // JAPANESE: aplist 内の (*L) (*R) はそのままにしておき、
-    // annotation が (*L) なら右側、(*R) なら左側を指すものとする
-    setAnnotateLR(VM_OFFSET_ANNOTATE_R, VM_OFFSET_ANNOTATE_L);
-  }
-
-  int arity;
-  
-  // IMPORTANT:
-  // The first two codes stores arities of idL and idR, respectively.
-  if (idL == ID_INT) {
-    arity = 0;
-  } else {
-    arity = getArityFromAST(ruleL);
-  }
-  IdTable_set_arity(idL, arity);
-  code[0] = (void *)(unsigned long)arity;
-  
-  if (idR == ID_INT) {
-    arity = 0;
-  } else {
-    arity = getArityFromAST(ruleR);
-  }
-  IdTable_set_arity(idR, arity);
-  code[1] = (void *)(unsigned long)arity;
-  
-  gencode_num = 2;
-  
-
-
-  
-  CmEnv_clear_all();
-  
-  if (idL == ID_INT) {
-    setMetaL_asIntName(ruleL);
-    CmEnv.annotateL = ANNOTATE_AS_INT_AGENT; // to prevent putting FreeL out
-  } else {
-    setMetaL(ruleL);
-  }
-  
-  if (idR == ID_INT) {
-    setMetaR_asIntName(ruleR);
-    CmEnv.annotateR = ANNOTATE_AS_INT_AGENT;  // to prevent putting FreeR out
-  } else {
-    setMetaR(ruleR);
-  }
-  
-  CmEnv.idL = idL;
-  CmEnv.idR = idR;
-
-
-  if (!CompileIfSentenceFromAST(if_sentence)) return 0;
-
-  
-  gencode_num += CmEnv_generate_VMCode(&code[2]);
-
-  
-  //    puts("-----------------------------------");
-  //    IMCode_puts(0);
-  //    gencode_num += CmEnv_generate_VMCode(&code[2]);
-  //    VMCode_puts(code, gencode_num);
-  //    puts("-----------------------------------");
-  
-  
-#ifdef MYDEBUG
-  VMCode_puts(code, gencode_num); exit(1);
-#endif
-  //    VMCode_puts(code, gencode_num);  exit(1);
-
-  //    printf("Rule: %s(id:%d) >< %s(id:%d).\n", 
-  //	   IdTable_get_name(idL), idL,
-  //	   IdTable_get_name(idR), idR);
-  //    VMCode_puts(&code[2], gencode_num-2);
-  //    exit(1);
-  
-  //ast_puts(ruleL); printf("><");
-  //ast_puts(ruleR); puts("");
-
-  
-  // Record the rule code for idR >< idL
-  RuleTable_record(idL, idR, code, gencode_num); 
-  
-  if (idL != idR) {    
-    // Delete the rule code for idR >< idL
-    // because we need only the rule idL >< idR.    
-    RuleTable_delete(idR, idL);
-    
-  }
-
-  
-  //    #define DEBUG_PUT_RULE_CODE    
-#ifdef DEBUG_PUT_RULE_CODE  
-  if (((strcmp(IdTable_get_name(idL), "Fib") == 0) &&
-       (idR == ID_INT))
-      ||
-      ((strcmp(IdTable_get_name(idL), "fib") == 0) &&
-       (idR == ID_INT))
-      ||
-      ((strcmp(IdTable_get_name(idL), "Ack") == 0) &&
-       (idR == ID_INT))
-      ||
-      ((strcmp(IdTable_get_name(idL), "Ackm") == 0) &&
-       (idR == ID_INT))
-      ||
-      ((strcmp(IdTable_get_name(idL), "MergeCC") == 0) &&
-       (idR == ID_CONS))
-      ) {
-
-      printf("Rule: %s >< %s.\n", 
-	     IdTable_get_name(idL),
-	     IdTable_get_name(idR));
-      
-      IMCode_puts(0);
-      VMCode_puts(code, gencode_num);
-      //      exit(1);
-    }
-#endif
-
-  
-  
-  
-  return 1;
-}
-
-
-void *getRuleCode(VALUE heap_syml, VALUE heap_symr, int *result) {
+void *RuleTable_get_code(VALUE heap_syml, VALUE heap_symr, int *result) {
   // returns:
   //   *code  :  for syml><symr
   //   result :  1 for success, otherwise 0.
@@ -6019,8 +6187,8 @@ void *getRuleCode(VALUE heap_syml, VALUE heap_symr, int *result) {
 }
 
 
-static inline
-void getRuleCodeInt(VALUE heap_syml, void ***code) {
+//static inline
+void RuleTable_get_code_for_Int(VALUE heap_syml, void ***code) {
   int syml = AGENT(heap_syml)->basic.id;
     
   if (RuleTable[syml] == NULL) {
@@ -6047,6 +6215,446 @@ void getRuleCodeInt(VALUE heap_syml, void ***code) {
 
 
 
+
+// -------------------------------------------------------------
+// Make Rules
+// -------------------------------------------------------------
+
+int get_arity_on_ast(Ast *ast) {
+  int i;
+  Ast *ptr;
+
+  ptr = ast->right;
+  for (i=0; i<MAX_PORT; i++) {
+    if (ptr == NULL) break;
+    ptr = ast_getTail(ptr);
+  }
+  return i;
+}
+  
+
+// setMetaL(Ast *ast)
+// A(x1,x2) が ast に与えられれば、rule 内で x1, x2 が
+// VM のレジスタである VM_OFFSET_METAVAR_L(0)番、VM_OFFSET_METAVAR_L(1)番を
+// 参照できるようにする。
+void set_metaL(Ast *ast) {
+  Ast *ptr;
+  NB_TYPE type;
+  
+  ptr = ast->right;
+  for (int i=0; i<MAX_PORT; i++) {
+    if (ptr == NULL) break;
+    if (ptr->left->id == AST_NAME) {
+      type = NB_META_L;
+    } else {
+      type = NB_INTVAR;
+    }      
+    CmEnv_set_symbol_as_meta(ptr->left->left->sym, VM_OFFSET_METAVAR_L(i), type);
+    
+    ptr = ast_getTail(ptr);
+  }
+}
+void set_metaR(Ast *ast) {
+  Ast *ptr;
+  NB_TYPE type;
+  
+  ptr = ast->right;
+  for (int i=0; i<MAX_PORT; i++) {
+    if (ptr == NULL) break;
+    if (ptr->left->id == AST_NAME) {
+      type = NB_META_R;
+    } else {
+      type = NB_INTVAR;
+    }      
+    CmEnv_set_symbol_as_meta(ptr->left->left->sym, VM_OFFSET_METAVAR_R(i), type);    
+    ptr = ast_getTail(ptr);
+  }
+}
+
+void set_metaL_as_IntName(Ast *ast) {
+  CmEnv_set_symbol_as_meta(ast->left->sym, CmEnv.reg_agentL, NB_INTVAR);
+  
+}
+
+void set_metaR_as_IntName(Ast *ast) {
+  CmEnv_set_symbol_as_meta(ast->left->sym, CmEnv.reg_agentR, NB_INTVAR);
+}
+
+
+
+void set_annotation_LR(int left, int right) {
+  CmEnv.reg_agentL = left;
+  CmEnv.reg_agentR = right;  
+}
+
+
+
+int get_ruleagentID(Ast *ruleAgent) {
+  // Returns ID of the given Ast.
+  // This is called by make_rule to get IDs of rule agents.
+  
+  int id;
+
+  if (ruleAgent->id == AST_TUPLE) {
+    id = GET_TUPLEID(ruleAgent->intval);
+    
+  } else if (ruleAgent->id == AST_OPCONS) {
+    id = ID_CONS;
+    
+  } else if (ruleAgent->id == AST_NIL) {
+    id = ID_NIL;
+    
+  } else if (ruleAgent->id == AST_INTVAR) {
+    id = ID_INT;
+
+  } else if (strcmp((char *)ruleAgent->left->sym, "Int") == 0) {
+    id = ID_INTAGENT;
+  } else {
+
+    id = IdTable_getid_builtin_funcAgent(ruleAgent);
+    if (id == -1) {
+      id=NameTable_get_set_id_with_IdTable_forAgent(ruleAgent->left->sym);
+    }
+  }
+
+  return id;
+}
+  
+
+int make_rule(Ast *ast) {
+  //    (ASTRULE
+  //      (AST_CNCT agentL agentR)
+  //      <if-sentence> | <body>)
+  //
+  //      WHERE
+  //      <if-sentence> ::= (AST_IF guard (AST_BRANCH <then> <else>))
+  //                      | <body>
+  //      <then> ::= <if-sentence>
+  //      <else> ::= <if-sentence>
+  //
+  //      <body> ::= (AST_BODY stmlist aplist)
+  
+  int idL, idR;
+  Ast *ruleAgent_L, *ruleAgent_R, *rule_mainbody;
+
+  void* code[MAX_VMCODE_SEQUENCE];
+  int gencode_num=0;
+
+
+
+  //  #define PUT_RULE_COMPILATION_TIME
+#ifdef PUT_RULE_COMPILATION_TIME
+  unsigned long long t, time;
+  start_timer(&t);
+#endif
+
+  
+  ruleAgent_L = ast->left->left;
+  ruleAgent_R = ast->left->right;
+
+  if (ruleAgent_L->id == AST_NAME) {
+    printf("ERROR: The name '%s' was specified as the left-hand side of rule agents. It should be an agent.\n", ruleAgent_L->left->sym);
+    return 0;
+  }
+  if (ruleAgent_R->id == AST_NAME) {
+    printf("ERROR: The name '%s' was specified as the right-hand side of rule agents. It should be an agent.\n", ruleAgent_R->left->sym);
+    return 0;
+  }
+  
+  
+  rule_mainbody = ast->right;
+
+  ruleAgent_L = ast_remove_tuple1(ruleAgent_L);
+  ruleAgent_R = ast_remove_tuple1(ruleAgent_R);
+  
+  
+    //    #define MYDEBUG1
+#ifdef MYDEBUG1
+  ast_puts(ruleAgent_L); puts("");
+  ast_puts(ruleAgent_R); puts("");
+  ast_puts(bodies);
+  exit(1);
+#endif
+
+  
+
+  // Decide IDs for rule agents.
+  // Note that agentR should be checked earlier
+  // because it could be a constructor.
+  // IDs of Constructors must be smaller than destructors.
+  idR = get_ruleagentID(ruleAgent_R);  
+  
+  // Peel the tuple1 such as `(int i)'
+  // int i は (AST_INTVAR (AST_SYM sym NULL) NULL) として構築されているので
+  // ID_TUPLE1 である間は読み飛ばす
+  while (idR == ID_TUPLE1) {
+    ruleAgent_R = ruleAgent_R->right->left;
+    idR = get_ruleagentID(ruleAgent_R);    
+  }
+
+
+  idL = get_ruleagentID(ruleAgent_L);
+  while (idL == ID_TUPLE1) {
+    ruleAgent_L = ruleAgent_L->right->left;
+    idL = get_ruleagentID(ruleAgent_L);    
+  }
+
+  
+    
+  // Annotation (*L)、(*R) の処理があるため
+  // 単純に ruleAgentL、ruleAgentR を入れ替えれば良いわけではない。
+
+  if (idL > idR) {
+    // Generally the order should be as Append(xs,r) >< y:ys,
+    // so idL should be greater than idR.
+    
+    // JAPANESE: 標準では Append(xs, r) >< [y|ys] なので
+    // idL の方が大きくなって欲しい
+
+    
+    // (*L) is interpreted as the left-hand side agent, (*R) is the right one.
+    // JAPANESE: annotation が (*L) なら左側、(*R) なら右側を指すものとする
+    set_annotation_LR(VM_OFFSET_ANNOTATE_L, VM_OFFSET_ANNOTATE_R);
+    
+  } else {
+    Ast *tmp;
+    tmp = ruleAgent_L;
+    ruleAgent_L = ruleAgent_R;
+    ruleAgent_R = tmp;
+
+    int idTmp;
+    idTmp = idL;
+    idL = idR;
+    idR = idTmp;
+
+    // Keep the occurrence (*L) and (*R) in aplist,
+    // change the interpretation of (*L) as (*R), vice versa.
+
+    // JAPANESE: aplist 内の (*L) (*R) はそのままにしておき、
+    // annotation が (*L) なら右側、(*R) なら左側を指すものとする
+    set_annotation_LR(VM_OFFSET_ANNOTATE_R, VM_OFFSET_ANNOTATE_L);
+  }
+
+  int arity;
+  
+  // IMPORTANT:
+  // The first two codes stores arities of idL and idR, respectively.
+  if (idL == ID_INT) {
+    arity = 0;
+  } else {
+    arity = get_arity_on_ast(ruleAgent_L);
+  }
+  IdTable_set_arity(idL, arity);
+  code[0] = (void *)(unsigned long)arity;
+  
+  if (idR == ID_INT) {
+    arity = 0;
+  } else {
+    arity = get_arity_on_ast(ruleAgent_R);
+  }
+  IdTable_set_arity(idR, arity);
+  code[1] = (void *)(unsigned long)arity;
+  
+  gencode_num = 2;
+  
+
+
+  
+  CmEnv_clear_all();
+  
+  if (idL == ID_INT) {
+    set_metaL_as_IntName(ruleAgent_L);
+    CmEnv.annotateL = ANNOTATE_INT_MODIFIER; // to prevent putting Free_L
+  } else {
+    set_metaL(ruleAgent_L);
+  }
+  
+  if (idR == ID_INT) {
+    set_metaR_as_IntName(ruleAgent_R);
+    CmEnv.annotateR = ANNOTATE_INT_MODIFIER;  // to prevent putting Free_R
+  } else {
+    set_metaR(ruleAgent_R);
+  }
+  
+  CmEnv.idL = idL;
+  CmEnv.idR = idR;
+
+
+#ifdef OPTIMISE_IMCODE_TRO
+  Ast_make_annotation_TailRecursionOptimisation(rule_mainbody);
+#endif
+  
+  
+  if (!Compile_rule_mainbody_on_ast(rule_mainbody)) return 0;
+
+
+  //    #define MKRULE_DEBUG  
+#ifndef MKRULE_DEBUG  
+  gencode_num += CmEnv_generate_VMCode(&code[2]);
+#else
+
+  
+  puts("-----------------------------------");
+  IMCode_puts(0);
+  gencode_num += CmEnv_generate_VMCode(&code[2]);
+  IMCode_puts(0);
+  VMCode_puts(&code[2], gencode_num-2);
+  puts("-----------------------------------");
+  
+  //  exit(1);
+  
+  
+  //    printf("Rule: %s(id:%d) >< %s(id:%d).\n", 
+  //	   IdTable_get_name(idL), idL,
+  //	   IdTable_get_name(idR), idR);
+  //
+  //    ast_puts(ruleAgent_L); printf("><");
+  //    ast_puts(ruleAgent_R); puts("");
+#endif
+
+  
+  // Record the rule code for idR >< idL
+  RuleTable_record(idL, idR, code, gencode_num); 
+  
+  if (idL != idR) {    
+    // Delete the rule code for idR >< idL
+    // because we need only the rule idL >< idR.    
+    RuleTable_delete(idR, idL);
+    
+  }
+
+  
+  //    #define DEBUG_PUT_RULE_CODE    
+#ifdef DEBUG_PUT_RULE_CODE  
+  if (((strcmp(IdTable_get_name(idL), "Fib") == 0) &&
+       (idR == ID_INT))
+      ||
+      ((strcmp(IdTable_get_name(idL), "fib") == 0) &&
+       (idR == ID_INT))
+      ||
+      ((strcmp(IdTable_get_name(idL), "Ack") == 0) &&
+       (idR == ID_INT))
+      ||
+      ((strcmp(IdTable_get_name(idL), "Ackm") == 0) &&
+       (idR == ID_INT))
+      ||
+      ((strcmp(IdTable_get_name(idL), "MergeCC") == 0) &&
+       (idR == ID_CONS))
+      ) {
+
+      printf("Rule: %s >< %s.\n", 
+	     IdTable_get_name(idL),
+	     IdTable_get_name(idR));
+      
+      IMCode_puts(0);
+      VMCode_puts(code, gencode_num);
+      //      exit(1);
+    }
+#endif
+
+
+#ifdef PUT_RULE_COMPILATION_TIME
+  time=stop_timer(&t);
+  printf("(Compilation of %s><%s takes %.6f sec)\n", 
+	 IdTable_get_name(idL),
+	 IdTable_get_name(idR),
+	 (double)(time)/1000000.0);
+#endif
+  
+  
+  return 1;
+}
+
+
+// -----------------------------------------------------
+// Mark and Sweep for error recovery
+// -----------------------------------------------------
+#ifndef THREAD
+
+#ifdef EXPANDABLE_HEAP
+void sweep_AgentHeap(Heap *hp) {
+
+  HoopList *hoop_list = hp->last_alloc_list;
+  Agent *hoop;
+  
+  do {
+    hoop = (Agent *)(hoop_list->hoop);
+    for (int i = 0; i < HOOP_SIZE; i++) {
+
+      if (!IS_FLAG_MARKED(hoop[i].basic.id)) {
+	SET_HOOPFLAG_READYFORUSE(hoop[i].basic.id);
+      } else {
+	TOGGLE_FLAG_MARKED(hoop[i].basic.id);
+      }
+      
+    }
+    hoop_list = hoop_list->next;
+  } while (hoop_list != hp->last_alloc_list);
+}
+
+void sweep_NameHeap(Heap *hp) {
+  HoopList *hoop_list = hp->last_alloc_list;
+  Name *hoop;
+  
+  do { 
+    hoop = (Name *)(hoop_list->hoop);
+    for (int i = 0; i < HOOP_SIZE; i++) {
+
+      if (!IS_FLAG_MARKED(hoop[i].basic.id)) {
+	SET_HOOPFLAG_READYFORUSE(hoop[i].basic.id);
+      } else {
+	TOGGLE_FLAG_MARKED(hoop[i].basic.id);
+      }
+      
+    }
+    hoop_list = hoop_list->next;
+  } while (hoop_list != hp->last_alloc_list);
+  
+}
+#else
+
+// v0.5.6
+void sweep_AgentHeap(Heap *hp) {
+  int i;
+  for (i=0; i < hp->size; i++) {
+    if (!IS_FLAG_MARKED( ((Agent *)hp->heap)[i].basic.id)) {
+      SET_HEAPFLAG_READYFORUSE( ((Agent *)hp->heap)[i].basic.id);
+    } else {
+      TOGGLE_FLAG_MARKED( ((Agent *)hp->heap)[i].basic.id);
+    }
+  }
+}
+void sweep_NameHeap(Heap *hp) {
+  int i;
+  for (i=0; i < hp->size; i++) {
+    if (!IS_FLAG_MARKED( ((Name *)hp->heap)[i].basic.id)) {
+      SET_HEAPFLAG_READYFORUSE( ((Name *)hp->heap)[i].basic.id);
+    } else {
+      TOGGLE_FLAG_MARKED( ((Name *)hp->heap)[i].basic.id);
+    }
+  }
+}
+
+
+#endif
+
+
+void mark_and_sweep(void) {
+
+  mark_allHash();  
+  sweep_AgentHeap(&(VM.agentHeap));  
+  sweep_NameHeap(&VM.nameHeap);
+  VM.nextPtr_eqStack = -1;  
+}
+
+#endif
+
+
+
+// ------------------------------------------------------
+// Code Execution
+// ------------------------------------------------------
+
 #ifdef COUNT_CNCT    
 int Count_cnct = 0;
 int Count_cnct_true = 0;
@@ -6054,8 +6662,99 @@ int Count_cnct_indirect_op = 0;
 #endif
 
 
-//void *ExecCode(int arg, VirtualMachine *vm, void** code) {
-void *ExecCode(int mode, VirtualMachine *restrict vm, void *restrict *code) {
+
+
+  /*
+    ===TODO===
+    2021/9/18
+    a2->t であるところに a1->a2 が与えられても a2->t, a1->a2 のままにしてある。
+    a2 がここで解放できればメモリ利用が助かるのでは？
+    仮に助からないとしても、グローバル環境で与えられたネットの場合には
+    単純に eval_equation へ持ち込んだ方が、indirection を生成しなくて済むのでは？
+
+    ==>
+    DONE 21 September 2021
+    誤差程度しか変わらない。
+
+   */  
+#ifndef THREAD
+#define PUSH(vm, a1, a2)				         	\
+  if ((!IS_FIXNUM(a1)) && (IS_NAMEID(BASIC(a1)->id)) &&			\
+      (NAME(a1)->port == (VALUE)NULL)) {				\
+    NAME(a1)->port = a2;						\
+  } else if ((!IS_FIXNUM(a2)) && (IS_NAMEID(BASIC(a2)->id)) &&		\
+	     (NAME(a2)->port == (VALUE)NULL)) {				\
+    NAME(a2)->port = a1;						\
+  } else {								\
+    VM_EQStack_Push(vm, a1, a2);					\
+  }
+#else
+#define PUSH(vm, a1, a2)				                \
+  if ((!IS_FIXNUM(a1)) && (IS_NAMEID(BASIC(a1)->id)) &&			\
+      (NAME(a1)->port == (VALUE)NULL)) {				\
+    if (!(__sync_bool_compare_and_swap(&(NAME(a1)->port), NULL, a2))) { \
+      if (SleepingThreadsNum == 0) {					\
+	VM_EQStack_Push(vm, NAME(a1)->port, a2);			\
+	free_Name(a1);							\
+      } else {								\
+	GlobalEQStack_Push(NAME(a1)->port,a2);				\
+	free_Name(a1);							\
+      }									\
+    }									\
+  } else if ((!IS_FIXNUM(a2)) && (IS_NAMEID(BASIC(a2)->id)) &&		\
+	     (NAME(a2)->port == (VALUE)NULL)) {				\
+    if (!(__sync_bool_compare_and_swap(&(NAME(a2)->port), NULL, a1))) { \
+      if (SleepingThreadsNum == 0) {					\
+	VM_EQStack_Push(vm, a1,NAME(a2)->port);				\
+	free_Name(a2);							\
+      } else {								\
+	GlobalEQStack_Push(a1,NAME(a2)->port);				\
+	free_Name(a2);							\
+      }									\
+    }									\
+  } else {								\
+    if (SleepingThreadsNum == 0) {					\
+      VM_EQStack_Push(vm, a1,a2);					\
+    } else {								\
+      GlobalEQStack_Push(a1,a2);					\
+    }									\
+  }
+#endif  
+
+
+#ifndef THREAD
+#define MYPUSH(vm, a1, a2)				                \
+  if ((!IS_FIXNUM(a1)) && (IS_NAMEID(BASIC(a1)->id)) &&			\
+      (NAME(a1)->port == (VALUE)NULL)) {				\
+    NAME(a1)->port = a2;						\
+  } else if ((!IS_FIXNUM(a2)) && (BASIC(a2)->id == ID_NAME) &&		\
+	     (NAME(a2)->port == (VALUE)NULL)) {				\
+    NAME(a2)->port = a1;						\
+  } else {								\
+    VM_EQStack_Push(vm, a1,a2);						\
+  }
+#else
+#define MYPUSH(vm, a1, a2)						\
+  if ((!IS_FIXNUM(a1)) && (IS_NAMEID(BASIC(a1)->id)) &&			\
+      (NAME(a1)->port == (VALUE)NULL)) {				\
+    if (!(__sync_bool_compare_and_swap(&(NAME(a1)->port), NULL, a2))) { \
+      VM_EQStack_Push(vm, a1,a2);					\
+    }									\
+  } else if ((!IS_FIXNUM(a2)) && (IS_NAMEID(BASIC(a2)->id)) &&		\
+	     (NAME(a2)->port == (VALUE)NULL)) {				\
+    if (!(__sync_bool_compare_and_swap(&(NAME(a2)->port), NULL, a1))) { \
+      VM_EQStack_Push(vm, a1,a2);					\
+    }									\
+  } else {								\
+    VM_EQStack_Push(vm, a1,a2);						\
+  }
+#endif  
+
+
+
+
+
+void *exec_code(int mode, VirtualMachine * restrict vm, void * restrict *code) {
 
   //http://magazine.rubyist.net/?0008-YarvManiacs
   static const void *table[] = {
@@ -6076,6 +6775,8 @@ void *ExecCode(int mode, VirtualMachine *restrict vm, void *restrict *code) {
     &&E_JMPCNCT_CONS, &&E_JMPCNCT, 
 
     &&E_LOOP, &&E_LOOP_RREC, &&E_LOOP_RREC1, &&E_LOOP_RREC2,
+    &&E_LOOP_RREC_FREE_R, &&E_LOOP_RREC1_FREE_R, &&E_LOOP_RREC2_FREE_R,
+    
     &&E_CNCTGN, &&E_SUBSTGN,
     &&E_NOP, 
   };
@@ -6097,7 +6798,7 @@ void *ExecCode(int mode, VirtualMachine *restrict vm, void *restrict *code) {
  E_MKNAME:
   //    puts("mkname dest");
   pc++;
-  reg[(unsigned long)code[pc++]] = makeName(vm);
+  reg[(unsigned long)code[pc++]] = make_Name(vm);
   goto *code[pc];
 
  E_MKGNAME:
@@ -6106,14 +6807,12 @@ void *ExecCode(int mode, VirtualMachine *restrict vm, void *restrict *code) {
   
   i = (unsigned long)code[pc++];
   a1 = IdTable_get_heap(i);
-  //  a1 = NameTable_get_heap((char *)code[pc+2]);
   if (a1 == (VALUE)NULL) {
-    a1 = makeName(vm);
+    a1 = make_Name(vm);
 
-    // set GID obtained by IdTable_new_gnameid()    
+    // set GID
     BASIC(a1)->id = i;
-    IdTable_set_heap(i, a1);
-    
+    IdTable_set_heap(i, a1);    
   }
 
   reg[(unsigned long)code[pc++]] = a1;
@@ -6124,13 +6823,13 @@ void *ExecCode(int mode, VirtualMachine *restrict vm, void *restrict *code) {
   //    puts("mkagent0 id dest");
   pc++;
   i = (unsigned long)code[pc++];
-  reg[(unsigned long)code[pc++]] = makeAgent(vm, i);
+  reg[(unsigned long)code[pc++]] = make_Agent(vm, i);
   goto *code[pc];
 
  E_MKAGENT1:
   //    puts("mkagent1 id src1 dest");
   pc++;
-  a1 = makeAgent(vm, (unsigned long)code[pc++]);
+  a1 = make_Agent(vm, (unsigned long)code[pc++]);
   AGENT(a1)->port[0] = reg[(unsigned long)code[pc++]];
   reg[(unsigned long)code[pc++]] = a1;
 
@@ -6139,7 +6838,7 @@ void *ExecCode(int mode, VirtualMachine *restrict vm, void *restrict *code) {
  E_MKAGENT2:
   //      puts("mkagent2 id src1 src2 dest");
   pc++;  
-  a1 = makeAgent(vm, (unsigned long)code[pc++]);
+  a1 = make_Agent(vm, (unsigned long)code[pc++]);
   {
     volatile VALUE *a1port = AGENT(a1)->port;
     a1port[0] = reg[(unsigned long)code[pc++]];
@@ -6153,7 +6852,7 @@ void *ExecCode(int mode, VirtualMachine *restrict vm, void *restrict *code) {
  E_MKAGENT3:
   //    puts("mkagent3 id src1 src2 src3 dest");
   pc++;
-  a1 = makeAgent(vm, (unsigned long)code[pc++]);
+  a1 = make_Agent(vm, (unsigned long)code[pc++]);
   {
     volatile VALUE *a1port = AGENT(a1)->port;
     a1port[0] = reg[(unsigned long)code[pc++]];
@@ -6166,7 +6865,7 @@ void *ExecCode(int mode, VirtualMachine *restrict vm, void *restrict *code) {
  E_MKAGENT4:
   //    puts("mkagent4 id src1 src2 src3 src4 dest");
   pc++;
-  a1 = makeAgent(vm, (unsigned long)code[pc++]);
+  a1 = make_Agent(vm, (unsigned long)code[pc++]);
   {
     volatile VALUE *a1port = AGENT(a1)->port;
     a1port[0] = reg[(unsigned long)code[pc++]];
@@ -6180,7 +6879,7 @@ void *ExecCode(int mode, VirtualMachine *restrict vm, void *restrict *code) {
  E_MKAGENT5:
   //    puts("mkagent5 id src1 src2 src3 src4 src5 dest");
   pc++;
-  a1 = makeAgent(vm, (unsigned long)code[pc++]);
+  a1 = make_Agent(vm, (unsigned long)code[pc++]);
   {
     volatile VALUE *a1port = AGENT(a1)->port;
     a1port[0] = reg[(unsigned long)code[pc++]];
@@ -6266,117 +6965,40 @@ void *ExecCode(int mode, VirtualMachine *restrict vm, void *restrict *code) {
   }  
   goto *code[pc];
 
-  
-
-  /*
-    ===TODO===
-    2021/9/18
-    a2->t であるところに a1->a2 が与えられても a2->t, a1->a2 のままにしてある。
-    a2 がここで解放できればメモリ利用が助かるのでは？
-    仮に助からないとしても、グローバル環境で与えられたネットの場合には
-    単純に eval_equation へ持ち込んだ方が、indirection を生成しなくて済むのでは？
-
-    ==>
-    DONE 21 September 2021
-    誤差程度しか変わらない。
-
-   */  
-#ifndef THREAD
-#define PUSH(vm, a1, a2)				         	\
-  if ((!IS_FIXNUM(a1)) && (IS_NAMEID(BASIC(a1)->id)) &&			\
-      (NAME(a1)->port == (VALUE)NULL)) {				\
-    NAME(a1)->port = a2;						\
-  } else if ((!IS_FIXNUM(a2)) && (IS_NAMEID(BASIC(a2)->id)) &&		\
-	     (NAME(a2)->port == (VALUE)NULL)) {				\
-    NAME(a2)->port = a1;						\
-  } else {								\
-    VM_EQStack_Push(vm, a1, a2);					\
-  }
-#else
-#define PUSH(vm, a1, a2)				                \
-  if ((!IS_FIXNUM(a1)) && (IS_NAMEID(BASIC(a1)->id)) &&			\
-      (NAME(a1)->port == (VALUE)NULL)) {				\
-    if (!(__sync_bool_compare_and_swap(&(NAME(a1)->port), NULL, a2))) { \
-      if (SleepingThreadsNum == 0) {					\
-	VM_EQStack_Push(vm, NAME(a1)->port, a2);			\
-	freeName(a1);							\
-      } else {								\
-	GlobalEQStack_Push(NAME(a1)->port,a2);				\
-	freeName(a1);							\
-      }									\
-    }									\
-  } else if ((!IS_FIXNUM(a2)) && (IS_NAMEID(BASIC(a2)->id)) &&		\
-	     (NAME(a2)->port == (VALUE)NULL)) {				\
-    if (!(__sync_bool_compare_and_swap(&(NAME(a2)->port), NULL, a1))) { \
-      if (SleepingThreadsNum == 0) {					\
-	VM_EQStack_Push(vm, a1,NAME(a2)->port);				\
-	freeName(a2);							\
-      } else {								\
-	GlobalEQStack_Push(a1,NAME(a2)->port);				\
-	freeName(a2);							\
-      }									\
-    }									\
-  } else {								\
-    if (SleepingThreadsNum == 0) {					\
-      VM_EQStack_Push(vm, a1,a2);					\
-    } else {								\
-      GlobalEQStack_Push(a1,a2);					\
-    }									\
-  }
-#endif  
-
 
 
  E_PUSH:
   //    puts("push reg reg");
-  PUSH(vm, reg[(unsigned long)code[pc+1]], reg[(unsigned long)code[pc+2]]);
-  pc +=3;
+  {
+    pc++;
+    VALUE a1 = reg[(unsigned long)code[pc++]];
+    VALUE a2 = reg[(unsigned long)code[pc++]];    
+    PUSH(vm, a1, a2);
+  }
   goto *code[pc];
 
 
  E_PUSHI:
-  //    puts("pushi reg fixint");
-  PUSH(vm, reg[(unsigned long)code[pc+1]], (unsigned long)code[pc+2]);
-  pc +=3;
+  //      puts("pushi reg fixint");
+  {
+    pc++;
+    
+    VALUE a1 = reg[(unsigned long)code[pc++]];    
+    VALUE a2 = (unsigned long)code[pc++];
+    PUSH(vm, a1, a2);    
+  }  
   goto *code[pc];
-  
-
-
-#ifndef THREAD
-#define MYPUSH(vm, a1, a2)				 \
-  if ((!IS_FIXNUM(a1)) && (IS_NAMEID(BASIC(a1)->id)) &&	\
-      (NAME(a1)->port == (VALUE)NULL)) {			\
-    NAME(a1)->port = a2;					\
-  } else if ((!IS_FIXNUM(a2)) && (BASIC(a2)->id == ID_NAME) && \
-	     (NAME(a2)->port == (VALUE)NULL)) {		\
-    NAME(a2)->port = a1;					\
-  } else {							\
-    VM_EQStack_Push(vm, a1,a2);					\
-  }
-#else
-#define MYPUSH(vm, a1, a2)						\
-  if ((!IS_FIXNUM(a1)) && (IS_NAMEID(BASIC(a1)->id)) &&	\
-      (NAME(a1)->port == (VALUE)NULL)) {				\
-    if (!(__sync_bool_compare_and_swap(&(NAME(a1)->port), NULL, a2))) { \
-      VM_EQStack_Push(vm, a1,a2);					\
-    }									\
-  } else if ((!IS_FIXNUM(a2)) && (IS_NAMEID(BASIC(a2)->id)) && \
-	     (NAME(a2)->port == (VALUE)NULL)) {			\
-    if (!(__sync_bool_compare_and_swap(&(NAME(a2)->port), NULL, a1))) { \
-      VM_EQStack_Push(vm, a1,a2);					\
-    }									\
-  } else {								\
-    VM_EQStack_Push(vm, a1,a2);						\
-  }
-#endif  
-
 
 
 
  E_MYPUSH:
   //    puts("mypush reg reg");
-  MYPUSH(vm, reg[(unsigned long)code[pc+1]], reg[(unsigned long)code[pc+2]]);
-  pc +=3;
+  {
+    pc++;
+    VALUE a1 = reg[(unsigned long)code[pc++]];
+    VALUE a2 = reg[(unsigned long)code[pc++]];    
+    MYPUSH(vm, a1, a2);
+  }
   goto *code[pc];
 
   
@@ -6397,18 +7019,18 @@ void *ExecCode(int mode, VirtualMachine *restrict vm, void *restrict *code) {
 
  E_RET_FREE_LR:
   //    puts("ret_free_LR");
-  freeAgent(reg[VM_OFFSET_ANNOTATE_L]);
-  freeAgent(reg[VM_OFFSET_ANNOTATE_R]);
+  free_Agent(reg[VM_OFFSET_ANNOTATE_L]);
+  free_Agent(reg[VM_OFFSET_ANNOTATE_R]);
   return NULL;
   
  E_RET_FREE_L:
   //    puts("ret_free_L");
-  freeAgent(reg[VM_OFFSET_ANNOTATE_L]);
+  free_Agent(reg[VM_OFFSET_ANNOTATE_L]);
   return NULL;
 
  E_RET_FREE_R:
   //    puts("ret_free_R");
-  freeAgent(reg[VM_OFFSET_ANNOTATE_R]);
+  free_Agent(reg[VM_OFFSET_ANNOTATE_R]);
   return NULL;
 
 
@@ -6417,10 +7039,12 @@ void *ExecCode(int mode, VirtualMachine *restrict vm, void *restrict *code) {
   pc = 0;
   goto *code[0];
 
+
+ E_LOOP_RREC_FREE_R:
+  free_Agent(reg[VM_OFFSET_ANNOTATE_R]);
   
  E_LOOP_RREC:
   //      puts("looprrec reg ar");
-  freeAgent(reg[VM_OFFSET_ANNOTATE_R]);
   
   a1 = reg[(unsigned long)code[pc+1]];
   for (int i=0; i<(unsigned long)code[pc+2]; i++) {
@@ -6433,9 +7057,11 @@ void *ExecCode(int mode, VirtualMachine *restrict vm, void *restrict *code) {
   goto *code[0];
 
   
+ E_LOOP_RREC1_FREE_R:
+  free_Agent(reg[VM_OFFSET_ANNOTATE_R]);
+  
  E_LOOP_RREC1:
   //      puts("looprrec reg ar");
-  freeAgent(reg[VM_OFFSET_ANNOTATE_R]);
   
   a1 = reg[(unsigned long)code[pc+1]];
 
@@ -6446,10 +7072,12 @@ void *ExecCode(int mode, VirtualMachine *restrict vm, void *restrict *code) {
   pc = 0;
   goto *code[0];
 
+
+ E_LOOP_RREC2_FREE_R:
+  free_Agent(reg[VM_OFFSET_ANNOTATE_R]);
   
  E_LOOP_RREC2:
   //      puts("looprrec reg ar");
-  freeAgent(reg[VM_OFFSET_ANNOTATE_R]);
   
   a1 = reg[(unsigned long)code[pc+1]];
 
@@ -6470,7 +7098,6 @@ void *ExecCode(int mode, VirtualMachine *restrict vm, void *restrict *code) {
   pc++;
   a1 = reg[(unsigned long)code[pc++]];
   reg[(unsigned long)code[pc++]] = a1;
-    
   goto *code[pc];
 
 
@@ -6608,7 +7235,7 @@ void *ExecCode(int mode, VirtualMachine *restrict vm, void *restrict *code) {
 
 
  E_EQI:
-  //    puts("EQI src1 int dest");
+  //    puts("EQI src1 fixint dest");
   pc++;
   {
     int i = reg[(unsigned long)code[pc++]];
@@ -6690,7 +7317,7 @@ void *ExecCode(int mode, VirtualMachine *restrict vm, void *restrict *code) {
 
 
  E_EQI_R0:
-  //    puts("EQ_R0 src1 int");
+  //      puts("EQI_R0 src1 int");
   pc++;
   {
     int i = reg[(unsigned long)code[pc++]];
@@ -6742,7 +7369,7 @@ void *ExecCode(int mode, VirtualMachine *restrict vm, void *restrict *code) {
 
 
  E_JMPEQ0_R0:
-  //    puts("JMPEQ0_R0 pc");
+  //      puts("JMPEQ0_R0 pc");
   pc++;
   {
     int i = reg[0];
@@ -6753,12 +7380,13 @@ void *ExecCode(int mode, VirtualMachine *restrict vm, void *restrict *code) {
       pc++;
     }
   }
+  
   goto *code[pc];
 
 
 
  E_JMPNEQ0:
-  //    puts("JMPNEQ0 reg pc");
+  //      puts("JMPNEQ0 reg pc");
   pc++;
   {
     int i = reg[(unsigned long)code[pc++]];
@@ -6769,6 +7397,7 @@ void *ExecCode(int mode, VirtualMachine *restrict vm, void *restrict *code) {
       pc++;
     }
   }
+  
   goto *code[pc];
 
   
@@ -6779,12 +7408,20 @@ void *ExecCode(int mode, VirtualMachine *restrict vm, void *restrict *code) {
   Count_cnct++;
 #endif
 
+#ifdef THREAD  
+  if (SleepingThreadsNum > 0) {
+    pc +=3;
+    goto *code[pc];
+  }    
+#endif
+  
   a1 = reg[(unsigned long)code[pc+1]];
   if (IS_FIXNUM(a1)) {
     pc +=3;
     goto *code[pc];
   }
 
+  
   while (IS_NAMEID(BASIC(a1)->id)) {
 
     if (NAME(a1)->port == (VALUE)NULL) {
@@ -6796,11 +7433,12 @@ void *ExecCode(int mode, VirtualMachine *restrict vm, void *restrict *code) {
       Count_cnct_indirect_op++;
 #endif      
     VALUE a2 = NAME(a1)->port;
-    freeName(a1);
+    free_Name(a1);
     a1 = a2;
-    reg[(unsigned long)code[pc+1]] = a2;   // これ必要? 2022/02/02
+    reg[(unsigned long)code[pc+1]] = a2;
   }
 
+    
   if (BASIC(a1)->id == ID_CONS) {
 #ifdef COUNT_CNCT    
     Count_cnct_true++;
@@ -6838,11 +7476,12 @@ void *ExecCode(int mode, VirtualMachine *restrict vm, void *restrict *code) {
       Count_cnct_indirect_op++;
 #endif      
     VALUE a2 = NAME(a1)->port;
-    freeName(a1);
+    free_Name(a1);
     a1 = a2;
-    reg[(unsigned long)code[pc+1]] = a2;
   }
 
+  reg[(unsigned long)code[pc+1]] = a1;
+    
   if (BASIC(a1)->id == (unsigned long)code[pc+2]) {
 #ifdef COUNT_CNCT    
     Count_cnct_true++;
@@ -6913,12 +7552,12 @@ void *ExecCode(int mode, VirtualMachine *restrict vm, void *restrict *code) {
   //    puts("CNCTGN reg reg");
   // "x"~s, "x"->t     ==> push(s,t), free("x") where "x" is a global name.
   {
-    VALUE x = reg[(unsigned long)code[pc+1]];
+    pc++;
+    VALUE x = reg[(unsigned long)code[pc++]];
     a1 = NAME(x)->port;
-    freeName(x);
-    PUSH(vm, reg[(unsigned long)code[pc+2]], a1);
+    free_Name(x);
+    PUSH(vm, reg[(unsigned long)code[pc++]], a1);
   }
-  pc +=3;
   goto *code[pc];
        
   
@@ -6927,11 +7566,11 @@ void *ExecCode(int mode, VirtualMachine *restrict vm, void *restrict *code) {
   //    puts("SUBSTGN reg reg");  
   // "x"~s, t->u("x")  ==> t->u(s), free("x") where "x" is a global name.
   {
-    VALUE x = reg[(unsigned long)code[pc+1]];
-    global_replace_keynode_in_another_term(x,reg[(unsigned long)code[pc+2]]);
-    freeName(x);
+    pc++;
+    VALUE x = reg[(unsigned long)code[pc++]];
+    global_replace_keynode_in_another_term(x,reg[(unsigned long)code[pc++]]);
+    free_Name(x);
   }
-  pc +=3;
   goto *code[pc];
   
   
@@ -6952,100 +7591,11 @@ void *ExecCode(int mode, VirtualMachine *restrict vm, void *restrict *code) {
 
 
 
-/******************************************
- Mark and Sweep for error recovery
-******************************************/
-#ifndef THREAD
-
-#ifdef EXPANDABLE_HEAP
-void sweep_AgentHeap(Heap *hp) {
-
-  HoopList *hoop_list = hp->last_alloc_list;
-  Agent *hoop;
-  
-  do {
-    hoop = (Agent *)(hoop_list->hoop);
-    for (int i = 0; i < HOOP_SIZE; i++) {
-
-      if (!IS_FLAG_MARKED(hoop[i].basic.id)) {
-	SET_HOOPFLAG_READYFORUSE(hoop[i].basic.id);
-      } else {
-	TOGGLE_FLAG_MARKED(hoop[i].basic.id);
-      }
-      
-    }
-    hoop_list = hoop_list->next;
-  } while (hoop_list != hp->last_alloc_list);
-}
-
-void sweep_NameHeap(Heap *hp) {
-  HoopList *hoop_list = hp->last_alloc_list;
-  Name *hoop;
-  
-  do { 
-    hoop = (Name *)(hoop_list->hoop);
-    for (int i = 0; i < HOOP_SIZE; i++) {
-
-      if (!IS_FLAG_MARKED(hoop[i].basic.id)) {
-	SET_HOOPFLAG_READYFORUSE(hoop[i].basic.id);
-      } else {
-	TOGGLE_FLAG_MARKED(hoop[i].basic.id);
-      }
-      
-    }
-    hoop_list = hoop_list->next;
-  } while (hoop_list != hp->last_alloc_list);
-  
-}
-#else
-
-// v0.5.6
-void sweep_AgentHeap(Heap *hp) {
-  int i;
-  for (i=0; i < hp->size; i++) {
-    if (!IS_FLAG_MARKED( ((Agent *)hp->heap)[i].basic.id)) {
-      SET_HEAPFLAG_READYFORUSE( ((Agent *)hp->heap)[i].basic.id);
-    } else {
-      TOGGLE_FLAG_MARKED( ((Agent *)hp->heap)[i].basic.id);
-    }
-  }
-}
-void sweep_NameHeap(Heap *hp) {
-  int i;
-  for (i=0; i < hp->size; i++) {
-    if (!IS_FLAG_MARKED( ((Name *)hp->heap)[i].basic.id)) {
-      SET_HEAPFLAG_READYFORUSE( ((Name *)hp->heap)[i].basic.id);
-    } else {
-      TOGGLE_FLAG_MARKED( ((Name *)hp->heap)[i].basic.id);
-    }
-  }
-}
 
 
-#endif
-
-
-void mark_and_sweep(void) {
-
-  mark_allHash();  
-  sweep_AgentHeap(&(VM.agentHeap));  
-  sweep_NameHeap(&VM.nameHeap);
-  VM.nextPtr_eqStack = -1;  
-}
-
-#endif
-
-
-
-/***********************************
- exec coequation
-**********************************/
-//#define DEBUG
-
-
-//#define CAS_USLEEP 4
-#define CAS_USLEEP 100
-
+// ------------------------------------------------------------
+// Evaluation of equations
+// ------------------------------------------------------------
 
 // It seems better WITHOUT `static inline'
 //static inline
@@ -7074,7 +7624,7 @@ loop_a2IsFixnum:
 
       void **code = NULL;
      
-      getRuleCodeInt(a1, &code);
+      RuleTable_get_code_for_Int(a1, &code);
 
       if (code == NULL) {	
 	// built-in
@@ -7098,7 +7648,7 @@ loop_a2IsFixnum:
 	    int m = FIX2INT(a2);
 	    a2 = INT2FIX(m+n);
 	    VALUE a1port0 = AGENT(a1)->port[0];
-	    freeAgent(a1);
+	    free_Agent(a1);
 	    a1 = a1port0;
 	    goto loop;
 	  }
@@ -7121,7 +7671,7 @@ loop_a2IsFixnum:
 	    int m = FIX2INT(a2);
 	    a2 = INT2FIX(m-n);
 	    VALUE a1port0 = AGENT(a1)->port[0];
-	    freeAgent(a1);
+	    free_Agent(a1);
 	    a1 = a1port0;
 	    goto loop;
 	  }
@@ -7144,7 +7694,7 @@ loop_a2IsFixnum:
 	    int m = FIX2INT(a2);
 	    a2 = INT2FIX(m*n);
 	    VALUE a1port0 = AGENT(a1)->port[0];
-	    freeAgent(a1);
+	    free_Agent(a1);
 	    a1 = a1port0;
 	    goto loop;
 	  }
@@ -7167,7 +7717,7 @@ loop_a2IsFixnum:
 	    int m = FIX2INT(a2);
 	    a2 = INT2FIX(m/n);
 	    VALUE a1port0 = AGENT(a1)->port[0];
-	    freeAgent(a1);
+	    free_Agent(a1);
 	    a1 = a1port0;
 	    goto loop;
 	  }
@@ -7190,7 +7740,7 @@ loop_a2IsFixnum:
 	    int m = FIX2INT(a2);
 	    a2 = INT2FIX(m%n);
 	    VALUE a1port0 = AGENT(a1)->port[0];
-	    freeAgent(a1);
+	    free_Agent(a1);
 	    a1 = a1port0;
 	    goto loop;
 	  }
@@ -7248,7 +7798,7 @@ loop_a2IsFixnum:
 
       COUNTUP_INTERACTION(vm);
       
-      ExecCode(1, vm, &code[2]);
+      exec_code(1, vm, &code[2]);
       return;
       
     } else {
@@ -7256,7 +7806,7 @@ loop_a2IsFixnum:
       if (NAME(a1)->port != (VALUE)NULL) {
 	VALUE a1p0;
 	a1p0=NAME(a1)->port;
-	freeName(a1);
+	free_Name(a1);
 	a1=a1p0;
 	goto loop_a2IsFixnum;
       } else {
@@ -7266,7 +7816,7 @@ loop_a2IsFixnum:
 	if (!(__sync_bool_compare_and_swap(&(NAME(a1)->port), NULL, a2))) {
 	  VALUE a1p0;
 	  a1p0=NAME(a1)->port;
-	  freeName(a1);
+	  free_Name(a1);
 	  a1=a1p0;
 	  goto loop_a2IsFixnum;
 	  
@@ -7320,7 +7870,7 @@ loop_a2IsAgent:
       int result;
       void **code;
             
-      code = getRuleCode(a1, a2, &result);
+      code = RuleTable_get_code(a1, a2, &result);
 
       if (result == 0) {
 
@@ -7335,8 +7885,8 @@ loop_a2IsAgent:
 	      // [] ~ [] --> nothing
 	      COUNTUP_INTERACTION(vm);
       
-	      freeAgent(a1);
-	      freeAgent(a2);	    
+	      free_Agent(a1);
+	      free_Agent(a2);	    
 	      return;
 	    }
 	  
@@ -7352,8 +7902,8 @@ loop_a2IsAgent:
 	      VALUE a2p1 = AGENT(a2)->port[1];
 	      PUSH(vm, a1p1, a2p1);
 
-	      freeAgent(a1);
-	      freeAgent(a2);	    
+	      free_Agent(a1);
+	      free_Agent(a2);	    
 	      a1 = AGENT(a1)->port[0];
 	      a2 = AGENT(a2)->port[0];
 	      goto loop;
@@ -7369,8 +7919,8 @@ loop_a2IsAgent:
 	      PUSH(vm, AGENT(a1)->port[2], AGENT(a2)->port[2]);
 	      PUSH(vm, AGENT(a1)->port[1], AGENT(a2)->port[1]);
 
-	      freeAgent(a1);
-	      freeAgent(a2);	    
+	      free_Agent(a1);
+	      free_Agent(a2);	    
 	      a1 = AGENT(a1)->port[0];
 	      a2 = AGENT(a2)->port[0];
 	      goto loop;
@@ -7388,8 +7938,8 @@ loop_a2IsAgent:
 	      PUSH(vm, AGENT(a1)->port[2], AGENT(a2)->port[2]);
 	      PUSH(vm, AGENT(a1)->port[1], AGENT(a2)->port[1]);
 
-	      freeAgent(a1);
-	      freeAgent(a2);	    
+	      free_Agent(a1);
+	      free_Agent(a2);	    
 	      a1 = AGENT(a1)->port[0];
 	      a2 = AGENT(a2)->port[0];
 	      goto loop;
@@ -7408,8 +7958,8 @@ loop_a2IsAgent:
 	      PUSH(vm, AGENT(a1)->port[2], AGENT(a2)->port[2]);
 	      PUSH(vm, AGENT(a1)->port[1], AGENT(a2)->port[1]);
 
-	      freeAgent(a1);
-	      freeAgent(a2);	    
+	      free_Agent(a1);
+	      free_Agent(a2);	    
 	      a1 = AGENT(a1)->port[0];
 	      a2 = AGENT(a2)->port[0];
 	      goto loop;
@@ -7423,8 +7973,8 @@ loop_a2IsAgent:
 	      // [] ~ [] --> nothing
 	      COUNTUP_INTERACTION(vm);
 	      
-	      freeAgent(a1);
-	      freeAgent(a2);	    
+	      free_Agent(a1);
+	      free_Agent(a2);	    
 	      return;
 	    }
 	  
@@ -7440,8 +7990,8 @@ loop_a2IsAgent:
 	      VALUE a2p1 = AGENT(a2)->port[1];
 	      PUSH(vm, a1p1, a2p1);
 
-	      freeAgent(a1);
-	      freeAgent(a2);	    
+	      free_Agent(a1);
+	      free_Agent(a2);	    
 	      a1 = AGENT(a1)->port[0];
 	      a2 = AGENT(a2)->port[0];
 	      goto loop;
@@ -7461,8 +8011,8 @@ loop_a2IsAgent:
 	      
 		VALUE a1p0 = AGENT(a1)->port[0];
 		VALUE a1p1 = AGENT(a1)->port[1];
-		freeAgent(a1);
-		freeAgent(a2);
+		free_Agent(a1);
+		free_Agent(a2);
 		a1=a1p0;
 		a2=a1p1;
 		goto loop;
@@ -7475,7 +8025,7 @@ loop_a2IsAgent:
 		
 		VALUE a1p0 = AGENT(a1)->port[0];
 		VALUE a2p1 = AGENT(a2)->port[1];
-		VALUE w = makeName(vm);
+		VALUE w = make_Name(vm);
 	      
 		AGENT(a2)->port[1] = w;
 		PUSH(vm, a1p0, a2);
@@ -7502,7 +8052,7 @@ loop_a2IsAgent:
 		AGENT(a1)->port[2] = (VALUE)NULL;
 		PUSH(vm, a1, AGENT(a2)->port[1]);
 		PUSH(vm, a1, AGENT(a2)->port[0]);
-		freeAgent(a2);
+		free_Agent(a2);
 		return;
 		
 		
@@ -7523,8 +8073,8 @@ loop_a2IsAgent:
 		return;
 	      } else {
 		VALUE a1p0 = AGENT(a1)->port[0];
-		freeAgent(AGENT(a1)->port[1]);
-		freeAgent(a1);
+		free_Agent(AGENT(a1)->port[1]);
+		free_Agent(a1);
 		a1 = a1p0;
 		goto loop;
 	      }
@@ -7545,8 +8095,8 @@ loop_a2IsAgent:
 		COUNTUP_INTERACTION(vm);
 		
 		VALUE a1p0 = AGENT(a1)->port[0];
-		freeAgent(AGENT(a1)->port[2]);
-		freeAgent(a1);
+		free_Agent(AGENT(a1)->port[2]);
+		free_Agent(a1);
 		a1 = a1p0;
 		goto loop;
 	      } else {
@@ -7562,7 +8112,7 @@ loop_a2IsAgent:
 		COUNTUP_INTERACTION(vm);
 		
 		VALUE a1p0 = AGENT(a1)->port[0];
-		VALUE w = makeName(vm);
+		VALUE w = make_Name(vm);
 		AGENT(a1)->port[0] = w;
 		PUSH(vm, a1, AGENT(a2)->port[1]);
 		
@@ -7580,8 +8130,8 @@ loop_a2IsAgent:
 		  COUNTUP_INTERACTION(vm);
 		  
 		  VALUE a1p0 = AGENT(a1)->port[0];
-		  freeAgent(AGENT(a1)->port[2]);   // free the lock for NIL
-		  freeAgent(a1);
+		  free_Agent(AGENT(a1)->port[2]);   // free the lock for NIL
+		  free_Agent(a1);
 		  a1 = a1p0;
 		  goto loop;
 		  
@@ -7597,7 +8147,7 @@ loop_a2IsAgent:
 		  COUNTUP_INTERACTION(vm);
 		  
 		  VALUE a1p0 = AGENT(a1)->port[0];		  
-		  VALUE w = makeName(vm);
+		  VALUE w = make_Name(vm);
 		  AGENT(a1)->port[0] = w;
 		  PUSH(vm, a1, AGENT(a2)->port[1]);
 		  
@@ -7709,15 +8259,15 @@ loop_a2IsAgent:
       vm->reg[VM_OFFSET_ANNOTATE_L] = a1;
       vm->reg[VM_OFFSET_ANNOTATE_R] = a2;
 
-      //freeAgent(a1);
-      //freeAgent(a2);
+      //free_Agent(a1);
+      //free_Agent(a2);
 
       //      vm->L = a1;
       //      vm->R = a2;
 
       COUNTUP_INTERACTION(vm);
       
-      ExecCode(1, vm, &code[2]);
+      exec_code(1, vm, &code[2]);
 
 
 	
@@ -7730,7 +8280,7 @@ loop_a2IsAgent:
 
 	VALUE a1p0;
 	a1p0=NAME(a1)->port;
-	freeName(a1);
+	free_Name(a1);
 	a1=a1p0;
 	goto loop_a2IsAgent;
       } else {
@@ -7740,7 +8290,7 @@ loop_a2IsAgent:
 	if (!(__sync_bool_compare_and_swap(&(NAME(a1)->port), NULL, a2))) {
 	  VALUE a1p0;
 	  a1p0=NAME(a1)->port;
-	  freeName(a1);
+	  free_Name(a1);
 	  a1=a1p0;
 	  goto loop_a2IsAgent;
 	  
@@ -7755,7 +8305,7 @@ loop_a2IsAgent:
     if (NAME(a2)->port != (VALUE)NULL) {
       VALUE a2p0;
       a2p0=NAME(a2)->port;
-      freeName(a2);
+      free_Name(a2);
       a2=a2p0;
       goto loop;
     } else {
@@ -7765,7 +8315,7 @@ loop_a2IsAgent:
       if (!(__sync_bool_compare_and_swap(&(NAME(a2)->port), NULL, a1))) {
 	VALUE a2p0;
 	a2p0=NAME(a2)->port;
-	freeName(a2);
+	free_Name(a2);
 	a2=a2p0;
 	goto loop;
       }
@@ -7868,28 +8418,27 @@ void WHNF_execution_loop(void) {
 int exec(Ast *at) {
   // Ast at: (AST_BODY stmlist aplist)
 
-  unsigned long long t, time;  
-  
-  void* code[MAX_CODE_SIZE];
-
+  unsigned long long t, time;    
+  void* code[MAX_VMCODE_SEQUENCE];
   
   start_timer(&t);
 
   CmEnv_clear_all();
 
+  
   // for `where' expression
-  if (!CompileStmListFromAst(at->left)) return 0;
-
+  if (!Compile_stmlist_on_ast(at->left)) return 0;
 
   // aplist
   at = at->right;
 
   // for aplists
-  //      puts(""); ast_puts(at); puts("");
-  Ast_RewriteOptimisation_EQList(at);
-  //      puts(""); ast_puts(at); puts("");
-  //      exit(1);
+  //        puts(""); ast_puts(at); puts("");
+  Ast_RewriteOptimisation_eqlist(at);
+  //        puts(""); ast_puts(at); puts("");
+  //        exit(1);
 
+	
   
   // Syntax error check
   {
@@ -7913,8 +8462,8 @@ int exec(Ast *at) {
 
     left = at->left->left;
     right = at->left->right;
-    p1 = CompileTermFromAst(left, -1);
-    p2 = CompileTermFromAst(right, -1);
+    p1 = Compile_term_on_ast(left, -1);
+    p2 = Compile_term_on_ast(right, -1);
 
 
     if (left->id == AST_NAME) {
@@ -7943,13 +8492,13 @@ int exec(Ast *at) {
   }
 
 
-  CmEnv_Retrieve_GNAME();
+  CmEnv_retrieve_MKGNAME();
   CmEnv_generate_VMCode(code);
 
   
   /*
   // for debug
-  CmEnv_Retrieve_GNAME();
+  CmEnv_retrieve_MKGNAME();
   IMCode_puts(0); //exit(1);
 
   int codenum = CmEnv_generate_VMCode(code);
@@ -7972,7 +8521,7 @@ int exec(Ast *at) {
   }
 
   
-  ExecCode(1, &VM, code);
+  exec_code(1, &VM, code);
 
 
 #ifdef COUNT_INTERACTION
@@ -8013,8 +8562,8 @@ int exec(Ast *at) {
   
 #ifdef VERBOSE_NODE_USE
   printf("(%lu agents and %lu names nodes are used.)\n", 
-	 Heap_GetNum_Usage_forAgent(&VM.agentHeap),
-	 Heap_GetNum_Usage_forName(&VM.nameHeap));
+	 Heap_getnum_used_forAgent(&VM.agentHeap),
+	 Heap_getnum_used_forName(&VM.nameHeap));
 #endif	 
 
 #ifdef COUNT_CNCT
@@ -8029,7 +8578,8 @@ int exec(Ast *at) {
 
 #else
 
-int CpuNum=1; // CPU 数の設定用（sysconf(_SC_NPROSSEORS_CONF)) を使って求める）
+// CPU 数の設定用（sysconf(_SC_NPROSSEORS_CONF)) を使って求める）
+static int CpuNum=1; 
 
 static pthread_cond_t ActiveThread_all_sleep = PTHREAD_COND_INITIALIZER;
 static pthread_t *Threads;
@@ -8061,7 +8611,8 @@ void *tpool_thread(void *arg) {
 
       // Not sure, but it works well. Perhaps it can reduce race condition.
       usleep(CAS_LOCK_USLEEP);
-
+      usleep(CAS_LOCK_USLEEP);
+      usleep(CAS_LOCK_USLEEP);
       
       pthread_mutex_lock(&Sleep_lock);
       SleepingThreadsNum++;
@@ -8077,17 +8628,9 @@ void *tpool_thread(void *arg) {
       SleepingThreadsNum--;
       pthread_mutex_unlock(&Sleep_lock);  
       //            printf("[Thread %d is waked up.]\n", vm->id);
-
-
-
-      
     }
 
-
-
-    eval_equation(vm, t1, t2);
-
-    
+    eval_equation(vm, t1, t2);    
   }
 
   return (void *)NULL;
@@ -8139,10 +8682,10 @@ void tpool_init(unsigned int agentBufferSize, unsigned int eqstack_size) {
     VM_Init(VMs[i], agentBufferSize, eqstack_size);
 #endif
     
-    status = pthread_create( &Threads[i],
-		    &attr,
-		    tpool_thread,
-		    (void *)VMs[i]);
+    status = pthread_create(&Threads[i],
+			    &attr,
+			    tpool_thread,
+			    (void *)VMs[i]);
     if (status!=0) {
       printf("ERROR: Thread%d could not be created.", i);
       exit(-1);
@@ -8150,15 +8693,12 @@ void tpool_init(unsigned int agentBufferSize, unsigned int eqstack_size) {
   }
 }
 
+ 
 void tpool_destroy(void) {
-  int i;
-  for (i=0; i<MaxThreadsNum; i++) {
-    pthread_join( Threads[i],
-		  NULL);
+  for (int i=0; i<MaxThreadsNum; i++) {
+    pthread_join(Threads[i], NULL);
   }
   free(Threads);
-
-
 }
 
 
@@ -8166,30 +8706,29 @@ int exec(Ast *at) {
   // Ast at: (AST_BODY stmlist aplist)
   
   unsigned long long t, time;
-  int i;
 
+  void* code[MAX_VMCODE_SEQUENCE];  
+  int eqsnum = 0;
+
+  
 #ifdef COUNT_INTERACTION
-  for (i=0; i<MaxThreadsNum; i++) {
+  for (int i=0; i<MaxThreadsNum; i++) {
     VM_Clear_InteractionCount(VMs[i]);
   }
 #endif
-
-  void* code[MAX_CODE_SIZE];
   
-  int eqsnum = 0;
-
   start_timer(&t);
   
   CmEnv_clear_all();
 
   // for `where' expression
-  if (!CompileStmListFromAst(at->left)) return 0;
+  if (!Compile_stmlist_on_ast(at->left)) return 0;
 
   
   // aplist
   at = at->right;
   
-  Ast_RewriteOptimisation_EQList(at);
+  Ast_RewriteOptimisation_eqlist(at);
 
   // Syntax error check
   {
@@ -8212,8 +8751,8 @@ int exec(Ast *at) {
     Ast *left, *right;
     left = at->left->left;
     right = at->left->right;
-    p1 = CompileTermFromAst(left, -1);
-    p2 = CompileTermFromAst(right, -1);
+    p1 = Compile_term_on_ast(left, -1);
+    p2 = Compile_term_on_ast(right, -1);
 
     if (left->id == AST_NAME) {
       select_kind_of_push(left, p1, p2);
@@ -8237,12 +8776,12 @@ int exec(Ast *at) {
   }
 
 
-  CmEnv_Retrieve_GNAME();
+  CmEnv_retrieve_MKGNAME();
   CmEnv_generate_VMCode(code);
 
   /*
   // for debug
-  CmEnv_Retrieve_GNAME();
+  CmEnv_retrieve_MKGNAME();
   IMCode_puts(0); //exit(1);
 
   int codenum = CmEnv_generate_VMCode(code);
@@ -8251,18 +8790,18 @@ int exec(Ast *at) {
   */
   
       
-  ExecCode(1, VMs[0], code);
+  exec_code(1, VMs[0], code);
 
 
   
-  //分散用
+  // Distribute equations to virtual machines
   {
     int each_eqsnum = eqsnum / MaxThreadsNum;
     if (each_eqsnum == 0) each_eqsnum = 1;
-    for (i=1; i<MaxThreadsNum; i++) {
-      VALUE t1, t2;
-      int j;
-      for (j=0; j<each_eqsnum; j++) {
+    
+    VALUE t1, t2;
+    for (int i=1; i<MaxThreadsNum; i++) {
+      for (int j=0; j<each_eqsnum; j++) {
 	if (!VM_EQStack_Pop(VMs[0], &t1, &t2)) goto endloop;
 	VM_EQStack_Push(VMs[i], t1, t2);
       }
@@ -8271,7 +8810,7 @@ int exec(Ast *at) {
  endloop:
 
 
-  
+
   pthread_mutex_lock(&Sleep_lock);
   pthread_cond_broadcast(&EQStack_not_empty);
   pthread_mutex_unlock(&Sleep_lock);
@@ -8288,18 +8827,29 @@ int exec(Ast *at) {
     pthread_mutex_unlock(&AllSleep_lock);
   }
 
+
+  usleep(10000);  // 0.01 sec wait
+  //  usleep(CAS_LOCK_USLEEP);  
+  for (int i=0; i<MaxThreadsNum; i++) {
+    //    printf("VM[%d]: nextPtr_eqStack=%d\n", i, VMs[i]->nextPtr_eqStack);
+    if (VMs[i]->nextPtr_eqStack != -1)
+      goto endloop;
+  }
+
+  
   time=stop_timer(&t);
 
 #ifdef COUNT_INTERACTION
-  unsigned long total=0;
-  for (i=0; i<MaxThreadsNum; i++) {
-    total += VM_Get_InteractionCount(VMs[i]);
+  {
+    unsigned long total=0;
+    for (int i=0; i<MaxThreadsNum; i++) {
+      total += VM_Get_InteractionCount(VMs[i]);
+    }
+    printf("(%lu interactions by %d threads, %.2f sec)\n", 
+	   total,
+	   MaxThreadsNum,
+	   (double)(time)/1000000.0);
   }
-  printf("(%lu interactions by %d threads, %.2f sec)\n", 
-	 total,
-	 MaxThreadsNum,
-	 (double)(time)/1000000.0);
-
 
 #else
   printf("(%.2f sec by %d threads)\n", 	
@@ -8529,7 +9079,7 @@ int main(int argc, char *argv[])
   }
 
 
-  // Dealing with fname
+  // input file source
   if (fname == NULL) {
     yyin = stdin;
     
@@ -8599,7 +9149,7 @@ int main(int argc, char *argv[])
   
 #ifdef THREAD
   // if some threads invoked by the initialise are still working,
-  // wait for all of these to sleep.
+  // wait until these all sleep.
   if (SleepingThreadsNum < MaxThreadsNum) {
     pthread_mutex_lock(&AllSleep_lock);
     pthread_cond_wait(&ActiveThread_all_sleep, &AllSleep_lock);
