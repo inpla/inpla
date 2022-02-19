@@ -135,7 +135,7 @@ int IdTable_is_builtin_rule(Ast *agentL, Ast *agentR) {
   }
 
   if (idL == ID_APPEND) {
-    if ((agentR->id == AST_CONS) || (agentR->id == AST_NIL)) {
+    if ((agentR->id == AST_OPCONS) || (agentR->id == AST_NIL)) {
       return 1;
     }
     return 0;

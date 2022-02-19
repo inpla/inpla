@@ -15,7 +15,7 @@ typedef struct {
   int nth;
 } SymbolTable;
 
-SymbolTable SymTable, ConstTable;
+static SymbolTable SymTable, ConstTable;
 
 
 void SymTable_init(SymbolTable *table) {
@@ -200,22 +200,21 @@ Ast *ast_makeTuple(Ast *tuple) {
 }
 
 Ast *ast_paramToCons(Ast *ast) { 
-  // ast は List(a, List(b,NULL)) という astlist が入ってくるとして、
-  // これを AST_CONS(nonsym, a, AST_CONS(nonsym, b, AST_NIL())) と変換する
+  // Suppose that ast has the following form:
+  //   LIST(a, LIST(b, NULL)).
+  // This function makes it an agent form like:
+  //   AST_OPCONS(NULL, List(a, AST_OPCONS(NULL, List(b, NIL())))
 
-  Ast *at = ast;
-  while (ast != NULL) {
-    at->id = AST_CONS;
-    if (at->right == NULL) {
-      Ast *ptr;
-      ptr = ast_myalloc();
-      ptr->id = AST_NIL;
-      at->right = ptr;
-      break;
-    }
-    at=at->right;
+  if (ast == NULL) {
+    return ast_makeAST(AST_NIL, NULL, NULL);
   }
-  return ast;
+
+  Ast *head = ast->left;
+  Ast *tail = ast->right;
+  Ast *ret = ast_makeAST(AST_OPCONS, NULL,
+			 ast_makeList2(head, ast_paramToCons(tail)));
+  return ret;
+  
 }
 
 
@@ -253,8 +252,9 @@ Ast *ast_getTail(Ast *p)
 void ast_puts(Ast *p) {
   static char *string_AstID[] = {
     // basic
-    "SYM", "NAME", "INTNAME", "AGENT", "CNCT", "RULE",
-    "BODY", "IF", "THEN_ELSE", 
+    "SYM", "NAME", "INTNAME", "AGENT",
+    "CNCT", "CNCT_TRO_INT", "CNCT_TRO_CONS", "CNCT_TRO",
+    "RULE", "BODY", "IF", "THEN_ELSE", 
 
     // LIST
     "LIST", 
@@ -263,12 +263,12 @@ void ast_puts(Ast *p) {
     "(*L)", "(*R)",
 
     // extension
-    "TUPLE", "PPAIR", 
+    "TUPLE", 
     "INT", "LD", "ADD", "SUB", "MUL", "DIV", "MOD", 
     "LT", "LE",  "EQ", "NE", "UNM", "AND", "OR", "NOT",
 
     
-    "CONS", "NIL", "OPCONS",
+    "CONS", "NIL", 
     "RAND", "SRAND", 
 
     // default
@@ -286,11 +286,6 @@ void ast_puts(Ast *p) {
     break;
   case AST_TUPLE:
     printf("TUPLE(%d)(", p->intval);
-    ast_puts(p->right);
-    printf(")");
-    break;
-  case AST_PPAIR:
-    printf("PPAIR(");
     ast_puts(p->right);
     printf(")");
     break;
