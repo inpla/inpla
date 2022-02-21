@@ -5,7 +5,7 @@
 #### Polished:
 * **Bytecode optimisation inspired by Tail Recursive Optimisation**:  As a result, this optimisation brings about faster computation up to about twice in comparison with no reuse-annotated computation.
 
-  * When an interaction rule has a connection whose both sides agents have the same IDs to the active pair, computation of the connection can be realised by applying the same bytecode sequence of the rule to the connection after replacing ports of active pairs into the agent ports of the connection. Moreover, when the connection is placed at the tail of a connection sequence, we can restart the same bytecode sequence after replacing these ports. For instance, take the following rule for Fibonacci number:
+  * When an interaction rule has a connection whose both sides agents have the same IDs to the active pair, computation of the connection can be realised by applying the same bytecode sequence of the rule to the connection after replacing ports of the active pair into agent ports of the connection. Moreover, when the connection is placed at the tail of a connection sequence, we can restart the same bytecode sequence after replacing these ports. For instance, take the following rule for Fibonacci number:
 
     ```
     fib(ret) >< (int n)
