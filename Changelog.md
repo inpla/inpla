@@ -1,11 +1,21 @@
 # Change log
 
+### v0.7.3-1 (released on 24 February 2022)
+
+#### Bug Fix:
+* **TRO Bytecode Optimisation for empty connection sequences**: The optimisation for empty connection sequence had caused Segmentation fault, and it was fixed.
+* **Bytecode instruction execution**: The following error were fixed.
+  * Execution of an instruction of TRO for general agents: Indirection was not correctly applied.
+  * Execution of an instruction for substitutions of global names: `pc++` was applied to a macro argument, and it caused some increments.
+
+
+
 ### v0.7.3 (released on 20 February 2022)
 
-#### Polished:
-* **Bytecode optimisation inspired by Tail Recursive Optimisation**:  As a result, this optimisation brings about faster computation up to about twice in comparison with no reuse-annotated computation.
+#### New Features:
+* **Bytecode optimisation inspired by Tail Recursive Optimisation**:  As a result this optimisation brings about faster computation up to about twice in comparison with no reuse-annotated computation.
 
-  * When an interaction rule has a connection whose both sides agents have the same IDs to the active pair, computation of the connection can be realised by applying the same bytecode sequence of the rule to the connection after replacing ports of the active pair into agent ports of the connection. Moreover, when the connection is placed at the tail of a connection sequence, we can restart the same bytecode sequence after replacing these ports. For instance, take the following rule for Fibonacci number:
+  * When interaction rules have a connection whose the left and the right hand sides have the same IDs to the active pair, computation of the connection can be realised by a loop operation that applies the same bytecode sequence of the rule with replacing ports of active pairs. For instance, take the following Fibonacci number:
 
     ```
     fib(ret) >< (int n)
@@ -13,14 +23,14 @@
     | n == 1 => ret~1
     | _ => Add(ret, cnt2)~cnt1, fib(cnt1)~(n-1), fib(cnt2)~(n-2);
     ```
-    This rule has a connection `fib(cnt2)~(n-2)` at the tail of the third connection sequence. The connection is computable by using the same bytecode sequence of `fib(ret)><(int n)` with replacing these ports `ret`,  `n` into `cnt2`, `n-2`, respectively. So, the computation of the third connection sequence is realised by bytecode sequences of the other connections and the port replacing, and a loop operation to start execution from the top of the rule sequence.
+    This rule has `fib(cnt2)~(n-2)` as the connection for the loop, and it is possible to be applied the same bytecode sequence of `fib(ret)><(int n)` with replacing these ports `ret`,  `n` into `cnt2`, `n-2`, respectively. So, this rule computation is realised by execution of the other connections and the loop operation for the connection `fib(cnt2)~(n-2)`.
 
   * This is also possible not only for agents like `(int n)`, but also other constructor agents such as `Cons(x,xs)`, `S(x)`. The following is a part of rules for insertion sort:
 
     ```
     isort(ret) >< x:xs => insert(ret, x)~cnt, isort(cnt)~xs;
     ```
-    When the `xs` connects to an `Cons(y,ys)` agent, then the computation is also realised by the loop operation because the `isort(cnt)~xs` can be regarded as `isort(cnt)~y:ys`, whose agents have the same IDs of the active pair. So, by introducing a conditional branch whether the `xs` connects to a `Cons` agent or not, this rule computation is also realised by the loop operation.
+    When the `xs` connects to an `Cons(y,ys)` agent, then the computation is also realised by the loop operation because the `isort(cnt)~xs` can be regarded as `isort(cnt)~y:ys`, whose agents have the same IDs of the active pair. So, by introducing a conditional branch if the `xs` is connected to a `Cons` agent or not, this rule computation is also realised by the loop operation.
   
   * In this version, this optimisation will be triggered when such the connection is placed at the tail of a sequence of connections.
 

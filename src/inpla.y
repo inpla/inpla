@@ -49,8 +49,8 @@
 //#define COUNT_MKAGENT // count of execution fo mkagent
 
 
-#define VERSION "0.7.3"
-#define BUILT_DATE  "20 Feb. 2022"  
+#define VERSION "0.7.3-1"
+#define BUILT_DATE  "24 Feb. 2022"  
 // ------------------------------------------------------------------
 
 
@@ -4881,8 +4881,11 @@ void Ast_make_annotation_TailRecursionOptimisation(Ast *mainbody) {
   Ast *agent_TRO = NULL;
   AST_ID astID_of_TRO = idL;  // idL is dummy
 
+
+  if (mainbody == NULL)
+    return;
   
-  if ((mainbody == NULL) || (mainbody->id == AST_BODY)) {
+  if (mainbody->id == AST_BODY) {
     Ast *body = mainbody;
 
     //    int idR = CmEnv.idR;
@@ -7478,9 +7481,9 @@ void *exec_code(int mode, VirtualMachine * restrict vm, void * restrict *code) {
     VALUE a2 = NAME(a1)->port;
     free_Name(a1);
     a1 = a2;
+    reg[(unsigned long)code[pc+1]] = a1;
   }
 
-  reg[(unsigned long)code[pc+1]] = a1;
     
   if (BASIC(a1)->id == (unsigned long)code[pc+2]) {
 #ifdef COUNT_CNCT    
@@ -7551,6 +7554,7 @@ void *exec_code(int mode, VirtualMachine * restrict vm, void * restrict *code) {
  E_CNCTGN:
   //    puts("CNCTGN reg reg");
   // "x"~s, "x"->t     ==> push(s,t), free("x") where "x" is a global name.
+  /*
   {
     pc++;
     VALUE x = reg[(unsigned long)code[pc++]];
@@ -7559,7 +7563,22 @@ void *exec_code(int mode, VirtualMachine * restrict vm, void * restrict *code) {
     PUSH(vm, reg[(unsigned long)code[pc++]], a1);
   }
   goto *code[pc];
-       
+  */
+  {
+    VALUE x = reg[(unsigned long)code[pc+1]];
+    a1 = NAME(x)->port;
+    free_Name(x);
+    VALUE t = reg[(unsigned long)code[pc+2]];
+
+        puts("============================================");
+        puts_term(t);printf("\n~");puts_term(a1);puts("");
+        puts("============================================");
+
+    PUSH(vm, t, a1);
+  }
+  pc +=3;
+  goto *code[pc];
+
   
 
  E_SUBSTGN:
