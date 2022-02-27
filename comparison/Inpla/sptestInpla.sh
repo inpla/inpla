@@ -9,6 +9,7 @@ ct=10
 waittime=5
 
 max_threads=9
+min_threads=1
 
 # options
 source=$1
@@ -129,7 +130,7 @@ puts_header $log "$source $opt"
 do_experiment "./$inpla_seq -f $path_source $opt" "non-thread"
 
 # Execution in parallel
-for ((thread=1; thread<=max_threads; thread++))
+for ((thread=min_threads; thread<=max_threads; thread++))
 do 
   do_experiment "./$inpla_para -f $path_source $opt -t $thread" "-t $thread"
 done
