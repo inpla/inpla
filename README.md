@@ -6,18 +6,18 @@
 
 Inpla is a multi-threaded parallel interpreter of interaction nets. Once you write programs for sequential execution, it works also in multi-threaded parallel execution. Each thread is managed on each CPU-core with POSIX-thread library. 
 
-* The current version is 0.7.3-1 (BugFix) released on **24 February 2022**. (See [Changelog.md](Changelog.md) for details.)
+* The current version is 0.8.0 released on **27 February 2022**. (See [Changelog.md](Changelog.md) for details.)
 
-![speedup-ratio](pic/benchmark_reuse_v0.7.3.png)
+![speedup-ratio](pic/benchmark_reuse_v0.8.0.png)
 
 |                | Haskell  |   SML    | Python | Inpla1 | Inpla1_r | Inpla8 | Inpla8_r |
 | -------------- | :------: | :------: | :----: | :----: | :------: | :----: | :------: |
-| ack(3,11)    |   2.31   | **0.41** |   -    |  4.75  |   3.47   |  1.53  |   0.69   |
-| fib 38       |   1.60   | **0.26** |  8.49  |  2.39  |   2.89   |  0.48  |   0.47   |
-| bsort 40000  |  34.81   |  11.17   | 76.72  | 15.56 | 17.16 |  3.99  | **2.60** |
-| isort 40000  | **0.02** |   2.97   | 36.63  | 7.66 |   8.38   |  2.04  |   1.27   |
-| qsort 800000 | **0.15** |   1.16   | 97.30  |  2.32  |   1.82   |  0.56  |   0.35   |
-| msort 800000 | 0.46 |   1.00   | 98.27  |  1.23  |   1.37   |  0.41  |   **0.33**   |
+| ack(3,11)    |   2.31   | **0.41** |   -    |  4.42  |   3.53   |  0.83  |   0.72   |
+| fib 38       |   1.60   | **0.26** |  8.49  |  2.30  |   2.83   |  0.40  |   0.41   |
+| bsort 40000  |  34.81   |  11.17   | 76.72  | 17.64 | 16.92 |  2.95  | **2.51** |
+| isort 40000  | **0.02** |   2.97   | 36.63  | 6.72 |   8.34   |  1.15  |   1.23   |
+| qsort 800000 | **0.15** |   1.16   | 97.30  |  6.07  |   1.81   |  0.63  |   0.36   |
+| msort 800000 | 0.46 |   1.00   | 98.27  |  3.92  |   1.36   |  0.46  |   **0.34**   |
 
 - **Comparison in execution time** with other implementations: **Haskell** (GHC version 8.10.7), **Standard ML of New Jersey** v110.74 (interpreter mode) and **Python** 3.8.5 in execution time.
   
@@ -39,16 +39,18 @@ Inpla is a multi-threaded parallel interpreter of interaction nets. Once you wri
   - [Interactive mode (single-thread version)](#interactive-mode-single-thread-version)
   - [Interactive mode (multi-thread version)](#interactive-mode-multi-thread-version)
   - [Batch mode and sample files](#batch-mode-and-sample-files)
-  - [Execution Options](#execution-options)
 * [Introduction to Programming in Inpla](#introduction-to-programming-in-inpla)
 * [Commands](#commands)
+* [Execution Options](#execution-options)
 * [Updates](#updates)
 * [Publications](#publications)
 * [Related Works](#related-works)
 * [License](#license)
 
 
+
 ## Getting Started
+
 * Requirement 
   - gcc (>= 4.0), flex, bison
 
@@ -73,7 +75,7 @@ Inpla is a multi-threaded parallel interpreter of interaction nets. Once you wri
 	
 	```
 	$ ./inpla
-	Inpla 0.7.3 : Interaction nets as a programming language [built: 20 Feb. 2022]
+	Inpla 0.8.0 : Interaction nets as a programming language [built: 27 Feb. 2022]
 	>>> 
 	```
 
@@ -130,7 +132,7 @@ Inpla is a multi-threaded parallel interpreter of interaction nets. Once you wri
   
     ```
     $ ./inpla -f sample/gcd.in
-    Inpla 0.7.3 : Interaction nets as a programming language [built: 20 Feb. 2022]
+    Inpla 0.8.0 : Interaction nets as a programming language [built: 27 Feb. 2022]
     (4 interactions, 0.00 sec)
     7
     
@@ -163,7 +165,7 @@ Inpla is a multi-threaded parallel interpreter of interaction nets. Once you wri
 
     ```
     $ ./inpla -f sample/isort.in
-    Inpla 0.7.3 : Interaction nets as a programming language [built: 20 Feb. 2022]
+    Inpla 0.8.0 : Interaction nets as a programming language [built: 27 Feb. 2022]
     (16 interactions, 0.00 sec)
     [1,2,3,6,9]
     
@@ -233,7 +235,7 @@ Inpla is a multi-threaded parallel interpreter of interaction nets. Once you wri
 
       ```
       $ ./inpla -f sample/qsort.in
-      Inpla 0.7.3 : Interaction nets as a programming language [built: 20 Feb. 2022]
+      Inpla 0.8.0 : Interaction nets as a programming language [built: 27 Feb. 2022]
       (22 interactions, 0.00 sec)
       [1,2,3,6,9]
       
@@ -252,30 +254,6 @@ Inpla is a multi-threaded parallel interpreter of interaction nets. Once you wri
       $ ./inpla -f sample/linear-systemT.in
   
   
-
-### Execution Options
-
-* When invoking Inpla, you can specify the following options:
-
-  ```
-  $ ./inpla -h
-  Inpla version 0.7.3
-  Usage: inpla [options]
-  
-  Options:
-   -f <filename>    Set input file name                 (Defalut:    STDIN)
-   -e <number>      Set the unit size of the EQ stack   (Default:      256)
-   -w               Enable Weak Reduction strategy      (Default:    false) 
-   -t <number>      Set the number of threads           (Default:        8)
-   -d <Name>=<val>  Bind <val> to <Name>
-   -h               Print this help message
-  ```
-
-**Note**: 
-
-* The option `-w` is available for the single-thread version.
-* The option ```-t``` is available for the multi-thread version that is compiled by ```make thread```. The default value is setting for the number of cores, so execution will be automatically scaled without specifying this. 
-
 
 
 # Introduction to Programming in Inpla
@@ -817,16 +795,68 @@ Inpla has the following macro:
 
 
 
+## Execution Options
+
+* When invoking Inpla, you can specify the following options:
+
+  ```
+  $ ./inpla -h
+  Inpla version 0.8.0
+  Usage: inpla [options]
+  
+   -f <filename>    Set input file name                   (Defalut:      STDIN)
+   -d <Name>=<val>  Bind <val> to <Name>
+   -Xms <num>       Set initial heap size to 2^<num>      (Defalut: 12 (=4096))
+   -Xmt <num>       Set increasing heap times to 2^<num>  (Defalut:  3 (=   8))
+                        0: the same size heap is inserted when it runs up.
+                        1: the twice (=2^1) size heap is inserted.
+   -Xes <num>       Set initial equation stack size       (Default:        256)
+   -w               Enable Weak Reduction strategy        (Default:      false)
+   -t <num>         Set the number of threads             (Default:          8)
+  
+   -h               Print this help message
+  ```
+
+**Note**: 
+
+* The option `-w` is available for the single-thread version.
+* The option ```-t``` is available for the multi-thread version that is compiled by ```make thread```. The default value is setting for the number of cores, so execution will be automatically scaled without specifying this. 
+
+
+
+
 ## Updates
 
 See [Changelog.md](Changelog.md) for details.
+
+
+### v0.8.0 (released on 27 February 2022)
+
+#### New Features:
+
+* **Flexibly expandable ring buffer for agents and names**: We can change the size of buffers that are inserted when all of nodes run up, though it was fixed before. It is possible to start a small heap for small computation, and it can be expanded for larger computation.
+
+  ![speedup-ratio](pic/flexibily_expandable.png)
+
+  * To set the initial size to 2^*n*, use the execution option `-Xms n` (default `n` is 12, so the size is 4096):
+  * To set the increasing magnification to 2^*n*, use the option `-Xmt n` (default `n` is 3, so the inserted heap is 8 times of the run up heap)
+
+  To use the fixed sized ring buffer, comment out the following definition in `src/inpla.y`:
+
+  ```
+  #define EXPANDABLE_HEAP    // Expandable heaps for agents and names
+  ```
+
+  
+
+   
 
 ### v0.7.0 (released on 30 January 2022)
 
 #### New Features:
 
-- **Logical operators on integers**: Not `!` (`not`), And `&&` (`and`)  and Or `||` (`or`) are available.  Only `0` is regarded as False and these operators return `1` for Truth, `0` for False.
-- **Bytecode optimisations**: Bytecodes are optimised by Copy propagation, Dead code elimination methods. See [Changelog.md](Changelog.md) for more details.
+* **Logical operators on integers**: Not `!` (`not`), And `&&` (`and`)  and Or `||` (`or`) are available.  Only `0` is regarded as False and these operators return `1` for Truth, `0` for False.
+* **Bytecode optimisations**: Bytecodes are optimised by Copy propagation, Dead code elimination methods. See [Changelog.md](Changelog.md) for more details.
 
 
 
@@ -834,13 +864,13 @@ See [Changelog.md](Changelog.md) for details.
 
 #### New Features:
 
-- **Introduced new data structure for ring buffers for agents and names**: The ring buffers are automatically expanded when all elements of these are used up. See [Changelog.md](Changelog.md) for more details.
+* **Introduced new data structure for ring buffers for agents and names**: The ring buffers are automatically expanded when all elements of these are used up. See [Changelog.md](Changelog.md) for more details.
 
   
 
 ### Logo of Inpla (relased on 27 December 2021)
 
-- A logo is released as an idea:
+* A logo is released as an idea:
 
   ![inpla-logo](pic/inpla-logo.png)
 

@@ -1,21 +1,49 @@
 # Change log
 
-### v0.7.3-1 (released on 24 February 2022)
+### v0.8.0 (released on 27 February 2022)
 
-#### Bug Fix:
-* **TRO Bytecode Optimisation for empty connection sequences**: The optimisation for empty connection sequence had caused Segmentation fault, and it was fixed.
-* **Bytecode instruction execution**: The following error were fixed.
-  * Execution of an instruction of TRO for general agents: Indirection was not correctly applied.
-  * Execution of an instruction for substitutions of global names: `pc++` was applied to a macro argument, and it caused some increments.
+|              | Haskell  |   SML    | Python | Inpla1 | Inpla1_r | Inpla7 | Inpla7_r |
+| ------------ | :------: | :------: | :----: | :----: | :------: | :----: | :------: |
+| ack(3,11)    |   2.31   | **0.41** |   -    |  4.42  |   3.53   |  0.88  |   0.75   |
+| fib 38       |   1.60   | **0.26** |  8.49  |  2.30  |   2.83   |  0.42  |   0.46   |
+| bsort 40000  |  34.81   |  11.17   | 76.72  | 17.64  |  16.92   |  2.75  | **2.70** |
+| isort 40000  | **0.02** |   2.97   | 36.63  |  6.72  |   8.34   |  1.20  |   1.34   |
+| qsort 800000 | **0.15** |   1.16   | 97.30  |  6.07  |   1.81   |  0.64  |   0.37   |
+| msort 800000 |   0.46   |   1.00   | 98.27  |  3.92  |   1.36   |  0.46  | **0.35** |
+
+#### New Features:
+
+* **Flexibly expandable ring buffer for agents and names**: We can change the size of buffers that are inserted when all of nodes run up, though it was fixed before. It is possible to start a small heap for small computation, and it can be expanded for larger computation.
+
+  ![speedup-ratio](pic/flexibily_expandable.png)
+
+  * To set the initial size to 2^*n*, use the execution option `-Xms n` (default `n` is 12, so the size is 4096):
+  * To set the increasing magnification to 2^*n*, use the option `-Xmt n` (default `n` is 3, so the inserted heap is 8 times of the run up heap)
+
+  To use the fixed sized ring buffer, comment out the following definition in `src/inpla.y`:
+
+  ```
+  #define EXPANDABLE_HEAP    // Expandable heaps for agents and names
+  ```
 
 
 
 ### v0.7.3 (released on 20 February 2022)
 
-#### New Features:
-* **Bytecode optimisation inspired by Tail Recursive Optimisation**:  As a result this optimisation brings about faster computation up to about twice in comparison with no reuse-annotated computation.
+|              | Haskell  |   SML    | Python | Inpla1 | Inpla1_r | Inpla7 | Inpla7_r |
+| ------------ | :------: | :------: | :----: | :----: | :------: | :----: | :------: |
+| ack(3,11)    |   2.31   | **0.41** |   -    |  4.75  |   3.47   |  1.49  |   0.73   |
+| fib 38       |   1.60   | **0.26** |  8.49  |  2.39  |   2.89   |  0.48  |   0.51   |
+| bsort 40000  |  34.81   |  11.17   | 76.72  | 15.56  |  17.16   |  3.99  | **2.81** |
+| isort 40000  | **0.02** |   2.97   | 36.63  |  7.66  |   8.38   |  2.01  |   1.38   |
+| qsort 800000 | **0.15** |   1.16   | 97.30  |  2.32  |   1.82   |  0.56  |   0.36   |
+| msort 800000 |   0.46   |   1.00   | 98.27  |  1.23  |   1.37   |  0.42  | **0.33** |
 
-  * When interaction rules have a connection whose the left and the right hand sides have the same IDs to the active pair, computation of the connection can be realised by a loop operation that applies the same bytecode sequence of the rule with replacing ports of active pairs. For instance, take the following Fibonacci number:
+#### Polished:
+
+* **Bytecode optimisation inspired by Tail Recursive Optimisation**:  As a result, this optimisation brings about faster computation up to about twice in comparison with no reuse-annotated computation.
+
+  * When an interaction rule has a connection whose both sides agents have the same IDs to the active pair, computation of the connection can be realised by applying the same bytecode sequence of the rule to the connection after replacing ports of the active pair into agents ports of the connection. Moreover, when the connection is placed at the tail of a connection sequence, we can restart the same bytecode sequence after replacing these ports. For instance, take the following rule for Fibonacci number:
 
     ```
     fib(ret) >< (int n)
@@ -23,14 +51,14 @@
     | n == 1 => ret~1
     | _ => Add(ret, cnt2)~cnt1, fib(cnt1)~(n-1), fib(cnt2)~(n-2);
     ```
-    This rule has `fib(cnt2)~(n-2)` as the connection for the loop, and it is possible to be applied the same bytecode sequence of `fib(ret)><(int n)` with replacing these ports `ret`,  `n` into `cnt2`, `n-2`, respectively. So, this rule computation is realised by execution of the other connections and the loop operation for the connection `fib(cnt2)~(n-2)`.
+    This rule has a connection `fib(cnt2)~(n-2)` at the tail of the third connection sequence. The connection is computable by using the same bytecode sequence of `fib(ret)><(int n)` with replacing these ports `ret`,  `n` into `cnt2`, `n-2`, respectively. So, the computation of the third connection sequence is realised by bytecode sequences of the other connections and the port replacing, and a loop operation to start execution from the top of the rule sequence.
 
   * This is also possible not only for agents like `(int n)`, but also other constructor agents such as `Cons(x,xs)`, `S(x)`. The following is a part of rules for insertion sort:
 
     ```
     isort(ret) >< x:xs => insert(ret, x)~cnt, isort(cnt)~xs;
     ```
-    When the `xs` connects to an `Cons(y,ys)` agent, then the computation is also realised by the loop operation because the `isort(cnt)~xs` can be regarded as `isort(cnt)~y:ys`, whose agents have the same IDs of the active pair. So, by introducing a conditional branch if the `xs` is connected to a `Cons` agent or not, this rule computation is also realised by the loop operation.
+    When the `xs` connects to an `Cons(y,ys)` agent, then the computation is also realised by the loop operation because the `isort(cnt)~xs` can be regarded as `isort(cnt)~y:ys`, whose agents have the same IDs of the active pair. So, by introducing a conditional branch whether the `xs` connects to a `Cons` agent or not, this rule computation is also realised by the loop operation.
   
   * In this version, this optimisation will be triggered when such the connection is placed at the tail of a sequence of connections.
 
@@ -54,7 +82,17 @@
 
 
 ### v0.7.1 (released on 4 February 2022)
+|              | Haskell  |   SML    | Python | Inpla1 | Inpla1_r | Inpla7 | Inpla7_r |
+| ------------ | :------: | :------: | :----: | :----: | :------: | :----: | :------: |
+| ack(3,11)    |   2.31   | **0.41** |   -    |  4.78  |   3.55   |  1.51  |   0.74   |
+| fib 38       |   1.60   | **0.26** |  8.49  |  3.10  |   2.95   |  0.60  |   0.50   |
+| bsort 40000  |  34.81   |  11.17   | 76.72  | 24.85  |  18.22   |  7.39  | **2.92** |
+| isort 40000  | **0.02** |   2.97   | 36.63  | 11.85  |   8.71   |  3.65  |   1.41   |
+| qsort 800000 | **0.15** |   1.16   | 97.30  |  3.54  |   1.88   |  0.83  |   0.34   |
+| msort 800000 |   0.46   |   1.00   | 98.27  |  2.26  |   1.32   |  0.60  | **0.33** |
+
 #### Polished:
+
 * **Bytecodes**: Bytecodes of virtual machines are expressed by three address codes ordered as `op dest src1 src2`. The order is changed to the ordinary one `op src1 src2 dest`. 
 
 * **Bytecode optimisation**: The following is introduced:
@@ -68,7 +106,17 @@
   
 
 ### v0.7.0 (released on 30 January 2022)
+|              | Haskell  |   SML    | Python | Inpla1 | Inpla1_r | Inpla7 | Inpla7_r |
+| ------------ | :------: | :------: | :----: | :----: | :------: | :----: | :------: |
+| ack(3,11)    |   2.31   | **0.41** |   -    |  5.22  |   3.86   |  1.52  |   0.81   |
+| fib 38       |   1.60   | **0.26** |  8.49  |  3.52  |   3.31   |  0.62  |   0.55   |
+| bsort 40000  |  34.81   |  11.17   | 76.72  | 25.76  |  18.21   |  7.36  | **2.87** |
+| isort 40000  | **0.02** |   2.97   | 36.63  | 11.97  |   8.62   |  3.64  |   1.44   |
+| qsort 800000 | **0.15** |   1.16   | 97.30  |  3.55  |   1.87   |  0.82  |   0.35   |
+| msort 800000 |   0.46   |   1.00   | 98.27  |  2.29  |   1.34   |  0.60  | **0.33** |
+
 #### New Features:
+
 * **Logical operators on integers**: Not `!` (`not`), And `&&` (`and`)  and Or `||` (`or`) are available.  Only `0` is regarded as False and these operators return `1` for Truth, `0` for False.
 
 * **Bytecode optimisations**: Bytecodes are optimised by Copy propagation, Dead code elimination methods. In addition, Register0 is used to store comparison results, and conditional branches are performed according to the value of Register0. To prevent those optimisation, comment out the following definition `OPTIMISE_IMCODE` in `src/inpla.y`:
@@ -80,7 +128,17 @@
   
 
 ### v0.6.2 (released on 20 January 2022)
+|              | Haskell  |   SML    | Python | Inpla1 | Inpla1_r | Inpla7 | Inpla7_r |
+| ------------ | :------: | :------: | :----: | :----: | :------: | :----: | :------: |
+| ack(3,11)    |   2.31   | **0.41** |   -    |  5.46  |   4.16   |  1.56  |   0.86   |
+| fib 38       |   1.60   | **0.26** |  8.49  |  3.93  |   3.68   |  0.69  |   0.62   |
+| bsort 40000  |  34.81   |  11.17   | 76.72  | 25.75  |  19.06   |  7.32  | **3.14** |
+| isort 40000  | **0.02** |   2.97   | 36.63  | 12.38  |   9.25   |  3.64  |   1.53   |
+| qsort 800000 | **0.15** |   1.16   | 97.30  |  3.83  |   1.91   |  0.77  |   0.35   |
+| msort 800000 |   0.46   |   1.00   | 98.27  |  2.39  |   1.39   |  0.69  | **0.41** |
+
 #### New Features:
+
 * **Retaining the big ring buffer**:  The new expandable buffer for agents and names require extra costs sometimes, so the old one, that is the big ring buffer, is embedded into programs sources. Comment out the following definition `EXPANDABLE_HEAP` in `src/inpla.y` when the old one is needed:
 
   ```
@@ -103,7 +161,17 @@
 
 ### v0.6.0 (released on 9 January 2022)
 
+|              | Haskell  |   SML    | Python | Inpla1 | Inpla1_r | Inpla7 | Inpla7_r |
+| ------------ | :------: | :------: | :----: | :----: | :------: | :----: | :------: |
+| ack(3,11)    |   2.31   | **0.41** |   -    |  5.54  |   4.57   |  1.58  |   0.92   |
+| fib 38       |   1.60   | **0.26** |  8.49  |  3.96  |   3.83   |  0.67  |   0.62   |
+| bsort 40000  |  34.81   |  11.17   | 76.72  | 26.31  |  21.07   |  7.39  | **3.41** |
+| isort 40000  | **0.02** |   2.97   | 36.63  | 12.59  |  10.03   |  3.65  |   1.63   |
+| qsort 800000 | **0.15** |   1.16   | 97.30  |  3.79  |   2.04   |  0.77  |   0.37   |
+| msort 800000 |   0.46   |   1.00   | 98.27  |  2.50  |   1.45   |  0.64  | **0.39** |
+
 #### New Features:
+
 * **Introduced new data structure for ring buffers for agents and names**: The ring buffers are automatically expanded when all elements of these are used up. Each size starts from 2^18 (=262144), and it will be twice, triple and so on automatically. To adjust the unit size, change the following definition in `src/inpla.y`:
 
   ```
@@ -115,7 +183,17 @@
 
 
 ### v0.5.6 (released on 6 January 2022)
+|              | Haskell  |   SML    | Python | Inpla1 | Inpla1_r | Inpla7 | Inpla7_r |
+| ------------ | :------: | :------: | :----: | :----: | :------: | :----: | :------: |
+| ack(3,11)    |   2.31   | **0.41** |   -    |  4.89  |   4.45   |  0.97  |   0.90   |
+| fib 38       |   1.60   | **0.26** |  8.49  |  3.74  |   3.70   |  0.57  |   0.56   |
+| bsort 40000  |  34.81   |  11.17   | 76.72  | 25.74  |  19.82   |  6.39  | **3.07** |
+| isort 40000  | **0.02** |   2.97   | 36.63  | 12.41  |   9.37   |  3.04  |   1.49   |
+| qsort 800000 | **0.15** |   1.16   | 97.30  |  2.02  |   1.63   |  0.75  |   0.40   |
+| msort 800000 |   0.46   |   1.00   | 98.27  |  1.29  |   1.28   |  0.65  | **0.43** |
+
 #### Bug Fix:
+
 * The index of the ring buffer for agents had not been correctly initialised. It was fixed the same as the way of the ring buffer for  names.
 
 
@@ -206,7 +284,17 @@
 
 
 ### v0.4.2 (released on 16 October 2021)
+|              | Haskell  |   SML    | Python | Inpla1 | Inpla1_r | Inpla7 | Inpla7_r |
+| ------------ | :------: | :------: | :----: | :----: | :------: | :----: | :------: |
+| ack(3,11)    |   2.31   | **0.41** |   -    |  4.76  |   4.36   |  0.98  |   0.88   |
+| fib 38       |   1.60   | **0.26** |  8.49  |  3.59  |   3.56   |  0.56  |   0.54   |
+| bsort 40000  |  34.81   |  11.17   | 76.72  | 22.85  |  18.40   |  5.53  | **2.94** |
+| isort 40000  | **0.02** |   2.97   | 36.63  | 10.59  |   8.74   |  2.59  |   1.43   |
+| qsort 800000 | **0.15** |   1.16   | 97.30  |  1.85  |   1.55   |  0.76  |   0.41   |
+| msort 800000 | **0.46** |   1.00   | 98.27  |  1.18  |   1.34   |  0.65  |   0.49   |
+
 #### Improved:
+
 * Line edit was improved to support multi-line paste, according to the following suggestion: https://github.com/antirez/linenoise/issues/43
 * History in Line edit becomes available.
 

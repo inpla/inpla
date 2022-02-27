@@ -11,8 +11,10 @@
 
 #define ID_INT 0
 
-// builtin を加えたら void IdTable_init() 内で
-// IdTable に arity と 表示方法の登録を忘れないように！
+
+// NOTE:
+// For a NEW BUILT-IN AGENT,
+// STORE the ARITY on IdTable in the function IdTable_init()!
 #define ID_TUPLE0 1
 #define ID_TUPLE1 2
 #define ID_TUPLE2 3

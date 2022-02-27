@@ -32,6 +32,9 @@
 #ifdef OPTIMISE_IMCODE
   // the following depends on the definition OPTIMISE_IMCODE  
 #define OPTIMISE_IMCODE_TRO   // Optimise option for Tail Recursive Opt.
+  //#define OPTIMISE_TWO_ADDRESS  // Generate codes for two address notation
+  //#define OPTIMISE_TWO_ADDRESS_MKAGENT2  // MKAGENT2 also. Arithmetic also.
+
 #endif
 
   
@@ -49,8 +52,8 @@
 //#define COUNT_MKAGENT // count of execution fo mkagent
 
 
-#define VERSION "0.7.3-1"
-#define BUILT_DATE  "24 Feb. 2022"  
+#define VERSION "0.8.0"
+#define BUILT_DATE  "27 Feb. 2022"  
 // ------------------------------------------------------------------
 
 
@@ -61,11 +64,19 @@
   
 // For threads  ---------------------------------
 
+#ifndef EXPANDABLE_HEAP
+static int MaxThreadsNum=1;  // The old heap uses it to divide total numbers.
+#endif
+ 
 #ifdef THREAD
+
+#ifdef EXPANDABLE_HEAP
+static int MaxThreadsNum=1;
+#endif
+ 
 #include <pthread.h>
 extern int pthread_setconcurrency(int concurrency); 
 
-static int MaxThreadsNum=1;
 static int SleepingThreadsNum=0;
 
 // for cas spinlock
@@ -590,23 +601,28 @@ int yyerror(char *s) {
 #ifdef EXPANDABLE_HEAP
 
 // HOOP_SIZE must be power of two
-#define HOOP_SIZE (1 << 18)
-#define HOOP_SIZE_MASK ((HOOP_SIZE) -1)
+//#define INIT_HOOP_SIZE (1 << 10)
+//#define HOOP_SIZE_INCREASE_TIMES 1<<4   // increased by 16 times
+
+//#define INIT_HOOP_SIZE (1 << 12)        // 2^12 = 4096
+//#define HOOP_SIZE_INCREASE_TIMES 1<<3   // increased by 8 times
+
+static unsigned int Hoop_init_size = 12;             // 2^12 = 4096
+static unsigned int Hoop_increasing_magnitude = 3;   // 2^3  = 8
+
 
 typedef struct HoopList_tag {
   VALUE *hoop;
   struct HoopList_tag *next;
+  unsigned int size;           // NOTE: Be power of 2!
 } HoopList;
 
 
-// Nodes with '1' on the 31bit in hoops are ready for use and
-// '0' are occupied, that is to say, using now.
-#define HOOPFLAG_READYFORUSE 0x01 << 31 
-#define IS_READYFORUSE(a) ((a) & HOOPFLAG_READYFORUSE)
-#define SET_HOOPFLAG_READYFORUSE(a) ((a) = ((a) | HOOPFLAG_READYFORUSE))
-#define RESET_HOOPFLAG_READYFORUSE_AGENT(a) ((a) = (HOOPFLAG_READYFORUSE))
-#define RESET_HOOPFLAG_READYFORUSE_NAME(a) ((a) = ((ID_NAME) | (HOOPFLAG_READYFORUSE)))
-#define TOGGLE_HOOPFLAG_READYFORUSE(a) ((a) = ((a) ^ HOOPFLAG_READYFORUSE))
+#define HOOPFLAG_READYFORUSE 0
+#define IS_READYFORUSE(a) ((a)==HOOPFLAG_READYFORUSE)
+#define SET_HOOPFLAG_READYFORUSE(a) ((a)=HOOPFLAG_READYFORUSE)
+#define RESET_HOOPFLAG_READYFORUSE_AGENT(a) ((a)=HOOPFLAG_READYFORUSE)
+#define RESET_HOOPFLAG_READYFORUSE_NAME(a) ((a)=HOOPFLAG_READYFORUSE)
 
 
 typedef struct Heap_tag {
@@ -616,8 +632,7 @@ typedef struct Heap_tag {
 
 
 
-HoopList *HoopList_new_forName(void) {
-  int i;
+HoopList *HoopList_new_forName(unsigned int size) {
   HoopList *hp_list;
 
   hp_list = (HoopList *)malloc(sizeof(HoopList));
@@ -627,17 +642,17 @@ HoopList *HoopList_new_forName(void) {
   }
 
   
-  // Name Heap  
-  hp_list->hoop = (VALUE *)malloc(sizeof(Name) * HOOP_SIZE);
+  // Name Heap
+  hp_list->hoop = (VALUE *)malloc(size * sizeof(Name));
   if (hp_list->hoop == (VALUE *)NULL) {
       printf("[HoopList->Hoop (name)]Malloc error\n");
       exit(-1);
-  }
-  for (i=0; i<HOOP_SIZE; i++) {
-    //    ((Name *)(hp_list->hoop))[i].basic.id = ID_NAME;
+  }  
+  for (int i=0; i<size; i++) {
     RESET_HOOPFLAG_READYFORUSE_NAME(((Name *)(hp_list->hoop))[i].basic.id);
   }
-
+  hp_list->size = size;
+  
   // hp->next = NULL;   // this should be executed only for the first creation.
   return hp_list;
 }
@@ -645,10 +660,17 @@ HoopList *HoopList_new_forName(void) {
 
 
 
-HoopList *HoopList_new_forAgent(void) {
-  int i;
+HoopList *HoopList_new_forAgent(unsigned int size) {
   HoopList *hp_list;
 
+  
+  //  #define PUT_NEW_AGENTHOOP_TIME
+#ifdef PUT_NEW_AGENTHOOP_TIME
+  unsigned long long t, time;
+  start_timer(&t);
+#endif
+
+  
   hp_list = (HoopList *)malloc(sizeof(HoopList));
   if (hp_list == NULL) {
     printf("[HoopList]Malloc error\n");
@@ -657,16 +679,25 @@ HoopList *HoopList_new_forAgent(void) {
 
   
   // Agent Heap  
-  hp_list->hoop = (VALUE *)malloc(sizeof(Agent) * HOOP_SIZE);
+  hp_list->hoop = (VALUE *)malloc(size * sizeof(Agent));
   if (hp_list->hoop == (VALUE *)NULL) {
       printf("[HoopList->Hoop]Malloc error\n");
       exit(-1);
   }
-  for (i=0; i<HOOP_SIZE; i++) {
+  for (int i=0; i<size; i++) {
     RESET_HOOPFLAG_READYFORUSE_AGENT(((Agent *)(hp_list->hoop))[i].basic.id);
-
   }
+  hp_list->size = size;
+  
+  
+#ifdef PUT_NEW_AGENTHOOP_TIME
+  time=stop_timer(&t);
+  printf("(%.6f sec)\n", 
+	 (double)(time)/1000000.0);
+#endif
 
+
+  
   // hp->next = NULL;   // this should be executed only for the first creation.
   return hp_list;
 }
@@ -686,7 +717,7 @@ unsigned long Heap_GetNum_Usage_forAgent(Heap *hp) {
   do {
     
     hoop = (Agent *)(hoop_list->hoop);
-    for (int i = 0; i < HOOP_SIZE; i++) {
+    for (int i = 0; i < hoop_list->size; i++) {
       if (!IS_READYFORUSE(hoop[i].basic.id)) {
 	count++;
       }
@@ -708,7 +739,7 @@ unsigned long Heap_GetNum_Usage_forName(Heap *hp) {
   do {
     
     hoop = (Name *)(hoop_list->hoop);
-    for (int i = 0; i < HOOP_SIZE; i++) {
+    for (int i = 0; i < hoop_list->size; i++) {
       if (!IS_READYFORUSE(hoop[i].basic.id)) {
 	count++;
       }
@@ -737,10 +768,10 @@ VALUE myalloc_Agent(Heap *hp) {
   while (1) {
     hoop = (Agent *)(hoop_list->hoop);
   
-    while (idx < HOOP_SIZE) {
+    while (idx < hoop_list->size) {
     
       if (IS_READYFORUSE(hoop[idx].basic.id)) {
-	TOGGLE_HOOPFLAG_READYFORUSE(hoop[idx].basic.id);
+	//	TOGGLE_HOOPFLAG_READYFORUSE(hoop[idx].basic.id);
 
 	hp->last_alloc_idx = idx;
 	//hp->last_alloc_idx = (idx-1+HOOP_SIZE)%HOOP_SIZE_MASK;
@@ -774,12 +805,14 @@ VALUE myalloc_Agent(Heap *hp) {
       //               new        last_alloc
       // -->|......|-->|oooooo|-->|......|--
 
+      //      printf("(Agent hoop is expanded [%d])\n", hoop_list->size);
 #ifdef VERBOSE_HOOP_EXPANSION
       puts("(Agent hoop is expanded)");
 #endif
       
       HoopList *new_hoop_list;
-      new_hoop_list = HoopList_new_forAgent();
+      unsigned int new_size_p2 = hoop_list->size * Hoop_increasing_magnitude;
+      new_hoop_list = HoopList_new_forAgent(new_size_p2);
 
       HoopList *last_alloc = hoop_list->next;
       hoop_list->next = new_hoop_list;
@@ -815,17 +848,19 @@ VALUE myalloc_Name(Heap *hp) {
     
   while (1) {
     hoop = (Name *)(hoop_list->hoop);
-  
-    while (idx < HOOP_SIZE) {
+    int size = hoop_list->size;
+    
+    while (idx < size) {
     
       if (IS_READYFORUSE(hoop[idx].basic.id)) {
-	TOGGLE_HOOPFLAG_READYFORUSE(hoop[idx].basic.id);
+	//	TOGGLE_HOOPFLAG_READYFORUSE(hoop[idx].basic.id);
 
-	//hp->last_alloc_idx = idx;      
-	hp->last_alloc_idx = (idx-1+HOOP_SIZE) & HOOP_SIZE_MASK;
+	//hp->last_alloc_idx = idx;
+	hp->last_alloc_idx = (idx-1+ size) & (size-1);
 	
 	hp->last_alloc_list = hoop_list;
 
+	//		printf("%d\n", hp->last_alloc_idx); exit(1);
 	//    printf("hit[%d]\n", idx);
 	return (VALUE)&(hoop[idx]);
       }
@@ -857,7 +892,8 @@ VALUE myalloc_Name(Heap *hp) {
 #endif
       
       HoopList *new_hoop_list;
-      new_hoop_list = HoopList_new_forName();
+      unsigned int new_size_p2 = hoop_list->size * Hoop_increasing_magnitude;
+      new_hoop_list = HoopList_new_forName(new_size_p2);
 
       HoopList *last_alloc = hoop_list->next;
       hoop_list->next = new_hoop_list;
@@ -960,7 +996,7 @@ VALUE myalloc_Agent(Heap *hp) {
       }
       continue;
     }
-    TOGGLE_HEAPFLAG_READYFORUSE(hp_heap[idx].basic.id);
+    //    TOGGLE_HEAPFLAG_READYFORUSE(hp_heap[idx].basic.id);
     
     hp->lastAlloc = idx;
     
@@ -997,7 +1033,7 @@ VALUE myalloc_Name(Heap *hp) {
       continue;
     }
     //    TOGGLE_HEAPFLAG_READYFORUSE(((Name *)hp->heap)[idx].basic.id);
-    TOGGLE_HEAPFLAG_READYFORUSE(hp_heap[idx].basic.id);
+    //    TOGGLE_HEAPFLAG_READYFORUSE(hp_heap[idx].basic.id);
     
     hp->lastAlloc = idx;
     
@@ -1039,7 +1075,8 @@ unsigned long Heap_getnum_used_forAgent(Heap *hp) {
 //static inline
 void myfree(VALUE ptr) {
 
-  TOGGLE_HEAPFLAG_READYFORUSE(BASIC(ptr)->id);
+  //  TOGGLE_HEAPFLAG_READYFORUSE(BASIC(ptr)->id);
+  SET_HEAPFLAG_READYFORUSE(BASIC(ptr)->id);
 
 }
 
@@ -1438,23 +1475,36 @@ static VirtualMachine VM;
 
 #ifdef COUNT_MKAGENT
 unsigned int NumberOfMkAgent;
-  //  unsigned int id;
 #endif
 
 
 #ifdef EXPANDABLE_HEAP
 void VM_Buffer_Init(VirtualMachine * restrict vm) {
   // Agent Heap
-  vm->agentHeap.last_alloc_list = HoopList_new_forAgent();
+  /*
+  vm->agentHeap.last_alloc_list = HoopList_new_forAgent(Hoop_init_size);
   vm->agentHeap.last_alloc_list->next = vm->agentHeap.last_alloc_list;
   vm->agentHeap.last_alloc_idx = 0;
-
+  */
+  
+  vm->agentHeap.last_alloc_list = HoopList_new_forAgent(Hoop_init_size);
+  vm->agentHeap.last_alloc_list->next = HoopList_new_forAgent(Hoop_init_size);
+  vm->agentHeap.last_alloc_list->next->next = vm->agentHeap.last_alloc_list;
+  vm->agentHeap.last_alloc_idx = 0;
+  
 
   // Name Heap
-  vm->nameHeap.last_alloc_list = HoopList_new_forName();
+  /*
+  vm->nameHeap.last_alloc_list = HoopList_new_forName(Hoop_init_size);
   vm->nameHeap.last_alloc_list->next = vm->nameHeap.last_alloc_list;
   vm->nameHeap.last_alloc_idx = 0;
-
+  */
+  
+  vm->nameHeap.last_alloc_list = HoopList_new_forName(Hoop_init_size);
+  vm->nameHeap.last_alloc_list->next = HoopList_new_forName(Hoop_init_size);
+  vm->nameHeap.last_alloc_list->next->next = vm->nameHeap.last_alloc_list;
+  vm->nameHeap.last_alloc_idx = 0;
+  
   // Register
   vm->reg = malloc(sizeof(VALUE) * VM_REG_SIZE);
 }  
@@ -1574,6 +1624,7 @@ VALUE make_Name(VirtualMachine * restrict vm) {
   VALUE ptr;
   
   ptr = myalloc_Name(&vm->nameHeap);
+  AGENT(ptr)->basic.id = ID_NAME;
   NAME(ptr)->port = (VALUE)NULL;
 
   return ptr;
@@ -1945,7 +1996,7 @@ typedef enum {
   OP_NOP,
 
   // These are used for translation from intermediate codes to Bytecodes
-  OP_LABEL, OP_DEAD_CODE, OP_BEGIN_BLOCK,
+  OP_LABEL, OP_DEAD_CODE, OP_BEGIN_BLOCK, OP_BEGIN_JMPCNCT_BLOCK,
   OP_LOAD_META // keep dest as it is
 } Code;
 
@@ -2078,7 +2129,7 @@ void IMCode_puts(int n) {
 
     "NOP",
 
-    "LABEL", "__DEAD_CODE", "BEGIN_BLOCK",
+    "LABEL", "__DEAD_CODE", "BEGIN_BLOCK", "BEGIN_CNCT_BLOCK",
     "LOAD_META"
 
     
@@ -2098,8 +2149,9 @@ void IMCode_puts(int n) {
       // for indentation
     case OP_LABEL:
     case OP_BEGIN_BLOCK:
+    case OP_BEGIN_JMPCNCT_BLOCK:
       break;
-
+  
     default:
       printf("\t");
     }
@@ -2212,6 +2264,7 @@ void IMCode_puts(int n) {
 
 
     case OP_BEGIN_BLOCK:
+    case OP_BEGIN_JMPCNCT_BLOCK:
       printf("%s:\n", string_opcode[imcode->opcode]);
       break;
       
@@ -2358,20 +2411,35 @@ void VMCode_puts(void **code, int n) {
       i+=2;
 
     } else if (code[i] == CodeAddr[OP_MKAGENT1]) {
+#ifndef OPTIMISE_TWO_ADDRESS
       printf("mkagent1 id:%lu reg%lu reg%lu\n", 
 	     (unsigned long)code[i+1],
 	     (unsigned long)code[i+2],
 	     (unsigned long)code[i+3]);
       i+=3;
+#else
+      printf("mkagent1 id:%lu reg%lu\n", 
+	     (unsigned long)code[i+1],
+	     (unsigned long)code[i+2]);
+      i+=2;
+#endif      
 
     } else if (code[i] == CodeAddr[OP_MKAGENT2]) {
+#ifndef OPTIMISE_TWO_ADDRESS_MKAGENT2
       printf("mkagent2 id:%lu reg%lu reg%lu reg%lu\n", 
 	     (unsigned long)code[i+1],
 	     (unsigned long)code[i+2],
 	     (unsigned long)code[i+3],
 	     (unsigned long)code[i+4]);
       i+=4;
-
+#else
+      printf("mkagent2 id:%lu reg%lu reg%lu\n", 
+	     (unsigned long)code[i+1],
+	     (unsigned long)code[i+2],
+	     (unsigned long)code[i+3]);
+      i+=3;
+#endif      
+      
     } else if (code[i] == CodeAddr[OP_MKAGENT3]) {
       printf("mkagent3 id:%lu reg%lu reg%lu reg%lu reg%lu\n", 
 	     (unsigned long)code[i+1],
@@ -2773,6 +2841,11 @@ typedef struct {
   int label;                    // labels
   int tmpRegState[VM_REG_SIZE]; // register assignments
                                 // store localvar numbers. -1 is no assignment.
+
+#ifdef OPTIMISE_TWO_ADDRESS_MKAGENT2
+  int jmpcnctBlockRegState[VM_REG_SIZE];
+  int is_in_jmpcnctBlock;
+#endif  
   
 } CmEnvironment;
 
@@ -2808,6 +2881,23 @@ void CmEnv_clear_bind(int preserve_idx) {
   CmEnv.bindPtr = preserve_idx+1;
 }
 
+#ifdef OPTIMISE_TWO_ADDRESS_MKAGENT2
+void CmEnv_clear_jmpcnctBlock_assignment_table_all(void) {
+  for (int i=0; i<VM_REG_SIZE; i++) {
+    CmEnv.jmpcnctBlockRegState[i] = -1;
+  }
+  CmEnv.is_in_jmpcnctBlock = 0;
+}
+
+void CmEnv_stack_assignment_table(void) {
+  for (int i=0; i<VM_REG_SIZE; i++) {
+    CmEnv.jmpcnctBlockRegState[i] = CmEnv.tmpRegState[i];
+  }
+}
+  
+#endif
+
+
 void CmEnv_clear_register_assignment_table_all(void) {
   for (int i=0; i<VM_OFFSET_LOCALVAR; i++) {
     CmEnv.tmpRegState[i] = i;    // occupied already
@@ -2815,6 +2905,11 @@ void CmEnv_clear_register_assignment_table_all(void) {
   for (int i=VM_OFFSET_LOCALVAR; i<VM_REG_SIZE; i++) {
     CmEnv.tmpRegState[i] = -1;   // free
   }
+
+#ifdef OPTIMISE_TWO_ADDRESS_MKAGENT2
+  CmEnv_clear_jmpcnctBlock_assignment_table_all();
+#endif
+  
 }
 
 void CmEnv_clear_all(void) 
@@ -3067,28 +3162,137 @@ void CmEnv_retrieve_MKGNAME(void) {
 
 
 int CmEnv_using_reg(int localvar) {
+#ifndef OPTIMISE_TWO_ADDRESS_MKAGENT2
   for (int i=0; i<VM_REG_SIZE; i++) {
     if (CmEnv.tmpRegState[i] == localvar) {
       return i;
     }
   }
-
-  printf("ERROR[CmEnv_using_reg]: No register assigned to var%d\n", localvar);
+  printf("ERROR[CmEnv_using_reg]: No register assigned to var%d\n", localvar);  
   exit(1);
+#else
+  
+  if (CmEnv.is_in_jmpcnctBlock) {
+    for (int i=0; i<VM_REG_SIZE; i++) {
+      if (CmEnv.jmpcnctBlockRegState[i] == localvar) {
+	return i;
+      }
+    }
+  } else {
+    for (int i=0; i<VM_REG_SIZE; i++) {
+      if (CmEnv.tmpRegState[i] == localvar) {
+	return i;
+      }
+    }
+  }
+  printf("ERROR[CmEnv_using_reg]: No register assigned to var%d\n", localvar);
+  printf("is_in:%d\n", CmEnv.is_in_jmpcnctBlock);
+  exit(1);
+#endif  
+  
+
 }
 
 int CmEnv_get_newreg(int localvar) {
-  for (int i=VM_OFFSET_LOCALVAR; i<VM_REG_SIZE; i++) {
+#ifndef OPTIMISE_TWO_ADDRESS_MKAGENT2
+  //  for (int i=VM_OFFSET_LOCALVAR; i<VM_REG_SIZE; i++) {
+  for (int i=1; i<VM_REG_SIZE; i++) {  
     if (CmEnv.tmpRegState[i] == -1) {
       CmEnv.tmpRegState[i] = localvar;
       return i;
     }
   }
+#else
+  if (CmEnv.is_in_jmpcnctBlock) {
+    for (int i=0; i<VM_REG_SIZE; i++) {
+      if (CmEnv.jmpcnctBlockRegState[i] == -1) {
+	CmEnv.jmpcnctBlockRegState[i] = localvar;
+	return i;
+      }
+    }
+  } else {
+    for (int i=1; i<VM_REG_SIZE; i++) {  
+      if (CmEnv.tmpRegState[i] == -1) {
+	CmEnv.tmpRegState[i] = localvar;
+	return i;
+      }
+    }
+    
+  }
 
+  
+#endif
+  
   printf("ERROR[CmEnv_get_newreg]: All registers run up.\n");
   exit(1);  
 }
 
+void CmEnv_free_reg(int reg) {
+#ifndef OPTIMISE_TWO_ADDRESS
+  if (reg >= VM_OFFSET_LOCALVAR)
+    CmEnv.tmpRegState[reg] = -1;
+#else
+
+
+#ifndef OPTIMISE_TWO_ADDRESS_MKAGENT2
+  if (reg >= VM_OFFSET_LOCALVAR)
+    CmEnv.tmpRegState[reg] = -1;
+#else
+  
+  if (CmEnv.is_in_jmpcnctBlock) {
+    CmEnv.jmpcnctBlockRegState[reg] = -1;
+    return;
+  } else {
+    //  if (reg >= VM_OFFSET_LOCALVAR)
+    CmEnv.tmpRegState[reg] = -1;
+  }
+#endif
+#endif  
+}
+
+
+
+
+#ifdef OPTIMISE_TWO_ADDRESS
+int CmEnv_assign_reg(int localvar, int reg) {
+  // Enforce assignment of localvar to reg.
+  // [Return values]
+  //   When the reg has been already used,
+  //     this function returns a new reg.
+  //   Otherwise it returns -1.
+
+  int *tmpRegState;
+
+#ifndef OPTIMISE_TWO_ADDRESS_MKAGENT2
+  tmpRegState = CmEnv.tmpRegState;
+#else
+  
+  if (CmEnv.is_in_jmpcnctBlock) {
+    tmpRegState = CmEnv.jmpcnctBlockRegState;
+  } else {
+    tmpRegState = CmEnv.tmpRegState;
+  }
+#endif    
+    
+    if (tmpRegState[reg] == localvar) {
+      return -1;
+    }
+
+    if (tmpRegState[reg] < 0) {
+      tmpRegState[reg] = localvar;
+      return -1;
+    }
+
+
+    int orig_var = tmpRegState[reg];
+    
+    tmpRegState[reg] = localvar;
+    
+    int new_reg = CmEnv_get_newreg(orig_var);
+    return new_reg;
+    
+}
+#endif
 
 
 int CmEnv_Optimise_check_occurence_in_block(int localvar,
@@ -3102,8 +3306,33 @@ int CmEnv_Optimise_check_occurence_in_block(int localvar,
       // This optimisation will last until OP_BEGIN_BLOCK
       return 0;
     }
+    
+#ifdef OPTIMISE_TWO_ADDRESS_MKAGENT2
+    if ((CmEnv.is_in_jmpcnctBlock) &&
+    	(imcode->opcode == OP_BEGIN_JMPCNCT_BLOCK)) {
+      // This optimisation will last until OP_BEGIN_JMPCNCT_BLOCK
+      return 0;
+    }
+#endif    
 
+    
     switch (imcode->opcode) {
+    case OP_LOAD_META:
+      // LOAD_META src dest
+      // If `localvar' occurs as `dest', it should not be freed.
+      if (imcode->operand2 == localvar) {
+	return 1;
+      }
+
+    case OP_LOAD:
+    case OP_LOADI:
+      // OP src1 dest
+      if (imcode->operand1 == localvar) {
+	return 1;
+      }
+      break;
+      
+      
     case OP_MKNAME:
     case OP_MKGNAME:
       break;
@@ -3177,15 +3406,6 @@ int CmEnv_Optimise_check_occurence_in_block(int localvar,
       }
       break;
 
-    case OP_LOAD:
-    case OP_LOADI:
-    case OP_LOAD_META:
-      // OP src1 dest
-      if (imcode->operand1 == localvar) {
-	return 1;
-      }
-      break;
-      
     case OP_MUL:
     case OP_DIV:
     case OP_MOD:
@@ -3243,13 +3463,6 @@ int CmEnv_Optimise_check_occurence_in_block(int localvar,
 }
 
 
-void CmEnv_free_reg(int reg) {
-  if (reg >= VM_OFFSET_LOCALVAR)
-    CmEnv.tmpRegState[reg] = -1;
-}
-
-
-
 int CmEnv_Optimise_VMCode_CopyPropagation_LOADI(int target_imcode_addr) {
 
   struct IMCode_tag *imcode;
@@ -3258,13 +3471,17 @@ int CmEnv_Optimise_VMCode_CopyPropagation_LOADI(int target_imcode_addr) {
   load_i = IMCode[target_imcode_addr].operand1;
   load_to = IMCode[target_imcode_addr].operand2;
 
-  for (int i=target_imcode_addr+1; i<IMCode_n; i++) {
-    imcode = &IMCode[i];    
+  for (int line_num=target_imcode_addr+1; line_num<IMCode_n; line_num++) {
+    imcode = &IMCode[line_num];    
 
     if (imcode->opcode == OP_BEGIN_BLOCK) {
       // This optimisation will last until OP_BEGIN_BLOCK
       return 0;
     }
+    //    if (imcode->opcode == OP_BEGIN_JMPCNCT_BLOCK) {
+    //      // This optimisation will last until OP_BEGIN_BLOCK
+    //      return 0;
+    //    }
     
     switch (imcode->opcode) {
 
@@ -3394,13 +3611,18 @@ int CmEnv_Optimise_VMCode_CopyPropagation(int target_imcode_addr) {
   }
 
   
-  for (int i=target_imcode_addr+1; i<IMCode_n; i++) {
-    imcode = &IMCode[i];    
+  for (int line_num=target_imcode_addr+1; line_num<IMCode_n; line_num++) {
+    imcode = &IMCode[line_num];    
 
     if (imcode->opcode == OP_BEGIN_BLOCK) {
       // This optimisation will last until OP_BEGIN_BLOCK
       return 0;
     }
+    //    if ((CmEnv.is_in_jmpcnctBlock) &&
+    //	(imcode->opcode == OP_BEGIN_JMPCNCT_BLOCK)) {
+    //      // This optimisation will last until OP_BEGIN_JMPCNCT_BLOCK
+    //      return 0;
+    //    }
     
     switch (imcode->opcode) {
 
@@ -3600,25 +3822,25 @@ int CmEnv_generate_VMCode(void **code) {
   CmEnv_clear_register_assignment_table_all();
 #endif	
   
-  for (int i=0; i<IMCode_n; i++) {
-    imcode = &IMCode[i];    
-    
+  for (int line_num=0; line_num<IMCode_n; line_num++) {
+    imcode = &IMCode[line_num];    
+
 #ifdef OPTIMISE_IMCODE
     // optimisation
-    // Copy Propagation for OP_LOAD reg1, reg2 --> [reg2/reg1]
-    // and Dead Code Elimination
+    // Copy Propagation for OP_LOAD reg1, reg2 --> [reg2/reg1].
+    // When it is success, the code is applied Dead Code Elimination to.
     if (imcode->opcode == OP_LOAD) {
-      if (CmEnv_Optimise_VMCode_CopyPropagation(i)) {
+      if (CmEnv_Optimise_VMCode_CopyPropagation(line_num)) {
 	continue;
       }
     }
     if (imcode->opcode == OP_LOAD_META) {
-      if (CmEnv_Optimise_VMCode_CopyPropagation(i)) {
+      if (CmEnv_Optimise_VMCode_CopyPropagation(line_num)) {
 	continue;
       }
     }
     if (imcode->opcode == OP_LOADI) {
-      if (CmEnv_Optimise_VMCode_CopyPropagation_LOADI(i)) {
+      if (CmEnv_Optimise_VMCode_CopyPropagation_LOADI(line_num)) {
 	continue;
       }
     }
@@ -3660,8 +3882,7 @@ int CmEnv_generate_VMCode(void **code) {
       int dest = imcode->operand2;
 
 #ifdef OPTIMISE_IMCODE
-      if (imcode->opcode != OP_REUSEAGENT0)
-	dest = CmEnv_get_newreg(dest);
+      dest = CmEnv_get_newreg(dest);
 #endif
 
       code[addr++] = CodeAddr[imcode->opcode];
@@ -3677,17 +3898,29 @@ int CmEnv_generate_VMCode(void **code) {
 
 #ifdef OPTIMISE_IMCODE
       src1 = CmEnv_using_reg(src1);
-      if (!CmEnv_Optimise_check_occurence_in_block(imcode->operand2, i))
+      if (!CmEnv_Optimise_check_occurence_in_block(imcode->operand2, line_num))
 	CmEnv_free_reg(src1);
       
-      if (imcode->opcode != OP_REUSEAGENT1)
-	dest = CmEnv_get_newreg(dest);
+#ifndef OPTIMISE_TWO_ADDRESS
+      dest = CmEnv_get_newreg(dest);
+#else
+      int new_reg = CmEnv_assign_reg(dest, src1);
+      if (new_reg > 0) {
+	code[addr++] = CodeAddr[OP_LOAD];
+	code[addr++] = (void *)(unsigned long)src1;
+	code[addr++] = (void *)(unsigned long)new_reg;
+      }      
+#endif
 #endif
 
+      
       code[addr++] = CodeAddr[imcode->opcode];
       code[addr++] = (void *)(unsigned long)imcode->operand1;
       code[addr++] = (void *)(unsigned long)src1;      
-      code[addr++] = (void *)(unsigned long)dest;      
+#ifndef OPTIMISE_TWO_ADDRESS
+      code[addr++] = (void *)(unsigned long)dest;
+#endif
+      
       break;
     }
     case OP_MKAGENT2: {
@@ -3701,24 +3934,38 @@ int CmEnv_generate_VMCode(void **code) {
 
 
 #ifdef OPTIMISE_IMCODE
+      src2 = CmEnv_using_reg(src2);
+      if ((!CmEnv_Optimise_check_occurence_in_block(imcode->operand3, line_num))
+	  && (imcode->operand2 != imcode->operand3)) {
+	CmEnv_free_reg(src2);	
+      }
+      
+#ifndef OPTIMISE_TWO_ADDRESS_MKAGENT2
+      dest = CmEnv_get_newreg(dest);
+#else
+      int new_reg = CmEnv_assign_reg(dest, src2);
+      if (new_reg > 0) {
+	code[addr++] = CodeAddr[OP_LOAD];
+	code[addr++] = (void *)(unsigned long)src2;
+	code[addr++] = (void *)(unsigned long)new_reg;
+      }                  
+#endif
+
       src1 = CmEnv_using_reg(src1);
-      if ((!CmEnv_Optimise_check_occurence_in_block(imcode->operand2, i))
-	  && (imcode->operand2 != imcode->operand3))
+      if (!CmEnv_Optimise_check_occurence_in_block(imcode->operand2, line_num))
 	CmEnv_free_reg(src1);
 
-      src2 = CmEnv_using_reg(src2);
-      if (!CmEnv_Optimise_check_occurence_in_block(imcode->operand3, i))
-	CmEnv_free_reg(src2);
-      
-      if (imcode->opcode != OP_REUSEAGENT2)
-	dest = CmEnv_get_newreg(dest);
+
 #endif
+
       
       code[addr++] = CodeAddr[imcode->opcode];
       code[addr++] = (void *)(unsigned long)imcode->operand1;
       code[addr++] = (void *)(unsigned long)src1;      
       code[addr++] = (void *)(unsigned long)src2;      
+#ifndef OPTIMISE_TWO_ADDRESS_MKAGENT2
       code[addr++] = (void *)(unsigned long)dest;      
+#endif
       
       break;
     }
@@ -3734,22 +3981,21 @@ int CmEnv_generate_VMCode(void **code) {
 
 #ifdef OPTIMISE_IMCODE
       src1 = CmEnv_using_reg(src1);
-      if ((!CmEnv_Optimise_check_occurence_in_block(imcode->operand2, i))
+      if ((!CmEnv_Optimise_check_occurence_in_block(imcode->operand2, line_num))
 	  && (imcode->operand2 != imcode->operand3)
 	  && (imcode->operand2 != imcode->operand4))
 	CmEnv_free_reg(src1);
       
       src2 = CmEnv_using_reg(src2);
-      if ((!CmEnv_Optimise_check_occurence_in_block(imcode->operand3, i))
+      if ((!CmEnv_Optimise_check_occurence_in_block(imcode->operand3, line_num))
 	  && (imcode->operand3 != imcode->operand4))
 	CmEnv_free_reg(src2);
       
       src3 = CmEnv_using_reg(src3);
-      if (!CmEnv_Optimise_check_occurence_in_block(imcode->operand4, i))
+      if (!CmEnv_Optimise_check_occurence_in_block(imcode->operand4, line_num))
 	CmEnv_free_reg(src3);
 	  
-      if (imcode->opcode != OP_REUSEAGENT3)
-	dest = CmEnv_get_newreg(dest);
+      dest = CmEnv_get_newreg(dest);
 #endif
       
       code[addr++] = CodeAddr[imcode->opcode];
@@ -3773,29 +4019,28 @@ int CmEnv_generate_VMCode(void **code) {
 
 #ifdef OPTIMISE_IMCODE
       src1 = CmEnv_using_reg(src1);
-      if ((!CmEnv_Optimise_check_occurence_in_block(imcode->operand2, i))
+      if ((!CmEnv_Optimise_check_occurence_in_block(imcode->operand2, line_num))
 	  && (imcode->operand2 != imcode->operand3)
 	  && (imcode->operand2 != imcode->operand4)
 	  && (imcode->operand2 != imcode->operand5))
 	CmEnv_free_reg(src1);
 
       src2 = CmEnv_using_reg(src2);
-      if ((!CmEnv_Optimise_check_occurence_in_block(imcode->operand3, i))
+      if ((!CmEnv_Optimise_check_occurence_in_block(imcode->operand3, line_num))
 	  && (imcode->operand3 != imcode->operand4)
 	  && (imcode->operand3 != imcode->operand5))
 	CmEnv_free_reg(src2);
 
       src3 = CmEnv_using_reg(src3);
-      if ((!CmEnv_Optimise_check_occurence_in_block(imcode->operand4, i))
+      if ((!CmEnv_Optimise_check_occurence_in_block(imcode->operand4, line_num))
 	  && (imcode->operand4 != imcode->operand5))
 	CmEnv_free_reg(src3);
 
       src4 = CmEnv_using_reg(src4);
-      if (!CmEnv_Optimise_check_occurence_in_block(imcode->operand5, i))
+      if (!CmEnv_Optimise_check_occurence_in_block(imcode->operand5, line_num))
 	CmEnv_free_reg(src4);
 
-      if (imcode->opcode != OP_REUSEAGENT4)
-	dest = CmEnv_get_newreg(dest);
+      dest = CmEnv_get_newreg(dest);
 #endif
 
       
@@ -3821,7 +4066,7 @@ int CmEnv_generate_VMCode(void **code) {
 
 #ifdef OPTIMISE_IMCODE
       src1 = CmEnv_using_reg(src1);
-      if ((!CmEnv_Optimise_check_occurence_in_block(imcode->operand2, i))
+      if ((!CmEnv_Optimise_check_occurence_in_block(imcode->operand2, line_num))
 	  && (imcode->operand2 != imcode->operand3)
 	  && (imcode->operand2 != imcode->operand4)
 	  && (imcode->operand2 != imcode->operand5)
@@ -3829,29 +4074,28 @@ int CmEnv_generate_VMCode(void **code) {
 	CmEnv_free_reg(src1);
 
       src2 = CmEnv_using_reg(src2);
-      if ((!CmEnv_Optimise_check_occurence_in_block(imcode->operand3, i))
+      if ((!CmEnv_Optimise_check_occurence_in_block(imcode->operand3, line_num))
 	  && (imcode->operand3 != imcode->operand4)
 	  && (imcode->operand3 != imcode->operand5)
 	  && (imcode->operand3 != imcode->operand6))
 	CmEnv_free_reg(src2);
 
       src3 = CmEnv_using_reg(src3);
-      if ((!CmEnv_Optimise_check_occurence_in_block(imcode->operand4, i))
+      if ((!CmEnv_Optimise_check_occurence_in_block(imcode->operand4, line_num))
 	  && (imcode->operand4 != imcode->operand5)
 	  && (imcode->operand4 != imcode->operand6))
 	CmEnv_free_reg(src3);
 
       src4 = CmEnv_using_reg(src4);
-      if ((!CmEnv_Optimise_check_occurence_in_block(imcode->operand5, i))
+      if ((!CmEnv_Optimise_check_occurence_in_block(imcode->operand5, line_num))
 	  && (imcode->operand5 != imcode->operand6))
 	CmEnv_free_reg(src4);
 
       src5 = CmEnv_using_reg(src5);
-      if (!CmEnv_Optimise_check_occurence_in_block(imcode->operand6, i))
+      if (!CmEnv_Optimise_check_occurence_in_block(imcode->operand6, line_num))
 	CmEnv_free_reg(src5);
       
-      if (imcode->opcode != OP_REUSEAGENT5)
-	dest = CmEnv_get_newreg(dest);
+      dest = CmEnv_get_newreg(dest);
 #endif
       
       code[addr++] = CodeAddr[imcode->opcode];
@@ -3867,13 +4111,11 @@ int CmEnv_generate_VMCode(void **code) {
 
 
     case OP_REUSEAGENT0: {
-      //      printf("OP_MKAGENT0 var%d id:%d\n", 
+      //      printf("OP_REUSEAGENT0 var%d id:%d\n", 
       //	     imcode->operand1, imcode->operand2);
       int dest = imcode->operand1;
 
 #ifdef OPTIMISE_IMCODE
-      if (imcode->opcode != OP_REUSEAGENT0)
-	dest = CmEnv_get_newreg(dest);
 #endif
 
       code[addr++] = CodeAddr[imcode->opcode];
@@ -3883,18 +4125,15 @@ int CmEnv_generate_VMCode(void **code) {
     }
       
     case OP_REUSEAGENT1: {
-      //      printf("OP_MKAGENT1 var%d id:%d var%d\n", 
+      //      printf("OP_REUSEAGENT1 var%d id:%d var%d\n", 
       //	     imcode->operand1, imcode->operand2, imcode->operand3);
       int dest = imcode->operand1;
       int src1 = imcode->operand3;
 
 #ifdef OPTIMISE_IMCODE
       src1 = CmEnv_using_reg(src1);
-      if (!CmEnv_Optimise_check_occurence_in_block(imcode->operand3, i))
+      if (!CmEnv_Optimise_check_occurence_in_block(imcode->operand3, line_num))
 	CmEnv_free_reg(src1);
-      
-      if (imcode->opcode != OP_REUSEAGENT1)
-	dest = CmEnv_get_newreg(dest);
 #endif
 
       code[addr++] = CodeAddr[imcode->opcode];
@@ -3905,10 +4144,6 @@ int CmEnv_generate_VMCode(void **code) {
     }
       
     case OP_REUSEAGENT2: {
-      //      printf("OP_MKAGENT2 var%d id:%d var%d var%d\n", 
-      //	     imcode->operand1, imcode->operand2,
-      //	     imcode->operand3, imcode->operand4);
-
       int dest = imcode->operand1;
       int src1 = imcode->operand3;
       int src2 = imcode->operand4;
@@ -3916,16 +4151,14 @@ int CmEnv_generate_VMCode(void **code) {
 
 #ifdef OPTIMISE_IMCODE
       src1 = CmEnv_using_reg(src1);
-      if ((!CmEnv_Optimise_check_occurence_in_block(imcode->operand3, i))
-	  && (imcode->operand3 != imcode->operand4))
+      if ((!CmEnv_Optimise_check_occurence_in_block(imcode->operand3, line_num))
+	  && (imcode->operand3 != imcode->operand4)) {
 	CmEnv_free_reg(src1);
+      }
 
       src2 = CmEnv_using_reg(src2);
-      if (!CmEnv_Optimise_check_occurence_in_block(imcode->operand4, i))
+      if (!CmEnv_Optimise_check_occurence_in_block(imcode->operand4, line_num))
 	CmEnv_free_reg(src2);
-      
-      if (imcode->opcode != OP_REUSEAGENT2)
-	dest = CmEnv_get_newreg(dest);
 #endif
       
       code[addr++] = CodeAddr[imcode->opcode];
@@ -3938,7 +4171,7 @@ int CmEnv_generate_VMCode(void **code) {
     }
       
     case OP_REUSEAGENT3: {
-      //      printf("OP_MKAGENT3 var%d id:%d var%d var%d var%d\n", 
+      //      printf("OP_REUSEAGENT3 var%d id:%d var%d var%d var%d\n", 
       //	     imcode->operand1, imcode->operand2,
       //	     imcode->operand3, imcode->operand4, imcode->operand5);
       int dest = imcode->operand1;
@@ -3949,22 +4182,19 @@ int CmEnv_generate_VMCode(void **code) {
 
 #ifdef OPTIMISE_IMCODE
       src1 = CmEnv_using_reg(src1);
-      if ((!CmEnv_Optimise_check_occurence_in_block(imcode->operand3, i))
+      if ((!CmEnv_Optimise_check_occurence_in_block(imcode->operand3, line_num))
 	  && (imcode->operand3 != imcode->operand4)
 	  && (imcode->operand3 != imcode->operand5))
 	CmEnv_free_reg(src1);
       
       src2 = CmEnv_using_reg(src2);
-      if ((!CmEnv_Optimise_check_occurence_in_block(imcode->operand4, i))
+      if ((!CmEnv_Optimise_check_occurence_in_block(imcode->operand4, line_num))
 	  && (imcode->operand4 != imcode->operand5))
 	CmEnv_free_reg(src2);
       
       src3 = CmEnv_using_reg(src3);
-      if (!CmEnv_Optimise_check_occurence_in_block(imcode->operand5, i))
-	CmEnv_free_reg(src3);
-	  
-      if (imcode->opcode != OP_REUSEAGENT3)
-	dest = CmEnv_get_newreg(dest);
+      if (!CmEnv_Optimise_check_occurence_in_block(imcode->operand5, line_num))
+	CmEnv_free_reg(src3);	  
 #endif
       
       code[addr++] = CodeAddr[imcode->opcode];
@@ -3978,7 +4208,7 @@ int CmEnv_generate_VMCode(void **code) {
     }
       
     case OP_REUSEAGENT4: {
-      //      printf("OP_MKAGENT3 var%d id:%d var%d var%d var%d\n", 
+      //      printf("OP_REUSEAGENT3 var%d id:%d var%d var%d var%d\n", 
       //	     imcode->operand1, imcode->operand2,
       //	     imcode->operand3, imcode->operand4, imcode->operand5);
       int dest = imcode->operand1;
@@ -3989,29 +4219,26 @@ int CmEnv_generate_VMCode(void **code) {
 
 #ifdef OPTIMISE_IMCODE
       src1 = CmEnv_using_reg(src1);
-      if ((!CmEnv_Optimise_check_occurence_in_block(imcode->operand3, i))
+      if ((!CmEnv_Optimise_check_occurence_in_block(imcode->operand3, line_num))
 	  && (imcode->operand3 != imcode->operand4)
 	  && (imcode->operand3 != imcode->operand5)
 	  && (imcode->operand3 != imcode->operand6))
 	CmEnv_free_reg(src1);
 
       src2 = CmEnv_using_reg(src2);
-      if ((!CmEnv_Optimise_check_occurence_in_block(imcode->operand4, i))
+      if ((!CmEnv_Optimise_check_occurence_in_block(imcode->operand4, line_num))
 	  && (imcode->operand4 != imcode->operand5)
 	  && (imcode->operand4 != imcode->operand6))
 	CmEnv_free_reg(src2);
 
       src3 = CmEnv_using_reg(src3);
-      if ((!CmEnv_Optimise_check_occurence_in_block(imcode->operand5, i))
+      if ((!CmEnv_Optimise_check_occurence_in_block(imcode->operand5, line_num))
 	  && (imcode->operand5 != imcode->operand6))
 	CmEnv_free_reg(src3);
 
       src4 = CmEnv_using_reg(src4);
-      if (!CmEnv_Optimise_check_occurence_in_block(imcode->operand6, i))
+      if (!CmEnv_Optimise_check_occurence_in_block(imcode->operand6, line_num))
 	CmEnv_free_reg(src4);
-
-      if (imcode->opcode != OP_REUSEAGENT4)
-	dest = CmEnv_get_newreg(dest);
 #endif
 
       
@@ -4025,7 +4252,7 @@ int CmEnv_generate_VMCode(void **code) {
       break;
     }      
     case OP_REUSEAGENT5: {
-      //      printf("OP_MKAGENT3 var%d id:%d var%d var%d var%d\n", 
+      //      printf("OP_REUSEAGENT3 var%d id:%d var%d var%d var%d\n", 
       //	     imcode->operand1, imcode->operand2,
       //	     imcode->operand3, imcode->operand4, imcode->operand5);
       int dest = imcode->operand1;
@@ -4037,7 +4264,7 @@ int CmEnv_generate_VMCode(void **code) {
 
 #ifdef OPTIMISE_IMCODE
       src1 = CmEnv_using_reg(src1);
-      if ((!CmEnv_Optimise_check_occurence_in_block(imcode->operand3, i))
+      if ((!CmEnv_Optimise_check_occurence_in_block(imcode->operand3, line_num))
 	  && (imcode->operand3 != imcode->operand4)
 	  && (imcode->operand3 != imcode->operand5)
 	  && (imcode->operand3 != imcode->operand6)
@@ -4045,29 +4272,26 @@ int CmEnv_generate_VMCode(void **code) {
 	CmEnv_free_reg(src1);
 
       src2 = CmEnv_using_reg(src2);
-      if ((!CmEnv_Optimise_check_occurence_in_block(imcode->operand4, i))
+      if ((!CmEnv_Optimise_check_occurence_in_block(imcode->operand4, line_num))
 	  && (imcode->operand4 != imcode->operand5)
 	  && (imcode->operand4 != imcode->operand6)
 	  && (imcode->operand4 != imcode->operand7))
 	CmEnv_free_reg(src2);
 
       src3 = CmEnv_using_reg(src3);
-      if ((!CmEnv_Optimise_check_occurence_in_block(imcode->operand5, i))
+      if ((!CmEnv_Optimise_check_occurence_in_block(imcode->operand5, line_num))
 	  && (imcode->operand5 != imcode->operand6)
 	  && (imcode->operand5 != imcode->operand7))
 	CmEnv_free_reg(src3);
 
       src4 = CmEnv_using_reg(src4);
-      if ((!CmEnv_Optimise_check_occurence_in_block(imcode->operand6, i))
+      if ((!CmEnv_Optimise_check_occurence_in_block(imcode->operand6, line_num))
 	  && (imcode->operand6 != imcode->operand7))
 	CmEnv_free_reg(src4);
 
       src5 = CmEnv_using_reg(src5);
-      if (!CmEnv_Optimise_check_occurence_in_block(imcode->operand7, i))
-	CmEnv_free_reg(src5);
-      
-      if (imcode->opcode != OP_REUSEAGENT5)
-	dest = CmEnv_get_newreg(dest);
+      if (!CmEnv_Optimise_check_occurence_in_block(imcode->operand7, line_num))
+	CmEnv_free_reg(src5);      
 #endif
       
       code[addr++] = CodeAddr[imcode->opcode];
@@ -4088,12 +4312,17 @@ int CmEnv_generate_VMCode(void **code) {
       int src1 = imcode->operand1;
       int dest = imcode->operand2;
       
-#ifdef OPTIMISE_IMCODE
+#ifdef OPTIMISE_IMCODE      
       src1 = CmEnv_using_reg(src1);
-      if (!CmEnv_Optimise_check_occurence_in_block(imcode->operand1, i))
+      if (!CmEnv_Optimise_check_occurence_in_block(imcode->operand1, line_num))
 	CmEnv_free_reg(src1);
       
       dest = CmEnv_get_newreg(dest);
+
+      if (src1 == dest) {
+	imcode->opcode = OP_DEAD_CODE;
+	break;
+      }
 #endif
       
       code[addr++] = CodeAddr[imcode->opcode];
@@ -4111,10 +4340,20 @@ int CmEnv_generate_VMCode(void **code) {
       
 #ifdef OPTIMISE_IMCODE
       src1 = CmEnv_using_reg(src1);
-      if (!CmEnv_Optimise_check_occurence_in_block(imcode->operand1, i))
+      if (!CmEnv_Optimise_check_occurence_in_block(imcode->operand1, line_num))
 	CmEnv_free_reg(src1);
       
       //      dest = CmEnv_get_newreg(dest);
+
+#ifdef OPTIMISE_TWO_ADDRESS_MKAGENT2      
+      int a=CmEnv_assign_reg(dest, dest);
+#endif
+      
+      if (src1 == dest) {
+	imcode->opcode = OP_DEAD_CODE;
+	break;
+      }      
+
 #endif
       
       code[addr++] = CodeAddr[OP_LOAD];
@@ -4151,11 +4390,25 @@ int CmEnv_generate_VMCode(void **code) {
       
 #ifdef OPTIMISE_IMCODE
       src1 = CmEnv_using_reg(src1);
+      if ((!CmEnv_Optimise_check_occurence_in_block(imcode->operand1, line_num))
+	  && (imcode->operand1 != imcode->operand2))
+	CmEnv_free_reg(src1);
+      
+      src2 = CmEnv_using_reg(src2);
+      if ((!CmEnv_Optimise_check_occurence_in_block(imcode->operand2, line_num))
+	  && (imcode->operand1 != imcode->operand2))
+	CmEnv_free_reg(src2);      
+
+      /*
+      src1 = CmEnv_using_reg(src1);
       if (imcode->operand1 != imcode->operand2)
 	CmEnv_free_reg(src1);
       
       src2 = CmEnv_using_reg(src2);
       CmEnv_free_reg(src2);      
+      */
+
+      
 #endif
       
       code[addr++] = CodeAddr[imcode->opcode];
@@ -4172,7 +4425,7 @@ int CmEnv_generate_VMCode(void **code) {
       
 #ifdef OPTIMISE_IMCODE
       src1 = CmEnv_using_reg(src1);
-      if (!CmEnv_Optimise_check_occurence_in_block(imcode->operand1, i))
+      if (!CmEnv_Optimise_check_occurence_in_block(imcode->operand1, line_num))
 	CmEnv_free_reg(src1);
 #endif
       
@@ -4209,12 +4462,12 @@ int CmEnv_generate_VMCode(void **code) {
       
 #ifdef OPTIMISE_IMCODE
       src1 = CmEnv_using_reg(src1);
-      if ((!CmEnv_Optimise_check_occurence_in_block(imcode->operand1, i))
+      if ((!CmEnv_Optimise_check_occurence_in_block(imcode->operand1, line_num))
 	  && (imcode->operand1 != imcode->operand2))
 	CmEnv_free_reg(src1);
       
       src2 = CmEnv_using_reg(src2);
-      if (!CmEnv_Optimise_check_occurence_in_block(imcode->operand2, i))
+      if (!CmEnv_Optimise_check_occurence_in_block(imcode->operand2, line_num))
 	CmEnv_free_reg(src2);
 
       dest = CmEnv_get_newreg(dest);
@@ -4236,7 +4489,7 @@ int CmEnv_generate_VMCode(void **code) {
 
 #ifdef OPTIMISE_IMCODE
       src1 = CmEnv_using_reg(src1);
-      if (!CmEnv_Optimise_check_occurence_in_block(imcode->operand1, i))
+      if (!CmEnv_Optimise_check_occurence_in_block(imcode->operand1, line_num))
 	CmEnv_free_reg(src1);
 
       dest = CmEnv_get_newreg(dest);
@@ -4258,7 +4511,7 @@ int CmEnv_generate_VMCode(void **code) {
 
 #ifdef OPTIMISE_IMCODE
       src1 = CmEnv_using_reg(src1);
-      if (!CmEnv_Optimise_check_occurence_in_block(imcode->operand1, i))
+      if (!CmEnv_Optimise_check_occurence_in_block(imcode->operand1, line_num))
 	CmEnv_free_reg(src1);
 
       dest = CmEnv_get_newreg(dest);
@@ -4282,12 +4535,12 @@ int CmEnv_generate_VMCode(void **code) {
 
 #ifdef OPTIMISE_IMCODE
       src1 = CmEnv_using_reg(src1);
-      if ((!CmEnv_Optimise_check_occurence_in_block(imcode->operand1, i))
+      if ((!CmEnv_Optimise_check_occurence_in_block(imcode->operand1, line_num))
 	  && (imcode->operand1 != imcode->operand2))
 	CmEnv_free_reg(src1);
 
       src2 = CmEnv_using_reg(src2);
-      if (!CmEnv_Optimise_check_occurence_in_block(imcode->operand2, i))
+      if (!CmEnv_Optimise_check_occurence_in_block(imcode->operand2, line_num))
 	CmEnv_free_reg(src2);
 #endif
 	  
@@ -4301,15 +4554,16 @@ int CmEnv_generate_VMCode(void **code) {
       // op src1 int2
 
 #ifdef OPTIMISE_IMCODE
-      if ((imcode->operand2 == 0) && (IMCode[i+1].opcode == OP_JMPEQ0_R0)) {
+      if ((imcode->operand2 == 0)
+	  && (IMCode[line_num+1].opcode == OP_JMPEQ0_R0)) {
 	// OP_EQI_Ro reg1 $0
 	// OP_JMPEQ0_R0 pc
 	// ==>
 	// DEAD_CODE
 	// OP_JMPNEQ reg1 pc
-	IMCode[i+1].opcode = OP_JMPNEQ0;
-	IMCode[i+1].operand2 = IMCode[i+1].operand1;
-	IMCode[i+1].operand1 = imcode->operand1;
+	IMCode[line_num+1].opcode = OP_JMPNEQ0;
+	IMCode[line_num+1].operand2 = IMCode[line_num+1].operand1;
+	IMCode[line_num+1].operand1 = imcode->operand1;
 	imcode->opcode = OP_DEAD_CODE;
 	break;
       }
@@ -4320,7 +4574,7 @@ int CmEnv_generate_VMCode(void **code) {
 
 #ifdef OPTIMISE_IMCODE
       src1 = CmEnv_using_reg(src1);
-      if (!CmEnv_Optimise_check_occurence_in_block(imcode->operand1, i))
+      if (!CmEnv_Optimise_check_occurence_in_block(imcode->operand1, line_num))
 	CmEnv_free_reg(src1);
 #endif
 
@@ -4341,7 +4595,7 @@ int CmEnv_generate_VMCode(void **code) {
 
 #ifdef OPTIMISE_IMCODE
       src1 = CmEnv_using_reg(src1);
-      if (!CmEnv_Optimise_check_occurence_in_block(imcode->operand1, i))
+      if (!CmEnv_Optimise_check_occurence_in_block(imcode->operand1, line_num))
 	CmEnv_free_reg(src1);
 
       dest = CmEnv_get_newreg(dest);
@@ -4359,7 +4613,7 @@ int CmEnv_generate_VMCode(void **code) {
 
 #ifdef OPTIMISE_IMCODE
       src1 = CmEnv_using_reg(src1);
-      if (!CmEnv_Optimise_check_occurence_in_block(imcode->operand1, i))
+      if (!CmEnv_Optimise_check_occurence_in_block(imcode->operand1, line_num))
 	CmEnv_free_reg(src1);
 #endif
       
@@ -4392,7 +4646,7 @@ int CmEnv_generate_VMCode(void **code) {
 
 #ifdef OPTIMISE_IMCODE
       src1 = CmEnv_using_reg(src1);
-      if (!CmEnv_Optimise_check_occurence_in_block(imcode->operand1, i))
+      if (!CmEnv_Optimise_check_occurence_in_block(imcode->operand1, line_num))
 	CmEnv_free_reg(src1);
 #endif
             
@@ -4410,7 +4664,7 @@ int CmEnv_generate_VMCode(void **code) {
 
 #ifdef OPTIMISE_IMCODE
       src1 = CmEnv_using_reg(src1);
-      if (!CmEnv_Optimise_check_occurence_in_block(imcode->operand1, i))
+      if (!CmEnv_Optimise_check_occurence_in_block(imcode->operand1, line_num))
 	CmEnv_free_reg(src1);
 #endif
             
@@ -4428,7 +4682,7 @@ int CmEnv_generate_VMCode(void **code) {
 
 #ifdef OPTIMISE_IMCODE
       src1 = CmEnv_using_reg(src1);
-      if (!CmEnv_Optimise_check_occurence_in_block(imcode->operand1, i))
+      if (!CmEnv_Optimise_check_occurence_in_block(imcode->operand1, line_num))
 	CmEnv_free_reg(src1);
 #endif
       
@@ -4461,12 +4715,12 @@ int CmEnv_generate_VMCode(void **code) {
       
 #ifdef OPTIMISE_IMCODE
       src1 = CmEnv_using_reg(src1);
-      if ((!CmEnv_Optimise_check_occurence_in_block(imcode->operand1, i))
+      if ((!CmEnv_Optimise_check_occurence_in_block(imcode->operand1, line_num))
 	  && (imcode->operand1 != imcode->operand2))
 	CmEnv_free_reg(src1);
 
       src2 = CmEnv_using_reg(src2);
-      if (!CmEnv_Optimise_check_occurence_in_block(imcode->operand2, i))
+      if (!CmEnv_Optimise_check_occurence_in_block(imcode->operand2, line_num))
 	CmEnv_free_reg(src2);
 #endif
 
@@ -4485,6 +4739,17 @@ int CmEnv_generate_VMCode(void **code) {
 #endif	
       break;
 
+      
+#ifdef OPTIMISE_TWO_ADDRESS_MKAGENT2
+    case OP_BEGIN_JMPCNCT_BLOCK:
+      //      CmEnv_clear_jmpcnctBlock_assignment_table_all();
+	
+      CmEnv_stack_assignment_table();
+      CmEnv.is_in_jmpcnctBlock = 1;
+      break;
+#endif
+
+      
     case OP_LABEL:
       if (imcode->operand1 > MAX_LABEL) {
 	printf("Critical Error: Label number overfllow.");
@@ -4884,7 +5149,8 @@ void Ast_make_annotation_TailRecursionOptimisation(Ast *mainbody) {
 
   if (mainbody == NULL)
     return;
-  
+
+
   if (mainbody->id == AST_BODY) {
     Ast *body = mainbody;
 
@@ -5685,15 +5951,11 @@ int Compile_eqlist_on_ast(Ast *at) {
 	
       } else if (eq->id == AST_CNCT_TRO) {
 	
-
 	// Pealing (*L)
 	Ast *eq_lhs = eq->left;               // (*L)(AGENT(Fib, arglist))
 	Ast *deconst_term = eq_lhs->left;      // (AGENT(Fib, arglist))
 	  
 
-	//	printf("TRO: %s><%s\n", deconst_term->left->sym, eq->right->left->sym);
-	       
-	
 	
 	int eq_rhs_name_reg = CmEnv_find_var(eq->right->left->sym);
 	  
@@ -5709,7 +5971,10 @@ int Compile_eqlist_on_ast(Ast *at) {
 	  IMCode_genCode3(OP_JMPCNCT,
 			  eq_rhs_name_reg, CmEnv.idR, label1);
 	}
-
+	
+#ifdef OPTIMISE_TWO_ADDRESS_MKAGENT2
+	IMCode_genCode0(OP_BEGIN_JMPCNCT_BLOCK);
+#endif
 	
 	//	int var1 = Compile_term_on_ast(deconst_term, -1);
 	int var1 = Compile_term_on_ast(eq_lhs, -1);
@@ -5719,6 +5984,10 @@ int Compile_eqlist_on_ast(Ast *at) {
 	// From now on,
 	// prevent putting FREE_L, and ignore counting up for name ref
 	CmEnv.annotateL = ANNOTATE_TRO;
+	
+#ifdef OPTIMISE_TWO_ADDRESS_MKAGENT2
+        IMCode_genCode0(OP_BEGIN_JMPCNCT_BLOCK);
+#endif
 	
 	IMCode_genCode1(OP_LABEL, label1);
 
@@ -5735,6 +6004,9 @@ int Compile_eqlist_on_ast(Ast *at) {
 	  arg_list = ast_getTail(arg_list);
 	}
 	for (int i=0; i<arity; i++) {
+	  if (alloc[i] == VM_OFFSET_METAVAR_L(i))
+	    continue;
+	  
 
 	  if (eq_rhs_name_reg == VM_OFFSET_METAVAR_L(i)) {
 	    // preserve eq_rhs_name_reg to be overwritten
@@ -5752,7 +6024,7 @@ int Compile_eqlist_on_ast(Ast *at) {
 	  }
 
 	  
-	  for (int j=i; j<arity; j++) {
+	  for (int j=i+1; j<arity; j++) {
 	    if (alloc[j] == VM_OFFSET_METAVAR_L(i)) {
 	      // preserve VM_OFFSET_METAVAR_L(i)
 	      // if it is used later.
@@ -5775,8 +6047,8 @@ int Compile_eqlist_on_ast(Ast *at) {
 	    }
 	  }
 
+	  IMCode_genCode2(OP_LOAD_META, alloc[i], VM_OFFSET_METAVAR_L(i));
 	  
-	  IMCode_genCode2(OP_LOAD_META, alloc[i], VM_OFFSET_METAVAR_L(i));  
 	}
 
 	
@@ -5817,8 +6089,9 @@ int Compile_eqlist_on_ast(Ast *at) {
 
     
     at = next;
-  }
 #endif
+    
+  }
   
   return 1;
 }
@@ -6379,7 +6652,7 @@ int make_rule(Ast *ast) {
   exit(1);
 #endif
 
-  
+
 
   // Decide IDs for rule agents.
   // Note that agentR should be checked earlier
@@ -6401,7 +6674,7 @@ int make_rule(Ast *ast) {
     ruleAgent_L = ruleAgent_L->right->left;
     idL = get_ruleagentID(ruleAgent_L);    
   }
-
+  
   
     
   // Annotation (*L)、(*R) の処理があるため
@@ -6486,18 +6759,20 @@ int make_rule(Ast *ast) {
 #ifdef OPTIMISE_IMCODE_TRO
   Ast_make_annotation_TailRecursionOptimisation(rule_mainbody);
 #endif
-  
-  
+    
   if (!Compile_rule_mainbody_on_ast(rule_mainbody)) return 0;
 
 
-  //    #define MKRULE_DEBUG  
+  //        #define MKRULE_DEBUG  
 #ifndef MKRULE_DEBUG  
   gencode_num += CmEnv_generate_VMCode(&code[2]);
 #else
 
   
   puts("-----------------------------------");
+      printf("Rule: %s(id:%d) >< %s(id:%d).\n", 
+  	   IdTable_get_name(idL), idL,
+  	   IdTable_get_name(idR), idR);
   IMCode_puts(0);
   gencode_num += CmEnv_generate_VMCode(&code[2]);
   IMCode_puts(0);
@@ -6582,7 +6857,7 @@ void sweep_AgentHeap(Heap *hp) {
   
   do {
     hoop = (Agent *)(hoop_list->hoop);
-    for (int i = 0; i < HOOP_SIZE; i++) {
+    for (int i = 0; i < hoop_list->size; i++) {
 
       if (!IS_FLAG_MARKED(hoop[i].basic.id)) {
 	SET_HOOPFLAG_READYFORUSE(hoop[i].basic.id);
@@ -6601,7 +6876,7 @@ void sweep_NameHeap(Heap *hp) {
   
   do { 
     hoop = (Name *)(hoop_list->hoop);
-    for (int i = 0; i < HOOP_SIZE; i++) {
+    for (int i = 0; i < hoop_list->size; i++) {
 
       if (!IS_FLAG_MARKED(hoop[i].basic.id)) {
 	SET_HOOPFLAG_READYFORUSE(hoop[i].basic.id);
@@ -6830,15 +7105,25 @@ void *exec_code(int mode, VirtualMachine * restrict vm, void * restrict *code) {
   goto *code[pc];
 
  E_MKAGENT1:
+#ifndef OPTIMISE_TWO_ADDRESS  
   //    puts("mkagent1 id src1 dest");
   pc++;
   a1 = make_Agent(vm, (unsigned long)code[pc++]);
   AGENT(a1)->port[0] = reg[(unsigned long)code[pc++]];
   reg[(unsigned long)code[pc++]] = a1;
+#else
+  //    puts("mkagent1 id dest");
 
+  pc++;
+  a1 = make_Agent(vm, (unsigned long)code[pc++]);
+  AGENT(a1)->port[0] = reg[(unsigned long)code[pc]];
+  reg[(unsigned long)code[pc++]] = a1;
+#endif  
+  
   goto *code[pc];
   
  E_MKAGENT2:
+#ifndef OPTIMISE_TWO_ADDRESS_MKAGENT2
   //      puts("mkagent2 id src1 src2 dest");
   pc++;  
   a1 = make_Agent(vm, (unsigned long)code[pc++]);
@@ -6848,6 +7133,17 @@ void *exec_code(int mode, VirtualMachine * restrict vm, void * restrict *code) {
     a1port[1] = reg[(unsigned long)code[pc++]];
   }
   reg[(unsigned long)code[pc++]] = a1;
+#else
+  //    puts("mkagent2 id src1 dest");
+  pc++;  
+  a1 = make_Agent(vm, (unsigned long)code[pc++]);
+  {
+    volatile VALUE *a1port = AGENT(a1)->port;
+    a1port[0] = reg[(unsigned long)code[pc++]];
+    a1port[1] = reg[(unsigned long)code[pc]];
+  }
+  reg[(unsigned long)code[pc++]] = a1;
+#endif
   
   goto *code[pc];
 
@@ -7457,7 +7753,7 @@ void *exec_code(int mode, VirtualMachine * restrict vm, void * restrict *code) {
   
 
  E_JMPCNCT:
-  //    puts("JMPCNCT reg id pc");
+  //      puts("JMPCNCT reg id pc");
 #ifdef COUNT_CNCT    
   Count_cnct++;
 #endif
@@ -7552,33 +7848,24 @@ void *exec_code(int mode, VirtualMachine * restrict vm, void * restrict *code) {
 
   
  E_CNCTGN:
-  //    puts("CNCTGN reg reg");
+  // puts("CNCTGN reg reg");
   // "x"~s, "x"->t     ==> push(s,t), free("x") where "x" is a global name.
-  /*
-  {
-    pc++;
-    VALUE x = reg[(unsigned long)code[pc++]];
-    a1 = NAME(x)->port;
-    free_Name(x);
-    PUSH(vm, reg[(unsigned long)code[pc++]], a1);
-  }
-  goto *code[pc];
-  */
   {
     VALUE x = reg[(unsigned long)code[pc+1]];
     a1 = NAME(x)->port;
     free_Name(x);
     VALUE t = reg[(unsigned long)code[pc+2]];
 
-        puts("============================================");
-        puts_term(t);printf("\n~");puts_term(a1);puts("");
-        puts("============================================");
+    //    puts("============================================");
+    //    puts_term(t);printf("\n~");puts_term(a1);puts("");
+    //    puts("============================================");
 
     PUSH(vm, t, a1);
   }
   pc +=3;
   goto *code[pc];
 
+  
   
 
  E_SUBSTGN:
@@ -7608,6 +7895,134 @@ void *exec_code(int mode, VirtualMachine * restrict vm, void * restrict *code) {
 
 
 
+
+
+void exec_code_fib(VirtualMachine * restrict vm) {
+  VALUE a1;
+  VALUE *reg = vm->reg;
+
+
+  // 0000: jmpneq0 reg12 $4
+  {
+    int i = reg[12];
+    if (FIX2INT(i)) {
+      goto LABEL_0007;
+    }
+  }  
+  
+  // 0003: pushi reg1 $0
+  {
+    VALUE a1 = reg[1];    
+    VALUE a2 = INT2FIX(0);
+    PUSH(vm, a1, a2);    
+  }  
+  
+  // 0006: ret_free_l
+  free_Agent(reg[VM_OFFSET_ANNOTATE_L]);
+  return;
+
+  // 0007: eqi_r0 reg12 $1
+LABEL_0007:
+  {
+    int i = reg[12];
+    int j = INT2FIX(1);
+
+    if (i==j) {
+      reg[0] = 1;
+    } else {
+      reg[0] = 0;
+    }
+  }
+  
+  // 0010: jmpeq0_r0 $4
+  {
+    int i = reg[0];
+    if (!i) {
+      goto LABEL_0016;
+    }
+  }
+
+  
+  // 0012: pushi reg1 $1
+  {
+    VALUE a1 = reg[1];    
+    VALUE a2 = INT2FIX(1);
+    PUSH(vm, a1, a2);    
+  }  
+  
+  // 0015: ret_free_l
+  free_Agent(reg[VM_OFFSET_ANNOTATE_L]);
+  return;
+
+  
+  // 0016: mkname reg13
+LABEL_0016:
+  reg[13] = make_Name(vm);
+
+  
+  // 0018: reuseagent2 reg11 as id=18 reg1 reg13
+  a1 = reg[11];
+  AGENT(a1)->basic.id = 18;
+  {
+    /*
+    volatile VALUE *a1port = AGENT(a1)->port;
+    a1port[0] = reg[1];
+    a1port[1] = reg[13];
+    */
+    AGENT(a1)->port[0] = reg[1];
+    AGENT(a1)->port[1] = reg[13];
+  }    
+
+  
+  // 0023: mkagent1 id:28 reg11 reg14
+  a1 = make_Agent(vm, 28);
+  AGENT(a1)->port[0] = reg[11];
+  reg[14] = a1;
+
+  
+  // 0027: dec reg12 reg15
+  {
+    int i = FIX2INT(reg[12]);
+    
+    reg[15] = INT2FIX(--i);
+  }
+
+  
+  // 0030: push reg14 reg15
+  {
+    VALUE a1 = reg[14];
+    VALUE a2 = reg[15];
+    PUSH(vm, a1, a2);
+  }
+
+  
+  // 0033: mkagent1 id:28 reg13 reg13
+  a1 = make_Agent(vm, 28);
+  AGENT(a1)->port[0] = reg[13];
+  reg[13] = a1;
+
+  
+  // 0037: subi reg12 $2 reg14
+  {
+    int i = FIX2INT(reg[12]);
+    int j = 2;
+    
+    reg[14] = INT2FIX(i-j);
+  }
+
+  
+  // 0041: push reg13 reg14
+  {
+    VALUE a1 = reg[13];
+    VALUE a2 = reg[14];
+    PUSH(vm, a1, a2);
+  }
+
+  
+  // 0044: ret  
+  return;
+  
+}
 
 
 
@@ -7783,6 +8198,20 @@ loop_a2IsFixnum:
 #endif
       }
 
+      /*
+      if (BASIC(a1)->id == 28) {
+	vm->reg[VM_OFFSET_METAVAR_L(0)] = AGENT(a1)->port[0];
+	
+	vm->reg[VM_OFFSET_ANNOTATE_L] = a1;
+	vm->reg[VM_OFFSET_ANNOTATE_R] = a2;
+
+	COUNTUP_INTERACTION(vm);
+	exec_code_fib(vm);
+
+	return;
+      }
+      */
+      
       int i;
       unsigned long arity;
       arity = (unsigned long)code[0];
@@ -8451,12 +8880,13 @@ int exec(Ast *at) {
   // aplist
   at = at->right;
 
-  // for aplists
-  //        puts(""); ast_puts(at); puts("");
-  Ast_RewriteOptimisation_eqlist(at);
-  //        puts(""); ast_puts(at); puts("");
-  //        exit(1);
+  //   for aplists
+  //          puts(""); ast_puts(at); puts("");
+  //          Ast_RewriteOptimisation_eqlist(at);
+  //          puts(""); ast_puts(at); puts("");
+  //	  //          exit(1);
 
+  Ast_RewriteOptimisation_eqlist(at);
 	
   
   // Syntax error check
@@ -8514,7 +8944,6 @@ int exec(Ast *at) {
   CmEnv_retrieve_MKGNAME();
   CmEnv_generate_VMCode(code);
 
-  
   /*
   // for debug
   CmEnv_retrieve_MKGNAME();
@@ -8524,7 +8953,6 @@ int exec(Ast *at) {
   VMCode_puts(code, codenum-2); //exit(1);
   // end for debug
   */
-  
   
 #ifdef COUNT_MKAGENT
   NumberOfMkAgent=0;
@@ -8622,7 +9050,7 @@ void *tpool_thread(void *arg) {
   //  printf("Thread%d works on Core%d/%d\n", vm->id, (vm->id)%CpuNum, CpuNum-1);  
 #endif
 
-
+  
   while (1) {
 
     VALUE t1, t2;
@@ -8694,6 +9122,8 @@ void tpool_init(unsigned int agentBufferSize, unsigned int eqstack_size) {
   for (i=0; i<MaxThreadsNum; i++) {
     VMs[i] = malloc(sizeof(VirtualMachine));
     VMs[i]->id = i;
+
+    //    usleep(i*2);
     
 #ifdef EXPANDABLE_HEAP    
     VM_Init(VMs[i], eqstack_size);
@@ -8941,29 +9371,119 @@ int main(int argc, char *argv[])
 	printf("Inpla version %s\n", VERSION);	  
 	puts("Usage: inpla [options]\n");
 	puts("Options:");
-	printf(" -f <filename>    Set input file name                 (Defalut:    STDIN)\n");
+	printf(" -f <filename>    Set input file name                   (Defalut:      STDIN)\n");
+	printf(" -d <Name>=<val>  Bind <val> to <Name>\n");
+
 
 #ifndef EXPANDABLE_HEAP
 	//v0.5.6
-	printf(" -c <number>      Set the size of heaps               (Defalut: %8u)\n", heap_size);
+	printf(" -c <num>         Set size of heaps                     (Defalut: %10u)\n", heap_size);
+#else
+	printf(" -Xms <num>       Set initial heap size to 2^<num>      (Defalut: %2u (=%4u))\n",
+	       Hoop_init_size, 1 << Hoop_init_size);
+	printf(" -Xmt <num>       Set increasing heap times to 2^<num>  (Defalut: %2u (=%4u))\n",
+	       Hoop_increasing_magnitude, 1 << Hoop_increasing_magnitude);
+	printf("                      0: the same size heap is inserted when it runs up.\n");
+	printf("                      1: the twice (=2^1) size heap is inserted.\n");
+	
 #endif
-	
-	printf(" -e <number>      Set the unit size of the EQ stack   (Default: %8u)\n", max_EQStack);
-	
 
-	// Special Options
-#ifdef THREAD
-	printf(" -t <number>      Set the number of threads           (Default: %8d)\n", MaxThreadsNum);
+	
+	printf(" -Xes <num>       Set initial equation stack size       (Default: %10u)\n", max_EQStack);	
+
+
+	
+#ifdef THREAD  
+	printf(" -t <num>         Set the number of threads             (Default: %10d)\n", MaxThreadsNum);
 
 #else
-	printf(" -w               Enable Weak Reduction strategy      (Default:    false)\n");
+	printf(" -w               Enable Weak Reduction strategy        (Default:      false)\n");
 #endif
-	  
-	printf(" -d <Name>=<val>  Bind <val> to <Name>\n");
-        printf(" -h               Print this help message\n\n");
+
+
+	
+	printf(" -h               Print this help message\n\n");
         exit(-1);
 	break;
 
+	
+      case 'X':
+	if (!(strcmp(argv[i], "-Xes"))) {
+	  i++;
+	  if (i < argc) {
+	    param = atoi(argv[i]);
+	    if (param == 0) {
+	      printf("ERROR: '%s' is illegal parameter for -Xes\n", argv[i]);
+	      exit(-1);
+	    }
+	  } else {
+	    printf("ERROR: The option '-Xes' needs a natural number.");
+	    exit(-1);
+	  }
+	  max_EQStack=param;
+	}
+
+	  
+#ifdef EXPANDABLE_HEAP
+	else if (!(strcmp(argv[i], "-Xms"))) {
+	  i++;
+	  if (i < argc) {
+	    int valid = 1;
+	    char *val = argv[i];
+
+	    for (int idx = 0; idx < strlen(val); idx++) {
+	      if ((val[idx] < '0') || (val[idx] > '9')) {
+		valid = 0;
+		break;
+	      }
+	    }
+	    if (!valid) {
+	      printf("ERROR: '%s' is illegal parameter for -Xms\n", argv[i]);
+	      exit(-1);
+	    }
+	    	    
+	    param = atoi(argv[i]);
+	    if (param == 0) {
+	      printf("ERROR: '%s' is illegal parameter for -Xms\n", argv[i]);
+	      exit(-1);
+	    }
+	  } else {
+	    printf("ERROR: The option '-Xms' needs a number.");
+	    exit(-1);
+	  }
+	  Hoop_init_size = param;
+
+	  
+	} else if (!(strcmp(argv[i], "-Xmt"))) {
+	  i++;
+	  if (i < argc) {
+
+
+	    int valid = 1;
+	    char *val = argv[i];
+
+	    for (int idx = 0; idx < strlen(val); idx++) {
+	      if ((val[idx] < '0') || (val[idx] > '9')) {
+		valid = 0;
+		break;
+	      }
+	    }
+	    if (!valid) {
+	      printf("ERROR: '%s' is illegal parameter for -Xmt\n", argv[i]);
+	      exit(-1);
+	    }
+	    	    	    
+	  } else {
+	    printf("ERROR: The option '-Xmt' needs a number.");
+	    exit(-1);
+	  }
+	  param = atoi(argv[i]);
+	  Hoop_increasing_magnitude = param;
+
+	}
+#endif
+	break;
+	
 	
       case 'd':
 	i++;
@@ -9010,7 +9530,7 @@ int main(int argc, char *argv[])
 	  ast_recordConst(varname, atoi(val));
 
 	} else {
-	  puts("ERROR: The option switch '-d' needs a string such as VarName=value.");
+	  puts("ERROR: The option '-d' needs a string such as VarName=value.");
 	  exit(-1);
 	}
 	break;
@@ -9021,7 +9541,7 @@ int main(int argc, char *argv[])
 	  fname = argv[i];
 	  retrieve_flag = 0;
 	} else {
-	  printf("ERROR: The option switch '-f' needs a string of an input file name.");
+	  printf("ERROR: The option '-f' needs a string of an input file name.");
 	  exit(-1);
 	}
 	break;
@@ -9038,29 +9558,14 @@ int main(int argc, char *argv[])
             exit(-1);
           }
         } else {
-          printf("ERROR: The option switch '-c' needs a number as an argument.");
+          printf("ERROR: The option '-c' needs a number as an argument.");
           exit(-1);
         }
         heap_size=param;
         break;
 #endif	  
-	  
-	  
-      case 'e':
-        i++;
-        if (i < argc) {
-          param = atoi(argv[i]);
-          if (param == 0) {
-            printf("ERROR: '%s' is illegal parameter for -e\n", argv[i]);
-            exit(-1);
-          }
-        } else {
-          printf("ERROR: The option switch '-e' needs a natural number.");
-          exit(-1);
-        }
-        max_EQStack=param;
-        break;
-	  
+
+	
 	  
 #ifdef THREAD
       case 't':
@@ -9072,7 +9577,7 @@ int main(int argc, char *argv[])
             exit(-1);
           }
         } else {
-          printf("ERROR: The option switch '-t' needs a number of threads.");
+          printf("ERROR: The option '-t' needs a number of threads.");
           exit(-1);
         }
   
@@ -9126,10 +9631,23 @@ int main(int argc, char *argv[])
 
 #ifndef EXPANDABLE_HEAP
   // v0.5.6
-  heap_size = heap_size/MaxThreadsNum;    
+  heap_size = heap_size/MaxThreadsNum;
+
+#else
+  Hoop_init_size = 1 << Hoop_init_size;
+  Hoop_increasing_magnitude = 1 << Hoop_increasing_magnitude;
 #endif
     
-    
+
+  /*
+  // check parameters
+  printf("Hoop_init_size=%d\n", Hoop_init_size);
+  printf("Hoop_increasing_magnitude=%d\n", Hoop_increasing_magnitude);
+  printf("max_EQStack=%d\n", max_EQStack);
+  exit(1);
+  */
+  
+  
   IdTable_init();    
   NameTable_init();
   RuleTable_init();
