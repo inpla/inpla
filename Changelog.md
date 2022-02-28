@@ -18,7 +18,7 @@
   ![speedup-ratio](pic/flexibily_expandable.png)
 
   * To set the initial size to 2^*n*, use the execution option `-Xms n` (default `n` is 12, so the size is 4096):
-  * To set the increasing magnification to 2^*n*, use the option `-Xmt n` (default `n` is 3, so the inserted heap is 8 times of the run up heap)
+  * To set the multiple increment to 2^*n*, use the option `-Xmt n` (default `n` is 3, so the inserted heap is 8 times of the run up heap)
 
   To use the fixed sized ring buffer, comment out the following definition in `src/inpla.y`:
 
