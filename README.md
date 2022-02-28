@@ -804,16 +804,16 @@ Inpla has the following macro:
   Inpla version 0.8.0
   Usage: inpla [options]
   
-   -f <filename>    Set input file name                   (Defalut:      STDIN)
+  Options:
+   -f <filename>    Set input file name                     (Defalut:      STDIN)
    -d <Name>=<val>  Bind <val> to <Name>
-   -Xms <num>       Set initial heap size to 2^<num>      (Defalut: 12 (=4096))
-   -Xmt <num>       Set increasing heap times to 2^<num>  (Defalut:  3 (=   8))
-                        0: the same size heap is inserted when it runs up.
-                        1: the twice (=2^1) size heap is inserted.
-   -Xes <num>       Set initial equation stack size       (Default:        256)
-   -w               Enable Weak Reduction strategy        (Default:      false)
-   -t <num>         Set the number of threads             (Default:          8)
-  
+   -Xms <num>       Set initial heap size to 2^<num>        (Defalut: 12 (=4096))
+   -Xmt <num>       Set multiple heap increment to 2^<num>  (Defalut:  3 (=   8))
+                      0: the same size heap is inserted when it runs up.
+                      1: the twice (=2^1) size heap is inserted.
+   -Xes <num>       Set initial equation stack size         (Default:        256)
+    -w               Enable Weak Reduction strategy         (Default:      false)
+   -t <num>         Set the number of threads               (Default:          8)
    -h               Print this help message
   ```
 
