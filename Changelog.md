@@ -12,7 +12,7 @@
 | msort 800000 |   0.46   |   1.00   | 98.27  |  3.93  |   1.35   |  0.46  | **0.35** |
 
 #### New Features:
-* **Introduced a configuration file**: A file `src/config.h` for execution configuration is introduced. Change it as you favorite.
+* **Introduced a configuration file**: A configuration file `src/config.h` such as for optimisation and heap data strucutures is introduced. Change it as your program can be executed faster.
 
 * **Two address codes**: Virtual machines can execute two address codes and the compiler can produce these. It seems that these could work effeiently but not so significant, a little fluctuated, so I am not sure that it is definity recomendable. Actually I stopped applying this method for arithmetic operations and other MKAGENT operations. A file for the configuration `src/config.h` is prepared, so select your favorite level by making these comments out.
 
@@ -30,7 +30,7 @@
 
 #### Polished:
 
-* **Retrieved the ordinary expandable ring buffer**: The ordinary expandable ring buffer is also retrieved. One heap strucutre could work well for some problems, but it might not do so well for others. Choose your favorite structure by making these comments out in `src/config.h`:
+* **Retrieved the old version of expandable ring buffers**: The old version of the expandable ring buffer has been retrieved. One heap strucutre could work well for some problems, but it might not do so well for others. Choose an appropriate heap structure by making the following comments out in `src/config.h`:
 
   ```
   /* Heaps ------------------------------------------ 
