@@ -17,30 +17,11 @@
 #include "mytype.h"
 #include "inpla.h"
 
+#include "config.h"  
 
 
 
   
-// Configuration  ---------------------------------------------------
-#define COUNT_INTERACTION  // Count interaction.
-#define EXPANDABLE_HEAP    // Expandable heaps for agents and names
-#define OPTIMISE_IMCODE    // Optimise the intermediate codes
-
-
-
-  
-#ifdef OPTIMISE_IMCODE
-  // the following depends on the definition OPTIMISE_IMCODE  
-#define OPTIMISE_IMCODE_TRO   // Optimise option for Tail Recursive Opt.
-  //#define OPTIMISE_TWO_ADDRESS  // Generate codes for two address notation
-  //#define OPTIMISE_TWO_ADDRESS_MKAGENT2  // MKAGENT2 also. Arithmetic also.
-
-#endif
-
-  
-//#define VERBOSE_NODE_USE  // Put memory usage of agents and names.
-//#define VERBOSE_HOOP_EXPANSION  // Put messages when hoops are expanded.
-//#define VERBOSE_EQSTACK_EXPANSION  // Put messages when Eqstacks are expanded.
 
 
 // ----------------------------------------------
@@ -52,8 +33,8 @@
 //#define COUNT_MKAGENT // count of execution fo mkagent
 
 
-#define VERSION "0.8.0"
-#define BUILT_DATE  "27 Feb. 2022"  
+#define VERSION "0.8.1"
+#define BUILT_DATE  "3 Mar. 2022"  
 // ------------------------------------------------------------------
 
 
@@ -64,15 +45,18 @@
   
 // For threads  ---------------------------------
 
-#ifndef EXPANDABLE_HEAP
-static int MaxThreadsNum=1;  // The old heap uses it to divide total numbers.
+#if !defined(EXPANDABLE_HEAP) && !defined(FLEX_EXPANDABLE_HEAP)
+// The fixed heap requires it to devide heaps by threads.
+static int MaxThreadsNum=1;  
 #endif
+
  
 #ifdef THREAD
 
-#ifdef EXPANDABLE_HEAP
+#if defined(EXPANDABLE_HEAP) || defined(FLEX_EXPANDABLE_HEAP)
 static int MaxThreadsNum=1;
 #endif
+
  
 #include <pthread.h>
 extern int pthread_setconcurrency(int concurrency); 
@@ -602,11 +586,305 @@ int yyerror(char *s) {
 
 // HOOP_SIZE must be power of two
 //#define INIT_HOOP_SIZE (1 << 10)
-//#define HOOP_SIZE_INCREASE_TIMES 1<<4   // increased by 16 times
+//#define HOOP_SIZE (1 << 18)
+#define HOOP_SIZE_MASK ((HOOP_SIZE) -1)
 
-//#define INIT_HOOP_SIZE (1 << 12)        // 2^12 = 4096
-//#define HOOP_SIZE_INCREASE_TIMES 1<<3   // increased by 8 times
+typedef struct HoopList_tag {
+  VALUE *hoop;
+  struct HoopList_tag *next;
+} HoopList;
 
+
+// Nodes with '1' on the 31bit in hoops are ready for use and
+// '0' are occupied, that is to say, using now.
+#define HOOPFLAG_READYFORUSE 0x01 << 31 
+#define IS_READYFORUSE(a) ((a) & HOOPFLAG_READYFORUSE)
+#define SET_HOOPFLAG_READYFORUSE(a) ((a) = ((a) | HOOPFLAG_READYFORUSE))
+#define RESET_HOOPFLAG_READYFORUSE_AGENT(a) ((a) = (HOOPFLAG_READYFORUSE))
+#define RESET_HOOPFLAG_READYFORUSE_NAME(a) ((a) = ((ID_NAME) | (HOOPFLAG_READYFORUSE)))
+#define TOGGLE_HOOPFLAG_READYFORUSE(a) ((a) = ((a) ^ HOOPFLAG_READYFORUSE))
+
+
+typedef struct Heap_tag {
+  HoopList *last_alloc_list;
+  int last_alloc_idx;
+} Heap;  
+
+
+
+HoopList *HoopList_new_forName(void) {
+  int i;
+  HoopList *hp_list;
+
+  hp_list = (HoopList *)malloc(sizeof(HoopList));
+  if (hp_list == NULL) {
+    printf("[HoopList]Malloc error\n");
+    exit(-1);
+  }
+
+  
+  // Name Heap  
+  hp_list->hoop = (VALUE *)malloc(sizeof(Name) * HOOP_SIZE);
+  if (hp_list->hoop == (VALUE *)NULL) {
+      printf("[HoopList->Hoop (name)]Malloc error\n");
+      exit(-1);
+  }
+  for (i=0; i<HOOP_SIZE; i++) {
+    //    ((Name *)(hp_list->hoop))[i].basic.id = ID_NAME;
+    RESET_HOOPFLAG_READYFORUSE_NAME(((Name *)(hp_list->hoop))[i].basic.id);
+  }
+
+  // hp->next = NULL;   // this should be executed only for the first creation.
+  return hp_list;
+}
+
+
+
+
+HoopList *HoopList_new_forAgent(void) {
+  int i;
+  HoopList *hp_list;
+
+  hp_list = (HoopList *)malloc(sizeof(HoopList));
+  if (hp_list == NULL) {
+    printf("[HoopList]Malloc error\n");
+    exit(-1);
+  }
+
+  
+  // Agent Heap  
+  hp_list->hoop = (VALUE *)malloc(sizeof(Agent) * HOOP_SIZE);
+  if (hp_list->hoop == (VALUE *)NULL) {
+      printf("[HoopList->Hoop]Malloc error\n");
+      exit(-1);
+  }
+  for (i=0; i<HOOP_SIZE; i++) {
+    RESET_HOOPFLAG_READYFORUSE_AGENT(((Agent *)(hp_list->hoop))[i].basic.id);
+
+  }
+
+  // hp->next = NULL;   // this should be executed only for the first creation.
+  return hp_list;
+}
+
+
+
+
+
+
+unsigned long Heap_GetNum_Usage_forAgent(Heap *hp) {
+  
+  unsigned long count=0;
+  HoopList *hoop_list = hp->last_alloc_list;
+
+  Agent *hoop;
+
+  do {
+    
+    hoop = (Agent *)(hoop_list->hoop);
+    for (int i = 0; i < HOOP_SIZE; i++) {
+      if (!IS_READYFORUSE(hoop[i].basic.id)) {
+	count++;
+      }
+    }
+    hoop_list = hoop_list->next;
+  } while (hoop_list != hp->last_alloc_list);
+  
+  return count;
+}
+
+
+unsigned long Heap_GetNum_Usage_forName(Heap *hp) {
+  
+  unsigned long count=0;
+  HoopList *hoop_list = hp->last_alloc_list;
+
+  Name *hoop;
+
+  do {
+    
+    hoop = (Name *)(hoop_list->hoop);
+    for (int i = 0; i < HOOP_SIZE; i++) {
+      if (!IS_READYFORUSE(hoop[i].basic.id)) {
+	count++;
+      }
+    }
+    hoop_list = hoop_list->next;
+  } while (hoop_list != hp->last_alloc_list);
+  
+  return count;
+
+}
+
+
+
+
+//static inline
+VALUE myalloc_Agent(Heap *hp) {
+
+  int idx;  
+  HoopList *hoop_list;
+  Agent *hoop;
+  
+  idx = hp->last_alloc_idx;
+  hoop_list = hp->last_alloc_list;
+
+  
+  while (1) {
+    hoop = (Agent *)(hoop_list->hoop);
+  
+    while (idx < HOOP_SIZE) {
+    
+      if (IS_READYFORUSE(hoop[idx].basic.id)) {
+	TOGGLE_HOOPFLAG_READYFORUSE(hoop[idx].basic.id);
+
+	hp->last_alloc_idx = idx;
+	//hp->last_alloc_idx = (idx-1+HOOP_SIZE)%HOOP_SIZE_MASK;
+	
+	hp->last_alloc_list = hoop_list;
+
+	//    printf("hit[%d]\n", idx);
+	return (VALUE)&(hoop[idx]);
+      }
+      idx++;
+    }
+  
+
+    // No nodes are available in this hoop.
+
+
+    if (hoop_list->next != hp->last_alloc_list) {
+      // There is another hoop.
+      hoop_list = hoop_list->next;
+      idx = 0;  
+
+    } else {  
+      // There are no other hoops. A new hoop should be created.
+    
+      //          v when come again here
+      //    current    last_alloc
+      // -->|......|-->|......|-->
+      //
+      // ==>
+      //             new current
+      //               new        last_alloc
+      // -->|......|-->|oooooo|-->|......|--
+
+#ifdef VERBOSE_HOOP_EXPANSION
+      puts("(Agent hoop is expanded)");
+#endif
+      
+      HoopList *new_hoop_list;
+      new_hoop_list = HoopList_new_forAgent();
+
+      HoopList *last_alloc = hoop_list->next;
+      hoop_list->next = new_hoop_list;
+      new_hoop_list->next = last_alloc;
+
+      /* 
+      // Another way: insert new_hoop into the next of the top.
+      // But, it does not work so well.
+
+      HoopList *next_from_top = hp->hoop_list->next;
+      hp->hoop_list = new_hoop_list;
+      new_hoop_list->next = next_from_top;
+      */
+
+      hoop_list = new_hoop_list;    
+      idx = 0;  
+    }
+  }
+  
+  
+}
+
+
+//static inline
+VALUE myalloc_Name(Heap *hp) {
+
+  int idx;
+  HoopList *hoop_list;
+  Name *hoop;
+
+  idx = hp->last_alloc_idx;
+  hoop_list = hp->last_alloc_list;
+    
+  while (1) {
+    hoop = (Name *)(hoop_list->hoop);
+  
+    while (idx < HOOP_SIZE) {
+    
+      if (IS_READYFORUSE(hoop[idx].basic.id)) {
+	TOGGLE_HOOPFLAG_READYFORUSE(hoop[idx].basic.id);
+
+	//hp->last_alloc_idx = idx;      
+	hp->last_alloc_idx = (idx-1+HOOP_SIZE) & HOOP_SIZE_MASK;
+	
+	hp->last_alloc_list = hoop_list;
+
+	//    printf("hit[%d]\n", idx);
+	return (VALUE)&(hoop[idx]);
+      }
+      idx++;
+    }
+
+    // No nodes are available in this hoop.
+  
+    if (hoop_list->next != hp->last_alloc_list) {
+      // There is another hoop.
+      hoop_list = hoop_list->next;
+      idx=0;
+
+    } else {
+    
+      // There are no other hoops. A new hoop should be created.
+    
+      //          v when come again here
+      //    current    last_alloc
+      // -->|......|-->|xxxxxx|-->
+      //
+      // ==>
+      //             new current
+      //               new        last_alloc
+      // -->|......|-->|oooooo|-->|xxxxxx|--
+      
+#ifdef VERBOSE_HOOP_EXPANSION
+      puts("(Name hoop is expanded)");
+#endif
+      
+      HoopList *new_hoop_list;
+      new_hoop_list = HoopList_new_forName();
+
+      HoopList *last_alloc = hoop_list->next;
+      hoop_list->next = new_hoop_list;
+      new_hoop_list->next = last_alloc;
+    
+      hoop_list = new_hoop_list;
+      idx=0;    
+    }
+
+  }
+
+
+}
+
+
+
+
+static inline
+void myfree(VALUE ptr) {
+
+  SET_HOOPFLAG_READYFORUSE(BASIC(ptr)->id);
+
+}
+
+
+
+
+/* ------------------------------------------------------------
+   FLEX EXPANDABLE HEAP  
+ ------------------------------------------------------------ */
+#elif defined(FLEX_EXPANDABLE_HEAP)
 static unsigned int Hoop_init_size = 12;             // 2^12 = 4096
 static unsigned int Hoop_increasing_magnitude = 3;   // 2^3  = 8
 
@@ -921,6 +1199,8 @@ void myfree(VALUE ptr) {
 
 #else
 // v0.5.6 -------------------------------------
+// Fixed size buffer
+// --------------------------------------------
 typedef struct Heap_tag {
   VALUE *heap;
   int lastAlloc;
@@ -1481,6 +1761,25 @@ unsigned int NumberOfMkAgent;
 #ifdef EXPANDABLE_HEAP
 void VM_Buffer_Init(VirtualMachine * restrict vm) {
   // Agent Heap
+  vm->agentHeap.last_alloc_list = HoopList_new_forAgent();
+  vm->agentHeap.last_alloc_list->next = vm->agentHeap.last_alloc_list;
+  vm->agentHeap.last_alloc_idx = 0;
+
+
+  // Name Heap
+  vm->nameHeap.last_alloc_list = HoopList_new_forName();
+  vm->nameHeap.last_alloc_list->next = vm->nameHeap.last_alloc_list;
+  vm->nameHeap.last_alloc_idx = 0;
+
+  // Register
+  vm->reg = malloc(sizeof(VALUE) * VM_REG_SIZE);
+}  
+
+
+
+#elif defined(FLEX_EXPANDABLE_HEAP)
+void VM_Buffer_Init(VirtualMachine * restrict vm) {
+  // Agent Heap
   /*
   vm->agentHeap.last_alloc_list = HoopList_new_forAgent(Hoop_init_size);
   vm->agentHeap.last_alloc_list->next = vm->agentHeap.last_alloc_list;
@@ -1508,6 +1807,7 @@ void VM_Buffer_Init(VirtualMachine * restrict vm) {
   // Register
   vm->reg = malloc(sizeof(VALUE) * VM_REG_SIZE);
 }  
+
 #else
 
 void VM_InitBuffer(VirtualMachine * restrict vm, int size) {
@@ -1585,7 +1885,7 @@ int VM_EQStack_Pop(VirtualMachine * restrict vm, VALUE *l, VALUE *r) {
 }
 
 
-#ifdef EXPANDABLE_HEAP
+#if defined(EXPANDABLE_HEAP) || defined(FLEX_EXPANDABLE_HEAP)
 void VM_Init(VirtualMachine * restrict vm, unsigned int eqStackSize) {
   VM_Buffer_Init(vm);
   VM_EQStack_Init(vm, eqStackSize);
@@ -2411,7 +2711,7 @@ void VMCode_puts(void **code, int n) {
       i+=2;
 
     } else if (code[i] == CodeAddr[OP_MKAGENT1]) {
-#ifndef OPTIMISE_TWO_ADDRESS
+#if !defined(OPTIMISE_TWO_ADDRESS) || !defined(OPTIMISE_TWO_ADDRESS_MKAGENT1)
       printf("mkagent1 id:%lu reg%lu reg%lu\n", 
 	     (unsigned long)code[i+1],
 	     (unsigned long)code[i+2],
@@ -2425,7 +2725,7 @@ void VMCode_puts(void **code, int n) {
 #endif      
 
     } else if (code[i] == CodeAddr[OP_MKAGENT2]) {
-#ifndef OPTIMISE_TWO_ADDRESS_MKAGENT2
+#if !defined(OPTIMISE_TWO_ADDRESS) || !defined(OPTIMISE_TWO_ADDRESS_MKAGENT2)
       printf("mkagent2 id:%lu reg%lu reg%lu reg%lu\n", 
 	     (unsigned long)code[i+1],
 	     (unsigned long)code[i+2],
@@ -2441,6 +2741,7 @@ void VMCode_puts(void **code, int n) {
 #endif      
       
     } else if (code[i] == CodeAddr[OP_MKAGENT3]) {
+#if !defined(OPTIMISE_TWO_ADDRESS) || !defined(OPTIMISE_TWO_ADDRESS_MKAGENT3)
       printf("mkagent3 id:%lu reg%lu reg%lu reg%lu reg%lu\n", 
 	     (unsigned long)code[i+1],
 	     (unsigned long)code[i+2],
@@ -2448,7 +2749,15 @@ void VMCode_puts(void **code, int n) {
 	     (unsigned long)code[i+4],
 	     (unsigned long)code[i+5]);
       i+=5;
-
+#else
+      printf("mkagent3 id:%lu reg%lu reg%lu reg%lu\n", 
+	     (unsigned long)code[i+1],
+	     (unsigned long)code[i+2],
+	     (unsigned long)code[i+3],
+	     (unsigned long)code[i+4]);
+      i+=4;      
+#endif
+      
     } else if (code[i] == CodeAddr[OP_MKAGENT4]) {
       printf("mkagent4 id:%lu reg%lu reg%lu reg%lu reg%lu reg%lu\n", 
 	     (unsigned long)code[i+1],
@@ -2631,7 +2940,7 @@ void VMCode_puts(void **code, int n) {
 	     (unsigned long)code[i+2],
 	     (unsigned long)code[i+3]);
       i+=3;
-
+      
     } else if (code[i] == CodeAddr[OP_MUL]) {
       printf("mul reg%lu reg%lu reg%lu\n", 
 	     (unsigned long)code[i+1],
@@ -2746,28 +3055,52 @@ void VMCode_puts(void **code, int n) {
       i+=1;
 
     } else if (code[i] == CodeAddr[OP_UNM]) {
+#if !defined(OPTIMISE_TWO_ADDRESS) || !defined(OPTIMISE_TWO_ADDRESS_UNARY)
       printf("unm reg%lu reg%lu\n",
 	     (unsigned long)code[i+1],
 	     (unsigned long)code[i+2]);
       i+=2;
-
+#else
+      printf("unm reg%lu\n",
+	     (unsigned long)code[i+1]);
+      i+=1;
+#endif
+      
     } else if (code[i] == CodeAddr[OP_INC]) {
+#if !defined(OPTIMISE_TWO_ADDRESS) || !defined(OPTIMISE_TWO_ADDRESS_UNARY)
       printf("inc reg%lu reg%lu\n",
 	     (unsigned long)code[i+1],
 	     (unsigned long)code[i+2]);
       i+=2;
-
+#else
+      printf("inc reg%lu\n",
+	     (unsigned long)code[i+1]);
+      i+=1;      
+#endif      
+      
     } else if (code[i] == CodeAddr[OP_DEC]) {
+#if !defined(OPTIMISE_TWO_ADDRESS) || !defined(OPTIMISE_TWO_ADDRESS_UNARY)
       printf("dec reg%lu reg%lu\n",
 	     (unsigned long)code[i+1],
 	     (unsigned long)code[i+2]);
       i+=2;
+#else
+      printf("dec reg%lu\n",
+	     (unsigned long)code[i+1]);
+      i+=1;      
+#endif      
 
     } else if (code[i] == CodeAddr[OP_RAND]) {
+#if !defined(OPTIMISE_TWO_ADDRESS) || !defined(OPTIMISE_TWO_ADDRESS_UNARY)
       printf("rnd reg%lu reg%lu\n",
 	     (unsigned long)code[i+1],
 	     (unsigned long)code[i+2]);
       i+=2;
+#else
+      printf("rnd reg%lu\n",
+	     (unsigned long)code[i+1]);
+      i+=1;
+#endif      
 
     } else if (code[i] == CodeAddr[OP_CNCTGN]) {
       printf("cnctgn reg%lu reg%lu\n",
@@ -2842,7 +3175,7 @@ typedef struct {
   int tmpRegState[VM_REG_SIZE]; // register assignments
                                 // store localvar numbers. -1 is no assignment.
 
-#ifdef OPTIMISE_TWO_ADDRESS_MKAGENT2
+#ifdef OPTIMISE_TWO_ADDRESS
   int jmpcnctBlockRegState[VM_REG_SIZE];
   int is_in_jmpcnctBlock;
 #endif  
@@ -2881,7 +3214,7 @@ void CmEnv_clear_bind(int preserve_idx) {
   CmEnv.bindPtr = preserve_idx+1;
 }
 
-#ifdef OPTIMISE_TWO_ADDRESS_MKAGENT2
+#ifdef OPTIMISE_TWO_ADDRESS
 void CmEnv_clear_jmpcnctBlock_assignment_table_all(void) {
   for (int i=0; i<VM_REG_SIZE; i++) {
     CmEnv.jmpcnctBlockRegState[i] = -1;
@@ -2906,7 +3239,7 @@ void CmEnv_clear_register_assignment_table_all(void) {
     CmEnv.tmpRegState[i] = -1;   // free
   }
 
-#ifdef OPTIMISE_TWO_ADDRESS_MKAGENT2
+#ifdef OPTIMISE_TWO_ADDRESS
   CmEnv_clear_jmpcnctBlock_assignment_table_all();
 #endif
   
@@ -3162,7 +3495,7 @@ void CmEnv_retrieve_MKGNAME(void) {
 
 
 int CmEnv_using_reg(int localvar) {
-#ifndef OPTIMISE_TWO_ADDRESS_MKAGENT2
+#ifndef OPTIMISE_TWO_ADDRESS
   for (int i=0; i<VM_REG_SIZE; i++) {
     if (CmEnv.tmpRegState[i] == localvar) {
       return i;
@@ -3171,6 +3504,8 @@ int CmEnv_using_reg(int localvar) {
   printf("ERROR[CmEnv_using_reg]: No register assigned to var%d\n", localvar);  
   exit(1);
 #else
+
+  // For two address
   
   if (CmEnv.is_in_jmpcnctBlock) {
     for (int i=0; i<VM_REG_SIZE; i++) {
@@ -3194,7 +3529,7 @@ int CmEnv_using_reg(int localvar) {
 }
 
 int CmEnv_get_newreg(int localvar) {
-#ifndef OPTIMISE_TWO_ADDRESS_MKAGENT2
+#ifndef OPTIMISE_TWO_ADDRESS
   //  for (int i=VM_OFFSET_LOCALVAR; i<VM_REG_SIZE; i++) {
   for (int i=1; i<VM_REG_SIZE; i++) {  
     if (CmEnv.tmpRegState[i] == -1) {
@@ -3203,6 +3538,8 @@ int CmEnv_get_newreg(int localvar) {
     }
   }
 #else
+
+  // for two address
   if (CmEnv.is_in_jmpcnctBlock) {
     for (int i=0; i<VM_REG_SIZE; i++) {
       if (CmEnv.jmpcnctBlockRegState[i] == -1) {
@@ -3233,12 +3570,8 @@ void CmEnv_free_reg(int reg) {
     CmEnv.tmpRegState[reg] = -1;
 #else
 
+  // for two address
 
-#ifndef OPTIMISE_TWO_ADDRESS_MKAGENT2
-  if (reg >= VM_OFFSET_LOCALVAR)
-    CmEnv.tmpRegState[reg] = -1;
-#else
-  
   if (CmEnv.is_in_jmpcnctBlock) {
     CmEnv.jmpcnctBlockRegState[reg] = -1;
     return;
@@ -3247,7 +3580,6 @@ void CmEnv_free_reg(int reg) {
     CmEnv.tmpRegState[reg] = -1;
   }
 #endif
-#endif  
 }
 
 
@@ -3263,33 +3595,28 @@ int CmEnv_assign_reg(int localvar, int reg) {
 
   int *tmpRegState;
 
-#ifndef OPTIMISE_TWO_ADDRESS_MKAGENT2
-  tmpRegState = CmEnv.tmpRegState;
-#else
-  
   if (CmEnv.is_in_jmpcnctBlock) {
     tmpRegState = CmEnv.jmpcnctBlockRegState;
   } else {
     tmpRegState = CmEnv.tmpRegState;
   }
-#endif    
     
-    if (tmpRegState[reg] == localvar) {
-      return -1;
-    }
-
-    if (tmpRegState[reg] < 0) {
-      tmpRegState[reg] = localvar;
-      return -1;
-    }
-
-
-    int orig_var = tmpRegState[reg];
-    
+  if (tmpRegState[reg] == localvar) {
+    return -1;
+  }
+  
+  if (tmpRegState[reg] < 0) {
     tmpRegState[reg] = localvar;
-    
-    int new_reg = CmEnv_get_newreg(orig_var);
-    return new_reg;
+    return -1;
+  }
+  
+  
+  int orig_var = tmpRegState[reg];
+  
+  tmpRegState[reg] = localvar;
+  
+  int new_reg = CmEnv_get_newreg(orig_var);
+  return new_reg;
     
 }
 #endif
@@ -3303,14 +3630,14 @@ int CmEnv_Optimise_check_occurence_in_block(int localvar,
     imcode = &IMCode[i];
     
     if (imcode->opcode == OP_BEGIN_BLOCK) {
-      // This optimisation will last until OP_BEGIN_BLOCK
+      // This optimisation will last until OP_BEGIN_BLOCK occurs
       return 0;
     }
     
-#ifdef OPTIMISE_TWO_ADDRESS_MKAGENT2
+#ifdef OPTIMISE_TWO_ADDRESS
     if ((CmEnv.is_in_jmpcnctBlock) &&
     	(imcode->opcode == OP_BEGIN_JMPCNCT_BLOCK)) {
-      // This optimisation will last until OP_BEGIN_JMPCNCT_BLOCK
+      // This optimisation will last until OP_BEGIN_JMPCNCT_BLOCK occurs
       return 0;
     }
 #endif    
@@ -3901,7 +4228,7 @@ int CmEnv_generate_VMCode(void **code) {
       if (!CmEnv_Optimise_check_occurence_in_block(imcode->operand2, line_num))
 	CmEnv_free_reg(src1);
       
-#ifndef OPTIMISE_TWO_ADDRESS
+#if !defined(OPTIMISE_TWO_ADDRESS) || !defined(OPTIMISE_TWO_ADDRESS_MKAGENT1)
       dest = CmEnv_get_newreg(dest);
 #else
       int new_reg = CmEnv_assign_reg(dest, src1);
@@ -3917,7 +4244,7 @@ int CmEnv_generate_VMCode(void **code) {
       code[addr++] = CodeAddr[imcode->opcode];
       code[addr++] = (void *)(unsigned long)imcode->operand1;
       code[addr++] = (void *)(unsigned long)src1;      
-#ifndef OPTIMISE_TWO_ADDRESS
+#if !defined(OPTIMISE_TWO_ADDRESS) || !defined(OPTIMISE_TWO_ADDRESS_MKAGENT1)
       code[addr++] = (void *)(unsigned long)dest;
 #endif
       
@@ -3940,7 +4267,7 @@ int CmEnv_generate_VMCode(void **code) {
 	CmEnv_free_reg(src2);	
       }
       
-#ifndef OPTIMISE_TWO_ADDRESS_MKAGENT2
+#if !defined(OPTIMISE_TWO_ADDRESS) || !defined(OPTIMISE_TWO_ADDRESS_MKAGENT2)
       dest = CmEnv_get_newreg(dest);
 #else
       int new_reg = CmEnv_assign_reg(dest, src2);
@@ -3963,7 +4290,7 @@ int CmEnv_generate_VMCode(void **code) {
       code[addr++] = (void *)(unsigned long)imcode->operand1;
       code[addr++] = (void *)(unsigned long)src1;      
       code[addr++] = (void *)(unsigned long)src2;      
-#ifndef OPTIMISE_TWO_ADDRESS_MKAGENT2
+#if !defined(OPTIMISE_TWO_ADDRESS) || !defined(OPTIMISE_TWO_ADDRESS_MKAGENT2)
       code[addr++] = (void *)(unsigned long)dest;      
 #endif
       
@@ -3980,6 +4307,22 @@ int CmEnv_generate_VMCode(void **code) {
       
 
 #ifdef OPTIMISE_IMCODE
+      src3 = CmEnv_using_reg(src3);
+      if (!CmEnv_Optimise_check_occurence_in_block(imcode->operand4, line_num))
+	CmEnv_free_reg(src3);
+	  
+#if !defined(OPTIMISE_TWO_ADDRESS) || !defined(OPTIMISE_TWO_ADDRESS_MKAGENT3)
+      dest = CmEnv_get_newreg(dest);
+#else
+      int new_reg = CmEnv_assign_reg(dest, src3);
+      if (new_reg > 0) {
+	code[addr++] = CodeAddr[OP_LOAD];
+	code[addr++] = (void *)(unsigned long)src3;
+	code[addr++] = (void *)(unsigned long)new_reg;
+      }                  
+#endif
+      
+      
       src1 = CmEnv_using_reg(src1);
       if ((!CmEnv_Optimise_check_occurence_in_block(imcode->operand2, line_num))
 	  && (imcode->operand2 != imcode->operand3)
@@ -3991,11 +4334,6 @@ int CmEnv_generate_VMCode(void **code) {
 	  && (imcode->operand3 != imcode->operand4))
 	CmEnv_free_reg(src2);
       
-      src3 = CmEnv_using_reg(src3);
-      if (!CmEnv_Optimise_check_occurence_in_block(imcode->operand4, line_num))
-	CmEnv_free_reg(src3);
-	  
-      dest = CmEnv_get_newreg(dest);
 #endif
       
       code[addr++] = CodeAddr[imcode->opcode];
@@ -4003,12 +4341,14 @@ int CmEnv_generate_VMCode(void **code) {
       code[addr++] = (void *)(unsigned long)src1;      
       code[addr++] = (void *)(unsigned long)src2;            
       code[addr++] = (void *)(unsigned long)src3;      
+#if !defined(OPTIMISE_TWO_ADDRESS) || !defined(OPTIMISE_TWO_ADDRESS_MKAGENT3)
       code[addr++] = (void *)(unsigned long)dest;      
+#endif
       
       break;
     }
     case OP_MKAGENT4:  {
-      //      printf("OP_MKAGENT3 var%d id:%d var%d var%d var%d var%d\n", 
+      //      printf("OP_MKAGENT4 var%d id:%d var%d var%d var%d var%d\n", 
       //	     imcode->operand1, imcode->operand2,
       //	     imcode->operand3, imcode->operand4, imcode->operand5);
       int src1 = imcode->operand2;
@@ -4054,7 +4394,7 @@ int CmEnv_generate_VMCode(void **code) {
       break;
     }      
     case OP_MKAGENT5: {
-      //      printf("OP_MKAGENT3 var%d id:%d var%d var%d var%d var%d\n", 
+      //      printf("OP_MKAGENT5 var%d id:%d var%d var%d var%d var%d\n", 
       //	     imcode->operand1, imcode->operand2,
       //	     imcode->operand3, imcode->operand4, imcode->operand5);
       int src1 = imcode->operand2;
@@ -4345,8 +4685,8 @@ int CmEnv_generate_VMCode(void **code) {
       
       //      dest = CmEnv_get_newreg(dest);
 
-#ifdef OPTIMISE_TWO_ADDRESS_MKAGENT2      
-      int a=CmEnv_assign_reg(dest, dest);
+#ifdef OPTIMISE_TWO_ADDRESS
+      CmEnv_assign_reg(dest, dest);
 #endif
       
       if (src1 == dest) {
@@ -4598,12 +4938,24 @@ int CmEnv_generate_VMCode(void **code) {
       if (!CmEnv_Optimise_check_occurence_in_block(imcode->operand1, line_num))
 	CmEnv_free_reg(src1);
 
+#if !defined(OPTIMISE_TWO_ADDRESS) || !defined(OPTIMISE_TWO_ADDRESS_UNARY)
       dest = CmEnv_get_newreg(dest);
+#else
+      int new_reg = CmEnv_assign_reg(dest, src1);
+      if (new_reg > 0) {
+	code[addr++] = CodeAddr[OP_LOAD];
+	code[addr++] = (void *)(unsigned long)src1;
+	code[addr++] = (void *)(unsigned long)new_reg;
+      }                        
+#endif      
+      
 #endif
 
       code[addr++] = CodeAddr[imcode->opcode];      
       code[addr++] = (void *)(unsigned long)src1;      
-      code[addr++] = (void *)(unsigned long)dest;      
+#if !defined(OPTIMISE_TWO_ADDRESS) || !defined(OPTIMISE_TWO_ADDRESS_UNARY)
+      code[addr++] = (void *)(unsigned long)dest;
+#endif
       break;
     }
       
@@ -4740,7 +5092,7 @@ int CmEnv_generate_VMCode(void **code) {
       break;
 
       
-#ifdef OPTIMISE_TWO_ADDRESS_MKAGENT2
+#ifdef OPTIMISE_TWO_ADDRESS
     case OP_BEGIN_JMPCNCT_BLOCK:
       //      CmEnv_clear_jmpcnctBlock_assignment_table_all();
 	
@@ -5138,105 +5490,125 @@ void Ast_RewriteOptimisation_eqlist(Ast *eqlist) {
 
 
 
-void Ast_make_annotation_TailRecursionOptimisation(Ast *mainbody) {
-
-  int idL = CmEnv.idL;
-  
-  Ast *eq_TRO = NULL;
-  Ast *agent_TRO = NULL;
-  AST_ID astID_of_TRO = idL;  // idL is dummy
-
-
+void Ast_undo_TRO_annotation(Ast *mainbody) {
   if (mainbody == NULL)
     return;
 
+  if (mainbody->id == AST_BODY) {
+    Ast *body = mainbody;
+    Ast *eqs = body->right;
+
+    if (eqs == NULL) {
+      return;
+    }
+    
+    // Move to the last placed equation
+    while (ast_getTail(eqs) != NULL) {
+      eqs = ast_getTail(eqs);
+    }
+
+    Ast *eq = eqs->left;      
+    if (eq->id != AST_CNCT) {
+      // Undo is required.
+      eq->id = AST_CNCT;
+
+      // (AST_ANNOTATE Foo NULL) => Foo
+      eq->left = eq->left->left;
+    }
+  } else {
+    Ast *if_sentence = mainbody;    
+    Ast *then_branch = if_sentence->right->left;
+    Ast *else_branch = if_sentence->right->right;
+
+    Ast_undo_TRO_annotation(then_branch);
+    Ast_undo_TRO_annotation(else_branch);
+  }
+}
+
+
+int Ast_make_annotation_TailRecursionOptimisation(Ast *mainbody) {
+  // Return 1 when annotated.
+  
+  if (mainbody == NULL)
+    return 0;
 
   if (mainbody->id == AST_BODY) {
     Ast *body = mainbody;
-
-    //    int idR = CmEnv.idR;
-    //    printf("LeftID:%d, RightID:%d\n", idL, idR);
-    
     Ast *eqs = body->right;
 
+    if (eqs == NULL) {
+      return 0;
+    }
+    
+      
     Ast_RewriteOptimisation_eqlist(eqs);        
     //    ast_puts(eqs);puts("");
     
     if (Ast_eqs_has_agentID(eqs, AST_ANNOTATION_L)) {
       //          puts("has AST_ANNOTATION_L");
-      return;
+      return 0;
     }
     //        puts("has no AST_ANNOTATION_L");
       
+
+    // Move to the last placed equation
+    while (ast_getTail(eqs) != NULL) {
+      eqs = ast_getTail(eqs);
+    }
+
     
-    while (eqs != NULL) {
-      Ast *eq = eqs->left;
-      Ast *recursion_agent = eq->left;
-      Ast *constructor_agent = eq->right;
+    Ast *eq = eqs->left;      
+    Ast *recursion_agent = eq->left;
+    Ast *constructor_agent = eq->right;
 
-      // --- Find  ruleagent_L ~ (int i)  or  ruleAgent_L ~ name
-      // --- If such eq occurs many times,
-      //      the last occurrence is used
-      //      by overwriting the recursion_agent and constructor_agent.
-      if (recursion_agent->id != AST_AGENT) {
+    int idL = CmEnv.idL;
+  
 
-	recursion_agent = eq->right;
-	constructor_agent = eq->left;
-	if (recursion_agent->id != AST_AGENT) {
-	  // --- both terms are not Agent
-	  eqs = ast_getTail(eqs);
-	  continue;
+    int available_TRO = 0;
+    AST_ID astID_of_TRO; // = idL;  // idL is dummy
+    
+    // --- recursion_agent ~ constructor_agent
+    if (idL == NameTable_get_id(recursion_agent->left->sym)) {
+      
+      if (Ast_is_expr(constructor_agent)) {
+	// --- CASE 1: rule_left_agent ~ expression
+	available_TRO = 1;	
+	astID_of_TRO = AST_CNCT_TRO_INTVAR;
+	
+      } else if (constructor_agent->id == AST_NAME) {
+	// --- CASE 2: rule_left_agent ~ name   where the name is meta_R
+	char *sym = constructor_agent->left->sym;
+	NB_TYPE type = 0;
+	int exists_in_table = CmEnv_gettype_forname(sym, &type);      
+	if ((exists_in_table)
+	    && ((type == NB_META_R) || (type == NB_META_L))) {
+
+	  available_TRO = 1;
+	  astID_of_TRO = AST_CNCT_TRO;
 	}
 	
-	// --- left will be recursion_agent, right will be constructor agent	
-	eq->left = recursion_agent;
-	eq->right = constructor_agent;
-      }
-
-      
-      // --- recursion_agent ~ constructor_agent
-      if (idL == NameTable_get_id(recursion_agent->left->sym)) {
-
-	if (Ast_is_expr(constructor_agent)) {
-	  // --- CASE 1: rule_left_agent ~ expression	  
-	  eq_TRO = eq;
-	  agent_TRO = recursion_agent;
-	  astID_of_TRO = AST_CNCT_TRO_INTVAR;
-
-	} else if (constructor_agent->id == AST_NAME) {
-	  // --- CASE 2: rule_left_agent ~ name   where the name is meta_R
-	  char *sym = constructor_agent->left->sym;
-	  NB_TYPE type = 0;
-	  int exists_in_table = CmEnv_gettype_forname(sym, &type);      
-	  if ((exists_in_table)
-	      && ((type == NB_META_R) || (type == NB_META_L))
-	      ) {	  
-	    eq_TRO = eq;
-	    agent_TRO = recursion_agent;
-	    astID_of_TRO = AST_CNCT_TRO;
-	  }
-	  
-	}
       }
       
-      eqs = ast_getTail(eqs);
     }	
 
 
     
-    if (eq_TRO != NULL) {
+    if (available_TRO) {
       //      puts("Target:");
       //      ast_puts(eq_TRO); puts("");
 
-      eq_TRO->id = astID_of_TRO;
+      eq->id = astID_of_TRO;
 
       // Foo ==> (*L)Foo
-      Ast *annotationL = ast_makeAST(AST_ANNOTATION_L, agent_TRO, NULL);
-      eq_TRO->left = annotationL;
+      Ast *annotationL = ast_makeAST(AST_ANNOTATION_L, recursion_agent, NULL);
+      eq->left = annotationL;
 
-      //                  ast_puts(eq_TRO); puts("");
-      //	          exit(1);
+      //      ast_puts(eq); puts("");
+      return 1;
+      
     }
+    return 0;
+    
 
     
   } else {
@@ -5245,13 +5617,17 @@ void Ast_make_annotation_TailRecursionOptimisation(Ast *mainbody) {
     Ast *if_sentence = mainbody;    
     Ast *then_branch = if_sentence->right->left;
     Ast *else_branch = if_sentence->right->right;
-    
-    Ast_make_annotation_TailRecursionOptimisation(then_branch);
-    Ast_make_annotation_TailRecursionOptimisation(else_branch);
-    
+
+    int ret_status = 0;
+    ret_status += Ast_make_annotation_TailRecursionOptimisation(then_branch);
+    ret_status += Ast_make_annotation_TailRecursionOptimisation(else_branch);
+
+    if (ret_status == 0) {
+      return 0;
+    } else {
+      return 1;
+    }
   }
-  
-  //  exit(1);
 
 }
 
@@ -5972,7 +6348,7 @@ int Compile_eqlist_on_ast(Ast *at) {
 			  eq_rhs_name_reg, CmEnv.idR, label1);
 	}
 	
-#ifdef OPTIMISE_TWO_ADDRESS_MKAGENT2
+#ifdef OPTIMISE_TWO_ADDRESS
 	IMCode_genCode0(OP_BEGIN_JMPCNCT_BLOCK);
 #endif
 	
@@ -5985,7 +6361,7 @@ int Compile_eqlist_on_ast(Ast *at) {
 	// prevent putting FREE_L, and ignore counting up for name ref
 	CmEnv.annotateL = ANNOTATE_TRO;
 	
-#ifdef OPTIMISE_TWO_ADDRESS_MKAGENT2
+#ifdef OPTIMISE_TWO_ADDRESS
         IMCode_genCode0(OP_BEGIN_JMPCNCT_BLOCK);
 #endif
 	
@@ -6597,7 +6973,7 @@ int get_ruleagentID(Ast *ruleAgent) {
 }
   
 
-int make_rule(Ast *ast) {
+int make_rule_oneway(Ast *ast) {
   //    (ASTRULE
   //      (AST_CNCT agentL agentR)
   //      <if-sentence> | <body>)
@@ -6675,8 +7051,9 @@ int make_rule(Ast *ast) {
     idL = get_ruleagentID(ruleAgent_L);    
   }
   
+
   
-    
+  /*
   // Annotation (*L)、(*R) の処理があるため
   // 単純に ruleAgentL、ruleAgentR を入れ替えれば良いわけではない。
 
@@ -6710,6 +7087,9 @@ int make_rule(Ast *ast) {
     // annotation が (*L) なら右側、(*R) なら左側を指すものとする
     set_annotation_LR(VM_OFFSET_ANNOTATE_R, VM_OFFSET_ANNOTATE_L);
   }
+  */
+
+  
 
   int arity;
   
@@ -6757,27 +7137,55 @@ int make_rule(Ast *ast) {
 
 
 #ifdef OPTIMISE_IMCODE_TRO
-  Ast_make_annotation_TailRecursionOptimisation(rule_mainbody);
+  int is_tro = Ast_make_annotation_TailRecursionOptimisation(rule_mainbody);
+  //    if (is_tro) {
+  //      puts("=== TRO ============================");
+  //      printf("Rule: %s(id:%d) >< %s(id:%d).\n", 
+  //    	   IdTable_get_name(idL), idL,
+  //    	   IdTable_get_name(idR), idR);    
+  //    }
 #endif
     
   if (!Compile_rule_mainbody_on_ast(rule_mainbody)) return 0;
 
 
-  //        #define MKRULE_DEBUG  
+
+#ifdef OPTIMISE_IMCODE_TRO
+  if (is_tro) {
+    
+    //    puts("Before:"); ast_puts(rule_mainbody); puts("");
+    
+    Ast_undo_TRO_annotation(rule_mainbody);
+
+    //    puts("After:"); ast_puts(rule_mainbody); puts("");
+    
+  }
+#endif
+  
+
+  //    #define MKRULE_DEBUG  
 #ifndef MKRULE_DEBUG  
   gencode_num += CmEnv_generate_VMCode(&code[2]);
 #else
 
-  
-  puts("-----------------------------------");
-      printf("Rule: %s(id:%d) >< %s(id:%d).\n", 
+  //int here_flag = is_tro;
+  int here_flag = 1;
+  if (here_flag) {
+    puts("-----------------------------------");
+    printf("Rule: %s(id:%d) >< %s(id:%d).\n", 
   	   IdTable_get_name(idL), idL,
   	   IdTable_get_name(idR), idR);
-  IMCode_puts(0);
+    IMCode_puts(0);
+  }
+  
   gencode_num += CmEnv_generate_VMCode(&code[2]);
-  IMCode_puts(0);
-  VMCode_puts(&code[2], gencode_num-2);
-  puts("-----------------------------------");
+
+  
+  if (here_flag) {
+    IMCode_puts(0);
+    VMCode_puts(&code[2], gencode_num-2);
+    puts("-----------------------------------");
+  }
   
   //  exit(1);
   
@@ -6791,16 +7199,17 @@ int make_rule(Ast *ast) {
 #endif
 
   
-  // Record the rule code for idR >< idL
+  // Record the rule code for idL >< idR
   RuleTable_record(idL, idR, code, gencode_num); 
-  
+
+  /*
   if (idL != idR) {    
     // Delete the rule code for idR >< idL
     // because we need only the rule idL >< idR.    
-    RuleTable_delete(idR, idL);
-    
+    RuleTable_delete(idR, idL);    
   }
-
+  */
+  
   
   //    #define DEBUG_PUT_RULE_CODE    
 #ifdef DEBUG_PUT_RULE_CODE  
@@ -6844,12 +7253,81 @@ int make_rule(Ast *ast) {
 }
 
 
+
+int make_rule(Ast *ast) {
+  //      (ASTRULE
+  //       (AST_CNCT agentL agentR)
+  //       <if-sentence> | <body>)
+
+  //  ast_puts(ast);puts("");
+
+  set_annotation_LR(VM_OFFSET_ANNOTATE_L, VM_OFFSET_ANNOTATE_R);  
+  if (!make_rule_oneway(ast)) {
+    return 0;
+  }
+  
+  Ast *ruleAgent_L = ast->left->left;
+  Ast *ruleAgent_R = ast->left->right;
+  
+  ast->left->left = ruleAgent_R;
+  ast->left->right = ruleAgent_L;;
+  set_annotation_LR(VM_OFFSET_ANNOTATE_R, VM_OFFSET_ANNOTATE_L);
+
+  
+  //  ast_puts(ast);puts("");
+  return make_rule_oneway(ast);
+}
+
+
 // -----------------------------------------------------
 // Mark and Sweep for error recovery
 // -----------------------------------------------------
 #ifndef THREAD
 
-#ifdef EXPANDABLE_HEAP
+#if EXPANDABLE_HEAP
+void sweep_AgentHeap(Heap *hp) {
+
+  HoopList *hoop_list = hp->last_alloc_list;
+  Agent *hoop;
+  
+  do {
+    hoop = (Agent *)(hoop_list->hoop);
+    for (int i = 0; i < HOOP_SIZE; i++) {
+
+      if (!IS_FLAG_MARKED(hoop[i].basic.id)) {
+	SET_HOOPFLAG_READYFORUSE(hoop[i].basic.id);
+      } else {
+	TOGGLE_FLAG_MARKED(hoop[i].basic.id);
+      }
+      
+    }
+    hoop_list = hoop_list->next;
+  } while (hoop_list != hp->last_alloc_list);
+}
+
+void sweep_NameHeap(Heap *hp) {
+  HoopList *hoop_list = hp->last_alloc_list;
+  Name *hoop;
+  
+  do { 
+    hoop = (Name *)(hoop_list->hoop);
+    for (int i = 0; i < HOOP_SIZE; i++) {
+
+      if (!IS_FLAG_MARKED(hoop[i].basic.id)) {
+	SET_HOOPFLAG_READYFORUSE(hoop[i].basic.id);
+      } else {
+	TOGGLE_FLAG_MARKED(hoop[i].basic.id);
+      }
+      
+    }
+    hoop_list = hoop_list->next;
+  } while (hoop_list != hp->last_alloc_list);
+  
+}
+
+
+
+#elif defined(FLEX_EXPANDABLE_HEAP)
 void sweep_AgentHeap(Heap *hp) {
 
   HoopList *hoop_list = hp->last_alloc_list;
@@ -7105,7 +7583,7 @@ void *exec_code(int mode, VirtualMachine * restrict vm, void * restrict *code) {
   goto *code[pc];
 
  E_MKAGENT1:
-#ifndef OPTIMISE_TWO_ADDRESS  
+#if !defined(OPTIMISE_TWO_ADDRESS) || !defined(OPTIMISE_TWO_ADDRESS_MKAGENT1)
   //    puts("mkagent1 id src1 dest");
   pc++;
   a1 = make_Agent(vm, (unsigned long)code[pc++]);
@@ -7123,7 +7601,7 @@ void *exec_code(int mode, VirtualMachine * restrict vm, void * restrict *code) {
   goto *code[pc];
   
  E_MKAGENT2:
-#ifndef OPTIMISE_TWO_ADDRESS_MKAGENT2
+#if !defined(OPTIMISE_TWO_ADDRESS) || !defined(OPTIMISE_TWO_ADDRESS_MKAGENT2)
   //      puts("mkagent2 id src1 src2 dest");
   pc++;  
   a1 = make_Agent(vm, (unsigned long)code[pc++]);
@@ -7149,6 +7627,7 @@ void *exec_code(int mode, VirtualMachine * restrict vm, void * restrict *code) {
 
 
  E_MKAGENT3:
+#if !defined(OPTIMISE_TWO_ADDRESS) || !defined(OPTIMISE_TWO_ADDRESS_MKAGENT3)
   //    puts("mkagent3 id src1 src2 src3 dest");
   pc++;
   a1 = make_Agent(vm, (unsigned long)code[pc++]);
@@ -7159,6 +7638,18 @@ void *exec_code(int mode, VirtualMachine * restrict vm, void * restrict *code) {
     a1port[2] = reg[(unsigned long)code[pc++]];
   }
   reg[(unsigned long)code[pc++]] = a1;
+#else
+  //    puts("mkagent3 id src1 src2 dest");
+  pc++;
+  a1 = make_Agent(vm, (unsigned long)code[pc++]);
+  {
+    volatile VALUE *a1port = AGENT(a1)->port;
+    a1port[0] = reg[(unsigned long)code[pc++]];
+    a1port[1] = reg[(unsigned long)code[pc++]];
+    a1port[2] = reg[(unsigned long)code[pc]];
+  }
+  reg[(unsigned long)code[pc++]] = a1;  
+#endif  
   goto *code[pc];
 
  E_MKAGENT4:
@@ -7804,45 +8295,79 @@ void *exec_code(int mode, VirtualMachine * restrict vm, void * restrict *code) {
 
   
  E_UNM:
+#if !defined(OPTIMISE_TWO_ADDRESS) || !defined(OPTIMISE_TWO_ADDRESS_UNARY)
   //    puts("UNM src dest");
   pc++;
   {
-    int i = FIX2INT(reg[(unsigned long)code[pc++]]);
-    
+    int i = FIX2INT(reg[(unsigned long)code[pc++]]);    
     reg[(unsigned long)code[pc++]] = INT2FIX(-1 * i);
   }
+#else
+  //    puts("UNM dest");
+  pc++;
+  {
+    int i = FIX2INT(reg[(unsigned long)code[pc]]);
+    reg[(unsigned long)code[pc++]] = INT2FIX(-1 * i);
+  }
+#endif  
   goto *code[pc];
   
 
  E_RAND:
+#if !defined(OPTIMISE_TWO_ADDRESS) || !defined(OPTIMISE_TWO_ADDRESS_UNARY)
   //    puts("RAND src dest");
   pc++;
   {
-    int i = FIX2INT(reg[(unsigned long)code[pc++]]);
-    
+    int i = FIX2INT(reg[(unsigned long)code[pc++]]);    
     reg[(unsigned long)code[pc++]] = INT2FIX(rand() % i);
   }
+#else
+  //    puts("RAND dest");
+  pc++;
+  {
+    int i = FIX2INT(reg[(unsigned long)code[pc]]);    
+    reg[(unsigned long)code[pc++]] = INT2FIX(rand() % i);
+  }  
+#endif  
   goto *code[pc];
   
 
  E_INC:
+#if !defined(OPTIMISE_TWO_ADDRESS) || !defined(OPTIMISE_TWO_ADDRESS_UNARY)
   //    puts("INC src dest");
   pc++;
   {
-    int i = FIX2INT(reg[(unsigned long)code[pc++]]);
-    
+    int i = FIX2INT(reg[(unsigned long)code[pc++]]);    
     reg[(unsigned long)code[pc++]] = INT2FIX(++i);
   }
+#else
+  //    puts("INC src");
+  pc++;
+  {
+    int i = FIX2INT(reg[(unsigned long)code[pc]]);    
+    reg[(unsigned long)code[pc++]] = INT2FIX(++i);
+  }  
+#endif  
   goto *code[pc];
+
   
  E_DEC:
+#if !defined(OPTIMISE_TWO_ADDRESS) || !defined(OPTIMISE_TWO_ADDRESS_UNARY)
   //    puts("DEC src dest");
   pc++;
   {
-    int i = FIX2INT(reg[(unsigned long)code[pc++]]);
-    
+    int i = FIX2INT(reg[(unsigned long)code[pc++]]);    
     reg[(unsigned long)code[pc++]] = INT2FIX(--i);
   }
+#else
+  //    puts("DEC dest");
+  pc++;
+  {
+    int i = FIX2INT(reg[(unsigned long)code[pc]]);    
+    reg[(unsigned long)code[pc++]] = INT2FIX(--i);
+  }
+  
+#endif  
   goto *code[pc];
   
 
@@ -8308,13 +8833,15 @@ loop_a2IsAgent:
 #endif
 
 
+      /*
       if (BASIC(a1)->id < BASIC(a2)->id) {
 	VALUE tmp;
 	tmp=a1;
 	a1=a2;
 	a2=tmp;
       }
-
+      */
+      
       int result;
       void **code;
             
@@ -9083,7 +9610,7 @@ void *tpool_thread(void *arg) {
   return (void *)NULL;
 }
 
-#ifdef EXPANDABLE_HEAP    
+#if defined(EXPANDABLE_HEAP) || defined(FLEX_EXPANDABLE_HEAP)
 void tpool_init(unsigned int eqstack_size) {
 #else
   //v0.5.6
@@ -9125,7 +9652,7 @@ void tpool_init(unsigned int agentBufferSize, unsigned int eqstack_size) {
 
     //    usleep(i*2);
     
-#ifdef EXPANDABLE_HEAP    
+#if defined(EXPANDABLE_HEAP) || defined(FLEX_EXPANDABLE_HEAP)
     VM_Init(VMs[i], eqstack_size);
 #else
     VM_Init(VMs[i], agentBufferSize, eqstack_size);
@@ -9330,7 +9857,7 @@ int main(int argc, char *argv[])
   int max_EQStack=1<<8; // 512
   int retrieve_flag = 1; // 1: retrieve to interpreter even if error occurs
 
-#ifndef EXPANDABLE_HEAP
+#if !defined(EXPANDABLE_HEAP) && !defined(FLEX_EXPANDABLE_HEAP)
   // v0.5.6
   unsigned int heap_size=100000;
 #endif
@@ -9371,33 +9898,33 @@ int main(int argc, char *argv[])
 	printf("Inpla version %s\n", VERSION);	  
 	puts("Usage: inpla [options]\n");
 	puts("Options:");
-	printf(" -f <filename>    Set input file name                   (Defalut:      STDIN)\n");
+	printf(" -f <filename>    Set input file name                     (Defalut:      STDIN)\n");
 	printf(" -d <Name>=<val>  Bind <val> to <Name>\n");
 
 
-#ifndef EXPANDABLE_HEAP
-	//v0.5.6
-	printf(" -c <num>         Set size of heaps                     (Defalut: %10u)\n", heap_size);
-#else
-	printf(" -Xms <num>       Set initial heap size to 2^<num>      (Defalut: %2u (=%4u))\n",
+#ifdef EXPANDABLE_HEAP
+#elif defined(FLEX_EXPANDABLE_HEAP)
+	printf(" -Xms <num>       Set initial heap size to 2^<num>        (Defalut: %2u (=%4u))\n",
 	       Hoop_init_size, 1 << Hoop_init_size);
-	printf(" -Xmt <num>       Set increasing heap times to 2^<num>  (Defalut: %2u (=%4u))\n",
+	printf(" -Xmt <num>       Set multiple heap increment to 2^<num>  (Defalut: %2u (=%4u))\n",
 	       Hoop_increasing_magnitude, 1 << Hoop_increasing_magnitude);
-	printf("                      0: the same size heap is inserted when it runs up.\n");
-	printf("                      1: the twice (=2^1) size heap is inserted.\n");
-	
+	printf("                    0: the same size heap is inserted when it runs up.\n");
+	printf("                    1: the twice (=2^1) size heap is inserted.\n");	
+#else
+	//v0.5.6
+	printf(" -c <num>         Set size of heaps                       (Defalut: %10u)\n", heap_size);
 #endif
 
 	
-	printf(" -Xes <num>       Set initial equation stack size       (Default: %10u)\n", max_EQStack);	
+	printf(" -Xes <num>       Set initial equation stack size         (Default: %10u)\n", max_EQStack);	
 
 
 	
 #ifdef THREAD  
-	printf(" -t <num>         Set the number of threads             (Default: %10d)\n", MaxThreadsNum);
+	printf(" -t <num>         Set the number of threads               (Default: %10d)\n", MaxThreadsNum);
 
 #else
-	printf(" -w               Enable Weak Reduction strategy        (Default:      false)\n");
+	printf(" -w               Enable Weak Reduction strategy          (Default:      false)\n");
 #endif
 
 
@@ -9424,7 +9951,7 @@ int main(int argc, char *argv[])
 	}
 
 	  
-#ifdef EXPANDABLE_HEAP
+#ifdef FLEX_EXPANDABLE_HEAP
 	else if (!(strcmp(argv[i], "-Xms"))) {
 	  i++;
 	  if (i < argc) {
@@ -9547,7 +10074,7 @@ int main(int argc, char *argv[])
 	break;
 
 
-#ifndef EXPANDABLE_HEAP
+#if !defined(EXPANDABLE_HEAP) && !defined(FLEX_EXPANDABLE_HEAP)
       case 'c':
 	// v0.5.6
         i++;
@@ -9629,13 +10156,14 @@ int main(int argc, char *argv[])
 
 
 
-#ifndef EXPANDABLE_HEAP
-  // v0.5.6
-  heap_size = heap_size/MaxThreadsNum;
-
-#else
+#ifdef EXPANDABLE_HEAP
+#elif defined(FLEX_EXPANDABLE_HEAP)
   Hoop_init_size = 1 << Hoop_init_size;
   Hoop_increasing_magnitude = 1 << Hoop_increasing_magnitude;
+  
+#else
+  // v0.5.6
+  heap_size = heap_size/MaxThreadsNum;
 #endif
     
 
@@ -9661,7 +10189,7 @@ int main(int argc, char *argv[])
     
     
     
-#ifdef EXPANDABLE_HEAP
+#if defined(EXPANDABLE_HEAP) || defined(FLEX_EXPANDABLE_HEAP)
 
 #ifndef THREAD    
   VM_Init(&VM, max_EQStack);
@@ -9669,7 +10197,7 @@ int main(int argc, char *argv[])
   tpool_init(max_EQStack);    
 #endif
   
-#else // ifndef EXPANDABLE_HEAP
+#else
   //v0.5.6
 
 #ifndef THREAD        

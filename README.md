@@ -6,18 +6,18 @@
 
 Inpla is a multi-threaded parallel interpreter of interaction nets. Once you write programs for sequential execution, it works also in multi-threaded parallel execution. Each thread is managed on each CPU-core with POSIX-thread library. 
 
-* The current version is 0.8.0 released on **27 February 2022**. (See [Changelog.md](Changelog.md) for details.)
+* The current version is 0.8.1 released on **3 March 2022**. (See [Changelog.md](Changelog.md) for details.)
 
-![speedup-ratio](pic/benchmark_reuse_v0.8.0.png)
+![speedup-ratio](pic/benchmark_reuse_v0.8.1.png)
 
 |                | Haskell  |   SML    | Python | Inpla1 | Inpla1_r | Inpla8 | Inpla8_r |
 | -------------- | :------: | :------: | :----: | :----: | :------: | :----: | :------: |
-| ack(3,11)    |   2.31   | **0.41** |   -    |  4.42  |   3.53   |  0.83  |   0.72   |
-| fib 38       |   1.60   | **0.26** |  8.49  |  2.30  |   2.83   |  0.40  |   0.41   |
-| bsort 40000  |  34.81   |  11.17   | 76.72  | 17.64 | 16.92 |  2.95  | **2.51** |
-| isort 40000  | **0.02** |   2.97   | 36.63  | 6.72 |   8.34   |  1.15  |   1.23   |
-| qsort 800000 | **0.15** |   1.16   | 97.30  |  6.07  |   1.81   |  0.63  |   0.36   |
-| msort 800000 | 0.46 |   1.00   | 98.27  |  3.92  |   1.36   |  0.46  |   **0.34**   |
+| ack(3,11)    |   2.31   | **0.41** |   -    |  4.32  |   3.49   |  0.82  |   0.70   |
+| fib 38       |   1.60   | **0.26** |  8.49  |  2.29  |   2.80   |  0.38  |   0.40   |
+| bsort 40000  |  34.81   |  11.17   | 76.72  | 18.01 | 16.42 |  3.03  | **2.42** |
+| isort 40000  | **0.02** |   2.97   | 36.63  | 6.98 |   8.08   |  1.18  |   1.18   |
+| qsort 800000 | **0.15** |   1.16   | 97.30  |  6.09  |   1.79   |  0.61  |   0.35   |
+| msort 800000 | 0.46 |   1.00   | 98.27  |  3.93  |   1.35   |  0.48  |   **0.35**   |
 
 - **Comparison in execution time** with other implementations: **Haskell** (GHC version 8.10.7), **Standard ML of New Jersey** v110.74 (interpreter mode) and **Python** 3.8.5 in execution time.
   
@@ -841,15 +841,9 @@ See [Changelog.md](Changelog.md) for details.
   * To set the initial size to 2^*n*, use the execution option `-Xms n` (default `n` is 12, so the size is 4096):
   * To set the increasing magnification to 2^*n*, use the option `-Xmt n` (default `n` is 3, so the inserted heap is 8 times of the run up heap)
 
-  To use the fixed sized ring buffer, comment out the following definition in `src/inpla.y`:
+  See [Changelog.md](Changelog.md) for more details.
 
-  ```
-  #define EXPANDABLE_HEAP    // Expandable heaps for agents and names
-  ```
 
-  
-
-   
 
 ### v0.7.0 (released on 30 January 2022)
 

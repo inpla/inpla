@@ -1,6 +1,0 @@
-#!/usr/bin/bash
-dir=(Haskell SML Python)
-for d in ${dir[@]} ; do
-    echo "cd $d; make clean; make; cd ..";
-          cd $d; make clean; make; cd ..
-done

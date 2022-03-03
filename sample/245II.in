@@ -3,10 +3,8 @@
 // Rules
 Lam(a,b,c) >< App(x,y) => a~x, b~y, c~D;
 D >< V => ;
-B(a,b,c) >< Z => a~c, b~Z;
 B(a,x,e) >< Lam(b,c,y) => x~Lam(b,c,d), y~DB(a,d,e);
 DB(a,b,c) >< V => a~c, b~V;
-C(x,y) >< Z => x~Z, y~Z;
 C(x,y) >< Lam(s,t,u) =>
 	 x~Lam(a,b,c), y~Lam(d,e,f),
 	 s~Delta(a,d), t~Delta(b,e), u~C(c,f);
@@ -15,9 +13,6 @@ Delta(x,y) >< Delta(a,b) => x~a, y~b;
 B(x,a,b) >< Delta(c,d) => x~CB(a,b,Delta(c,d));
 Delta(a,b) >< CB(x,y,z) =>
 	x~Delta(c,d), y~Delta(e,f), z~Delta(B(a,c,e),B(b,d,f));
-Delta(x,y) >< S(z) =>
-	x~S(a), y~S(b), z~Delta(a,b);
-Delta(x,y) >< Z => x~Z, y~Z;
 Delta(x,y) >< V => x~V, y~V;
 Delta(x,y) >< C(t,s) =>
 	x~C(a,b), y~C(c,d), t~Delta(b,d), s~Delta(a,c);
