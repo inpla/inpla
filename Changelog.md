@@ -1,5 +1,51 @@
 # Change log
 
+### v0.8.1 (released on 3 March 2022)
+
+|              | Haskell  |   SML    | Python | Inpla1 | Inpla1_r | Inpla7 | Inpla7_r |
+| ------------ | :------: | :------: | :----: | :----: | :------: | :----: | :------: |
+| ack(3,11)    |   2.31   | **0.41** |   -    |  4.32  |   3.49   |  0.86  |   0.73   |
+| fib 38       |   1.60   | **0.26** |  8.49  |  2.29  |   2.80   |  0.43  |   0.45   |
+| bsort 40000  |  34.81   |  11.17   | 76.72  | 18.01  |  16.42   |  2.79  | **2.61** |
+| isort 40000  | **0.02** |   2.97   | 36.63  |  6.98  |   8.08   |  1.22  |   1.30   |
+| qsort 800000 | **0.15** |   1.16   | 97.30  |  6.09  |   1.79   |  0.63  |   0.37   |
+| msort 800000 |   0.46   |   1.00   | 98.27  |  3.93  |   1.35   |  0.46  | **0.35** |
+
+#### New Features:
+* **Introduced a configuration file**: A file `src/config.h` for execution configuration is introduced. Change it as you favorite.
+
+* **Two address codes**: Virtual machines can execute two address codes and the compiler can produce these. It seems that these could work effeiently but not so significant, a little fluctuated, so I am not sure that it is definity recomendable. Actually I stopped applying this method for arithmetic operations and other MKAGENT operations. A file for the configuration `src/config.h` is prepared, so select your favorite level by making these comments out.
+
+  ```
+  // Generate virtual machine codes with two-address notation
+  #define OPTIMISE_TWO_ADDRESS
+  
+  #ifdef OPTIMISE_TWO_ADDRESS
+  #define OPTIMISE_TWO_ADDRESS_MKAGENT1 // For MKAGENT1
+  #define OPTIMISE_TWO_ADDRESS_MKAGENT2 // For MKAGENT2
+  #define OPTIMISE_TWO_ADDRESS_MKAGENT3 // For MKAGENT3
+  //#define OPTIMISE_TWO_ADDRESS_UNARY // For Unary operator like INC, DEC
+  #endif  
+  ```
+
+#### Polished:
+
+* **Retrieved the ordinary expandable ring buffer**: The ordinary expandable ring buffer is also retrieved. One heap strucutre could work well for some problems, but it might not do so well for others. Choose your favorite structure by making these comments out in `src/config.h`:
+
+  ```
+  /* Heaps ------------------------------------------ 
+     Choose one among the following three definitions:
+     -------------------------------------------------- */
+  #define FLEX_EXPANDABLE_HEAP     // Inserted heaps size can be flexible.
+  //#define EXPANDABLE_HEAP        // Expandable heaps for agents and names
+  //#define FIXED_HEAP             // The heap size is fixed. (Default)
+  ```
+
+  
+
+  
+
+
 ### v0.8.0 (released on 27 February 2022)
 
 |              | Haskell  |   SML    | Python | Inpla1 | Inpla1_r | Inpla7 | Inpla7_r |
