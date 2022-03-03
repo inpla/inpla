@@ -8,6 +8,13 @@
 //#define FIXED_HEAP             // The heap size is fixed. (Default)
 
 
+#ifdef EXPANDABLE_HEAP
+// HOOP_SIZE must be two to power
+#define HOOP_SIZE (1 << 18)
+#endif
+
+
+
   
 /* Optimisation ------------------------------------
    Comment out definitions if not needed.

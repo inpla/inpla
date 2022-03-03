@@ -586,7 +586,7 @@ int yyerror(char *s) {
 
 // HOOP_SIZE must be power of two
 //#define INIT_HOOP_SIZE (1 << 10)
-#define HOOP_SIZE (1 << 18)
+//#define HOOP_SIZE (1 << 18)
 #define HOOP_SIZE_MASK ((HOOP_SIZE) -1)
 
 typedef struct HoopList_tag {
