@@ -308,9 +308,9 @@ void ast_puts(Ast *p) {
 }
 
 
-Ast *ast_unfoldABR(Ast *left, char *sym, Ast *paramlist) {
+Ast *ast_unfoldABR(Ast *left_params, char *sym, Ast *paramlist) {
   // input:
-  // left << (AST_AGENT, sym, paramlist)
+  // left_params << (AST_AGENT, sym, paramlist)
 
   // output:
   // p1,p2,...,pn << (AST_AGENT, sym, params @ [param])
@@ -318,6 +318,16 @@ Ast *ast_unfoldABR(Ast *left, char *sym, Ast *paramlist) {
   // where left = (AST_AGENT sym, p1,p2,...,pn,params)
   //       right = (AST_NAME param)
 
+  if (!strcmp(sym, "Merger")) {
+    // left << Merger(paramlist)  ==> Merger(left) ~ (paramlist)
+    Ast *agent_left = ast_makeAST(AST_AGENT, ast_makeSymbol("Merger"),
+				  left_params);
+    Ast *agent_right = ast_makeTuple(paramlist);
+    Ast *cnct = ast_makeAST(AST_CNCT, agent_left, agent_right);
+    return cnct;    
+  }
+
+  
   if (!strcmp(sym, "Append")) {
     // paramlist: [a,b] => [b,a]
     if (paramlist->right != NULL) {
@@ -325,13 +335,8 @@ Ast *ast_unfoldABR(Ast *left, char *sym, Ast *paramlist) {
       paramlist->left = paramlist->right->left;  // a := b
       paramlist->right->left = tmp;              // b := a
     }
-  } else if (!strcmp(sym, "Merger")) {
-    // left << Merger(paramlist)  ==> Merger(left) ~ (paramlist)
-    Ast *agent_left = ast_makeAST(AST_AGENT, ast_makeSymbol("Merger"), left);
-    Ast *agent_right = ast_makeTuple(paramlist);
-    Ast *cnct = ast_makeAST(AST_CNCT, agent_left, agent_right);
-    return cnct;    
   }
+
   
   //ast_puts(left);puts("");
   //ast_puts(paramlist);puts("");
@@ -363,19 +368,23 @@ Ast *ast_unfoldABR(Ast *left, char *sym, Ast *paramlist) {
   //  ast_puts(param);puts("");
 
 
-  // make left as left@params
-  at = left;
-  while (at != NULL) {
-    if (at->right == NULL) {
-      at->right = params;
-      break;
+  // make left_params as left_params @ params
+  at = left_params;
+  if (at == NULL) {
+    at = params;
+  } else {
+    while (at != NULL) {
+      if (at->right == NULL) {
+	at->right = params;
+	break;
+      }
+      at = at->right;
     }
-    at = at->right;
   }
   //  ast_puts(left);puts("");
 
     
-  Ast *agent_left = ast_makeAST(AST_AGENT, ast_makeSymbol(sym), left);
+  Ast *agent_left = ast_makeAST(AST_AGENT, ast_makeSymbol(sym), left_params);
   Ast *agent_right = param;
   Ast *cnct = ast_makeAST(AST_CNCT, agent_left, agent_right);
   
