@@ -1,5 +1,49 @@
 # Change log
 
+
+### v0.8.1-1 minor update (released on 10 March 2022)
+#### Polished
+
+* **The abbreviation**: it can take an empty arguments list on its left-hand side like:
+
+  ```
+  << Agent(paramlist,param)    // this is an abbreviation for Agent(paramlist)~param
+  ```
+
+  This could be handy for elimination operation:
+
+  ```
+  Eps >< Z =>;
+  Eps >< S(x) => Eps~x;
+  
+  // Nets
+  Eps ~ S(Z);
+  
+  // Abbreviated notation of the nets
+  << Eps(S(Z));
+  ```
+
+* **Makefile**: The configuration file `src/config.h` is also included in update files. So, `make` command works when the file is changed.
+
+* **Rule table**: A simple implementation with arrays is prepared. It could be expected to work better, but it seems not so differences. It becomes available by making the following definition un-comment in `src/config.h`:
+
+  ```
+  // ------------------------------------------------
+  // RuleTable
+  // ------------------------------------------------
+  // There are two implementation for the rule table:
+  //   * Hashed linear table (default)
+  //   * Simple array table
+  // To use the hashed one, comment out the following RULETABLE_SIMPLE definition.
+  
+  //#define RULETABLE_SIMPLE
+  ```
+
+  
+
+  
+
+
 ### v0.8.1 (released on 3 March 2022)
 
 |              | Haskell  |   SML    | Python | Inpla1 | Inpla1_r | Inpla7 | Inpla7_r |

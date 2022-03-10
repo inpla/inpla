@@ -7,6 +7,7 @@ SRC_DIR = ./src
 OBJ_DIR = ./build
 TARGET  = inpla
 OBJS    = $(OBJ_DIR)/inpla.tab.c $(OBJ_DIR)/ast.o $(OBJ_DIR)/id_table.o $(OBJ_DIR)/name_table.o $(OBJ_DIR)/linenoise.o
+DEPS	= $(SRC_DIR)/config.h
 
 #MYOPTION = -DHAND_FIB -DHAND_FIB_INT  -DHAND_I_CONS -DHAND_IS_CONS -DHAND_Apnd_CONS -DHAND_Part_CONS -DHAND_Split_CONS -DHAND_MergeCC_CONS -DHAND_B_CONS -DHAND_DUP_S -DHAND_ADD_S -DHAND_ACK_S
 #MYOPTION = -DHAND_Split_CONS -DHAND_MergeCC_CONS
@@ -16,7 +17,7 @@ OBJS    = $(OBJ_DIR)/inpla.tab.c $(OBJ_DIR)/ast.o $(OBJ_DIR)/id_table.o $(OBJ_DI
 
 all: $(OBJ_DIR) $(TARGET) 
 
-$(TARGET): $(OBJS) $(LIBS)
+$(TARGET): $(OBJS) $(LIBS) $(DEPS)
 	$(CC) $(CFLAGS) $(INCLUDE) $(MYOPTION) -o $@ $(OBJS) $(LDFLAGS) 
 
 $(OBJ_DIR)/linenoise.o: $(SRC_DIR)/linenoise/linenoise.c

@@ -51,7 +51,7 @@ void ast_puts(Ast *p);
 Ast *ast_paramToCons(Ast *ast);
 int ast_recordConst(char *name, int val);
 Ast *ast_remove_tuple1(Ast *p);
-Ast *ast_unfoldABR(Ast *left, char *sym, Ast *paramlist);
+Ast *ast_unfoldABR(Ast *left_params, char *sym, Ast *paramlist);
 int ast_getRecordedVal(int entry);
 
 #define ast_makeCons(x1,x2) ast_makeAST(AST_LIST,x1,x2)

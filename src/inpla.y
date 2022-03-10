@@ -33,8 +33,8 @@
 //#define COUNT_MKAGENT // count of execution fo mkagent
 
 
-#define VERSION "0.8.1"
-#define BUILT_DATE  "3 Mar. 2022"  
+#define VERSION "0.8.1-1"
+#define BUILT_DATE  "10 Mar. 2022"  
 // ------------------------------------------------------------------
 
 
@@ -468,9 +468,13 @@ ap
 //
 | astparams ABR AGENT LP astparams RP
 { $$ = ast_unfoldABR($1, $3, $5); }
+| ABR AGENT LP astparams RP
+{ $$ = ast_unfoldABR(NULL, $2, $4); }
 //
 | astparams ABR NAME LP astparams RP
 { $$ = ast_unfoldABR($1, $3, $5); }
+| ABR NAME LP astparams RP
+{ $$ = ast_unfoldABR(NULL, $2, $4); }
 ;
 
 
@@ -6687,6 +6691,8 @@ int Compile_rule_mainbody_on_ast(Ast *mainbody) {
 // ------------------------------------------------------------
 // TABLE for RULES
 // ------------------------------------------------------------
+#ifndef RULETABLE_SIMPLE
+
 typedef struct RuleList {
   int sym;
   int available;
@@ -6864,6 +6870,54 @@ void RuleTable_get_code_for_Int(VALUE heap_syml, void ***code) {
   return;
 }
 
+#else
+// ------------------------------------------
+// RuleTable: simple realisation with arrays
+// ------------------------------------------
+//
+// codes for alpha><beta is stored in
+// RuleTable[id_Beta][id_alpha]
+
+static void* RuleTable[NUM_AGENTS][NUM_AGENTS];
+
+void RuleTable_init(void) {
+  for (int i=0; i<NUM_AGENTS; i++) {
+    for (int j=0; j<NUM_AGENTS; j++) {
+      RuleTable[i][j] = NULL;
+    }
+  }
+}
+
+void RuleTable_record(int symlID, int symrID, void **code, int byte) {
+  if (RuleTable[symrID][symlID] == NULL) {
+    RuleTable[symrID][symlID] = malloc(MAX_VMCODE_SEQUENCE * sizeof(void *));
+  }
+  CmEnv_copy_VMCode(byte, code, RuleTable[symrID][symlID]);
+  
+}
+
+
+void *RuleTable_get_code(VALUE heap_syml, VALUE heap_symr, int *result) {
+  int symlID = AGENT(heap_syml)->basic.id;
+  int symrID = AGENT(heap_symr)->basic.id;
+
+  void *code = RuleTable[symrID][symlID];
+  if (code == NULL) {
+    *result = 0;
+  } else {
+    *result = 1;
+  }
+    
+  return code;
+}
+
+static inline
+void RuleTable_get_code_for_Int(VALUE heap_syml, void ***code) {
+  int symlID = AGENT(heap_syml)->basic.id;
+  *code =  RuleTable[ID_INT][symlID];
+}
+
+#endif
 
 
 
