@@ -1,0 +1,39 @@
+// Tower of Hanoi Puzzle
+
+// Rules
+hanoi(return, source, target, auxiliary) >< (int n)
+| n==0 => return~[], Eps~source, Eps~target, Eps~auxiliary
+| _    => source ~ dup(src1, dup(src2, src3)),
+         target ~ dup(tgt1, dup(tgt2, tgt3)),
+         auxiliary ~ dup(aux1, aux2),
+         hanoi(ret1, src1, aux1, tgt1)~(n-1),
+         hanoi(ret2, aux2, tgt2, src2)~(n-1),
+         return << Append(ret1, (n,src3,tgt3):ret2);
+
+dup(a,b)><A => a~A, b~A;
+dup(a,b)><B => a~B, b~B;
+dup(a,b)><C => a~C, b~C;
+Eps><A =>;
+Eps><B =>;
+Eps><C =>;
+
+
+// Net
+hanoi(result, A, C, B) ~ 3;
+result; // should be [(1,A,C),(2,A,B),(1,C,B),(3,A,C),(1,B,A),(2,B,C),(1,A,C)]
+
+
+// These are also written using abbreviation as follows:
+//   hanoi(return, source, target, auxiliary) >< (int n)
+//   | n==0 => return~[], << Eps(source), << Eps(target), << Eps(auxiliary)
+//   | _    => src1, dup(src2, src3) << dup(source),
+//            tgt1, dup(tgt2, tgt3) << dup(target),
+//            aux1, aux2 << dup(auxiliary),
+//            ret1 << hanoi(src1, aux1, tgt1, n-1),
+//            ret2 << hanoi(aux2, tgt2, src2, n-1),
+//            return << Append(ret1, (n,src3,tgt3):ret2);
+//
+//   result << hanoi(A, C, B, 3);
+//   result;
+
+
