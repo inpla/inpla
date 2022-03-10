@@ -4,6 +4,8 @@
 ### v0.8.1-1 minor update (released on 10 March 2022)
 #### Polished
 
+* **Sample file (Tower of Hanoi)**: A new sample file for Tower of Hanoi is included in `sample` directory.
+
 * **The abbreviation**: it can take an empty arguments list on its left-hand side like:
 
   ```
@@ -23,7 +25,7 @@
   << Eps(S(Z));
   ```
 
-* **Makefile**: The configuration file `src/config.h` is also included in update files. So, `make` command works when the file is changed.
+* **Makefile**: The configuration file `src/config.h` is also included as update files in `Makefile`. So, `make` command works when the configuration file is changed.
 
 * **Rule table**: A simple implementation with arrays is prepared. It could be expected to work better, but it seems not so differences. It becomes available by making the following definition un-comment in `src/config.h`:
 
