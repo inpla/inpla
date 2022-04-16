@@ -1,7 +1,15 @@
 # Change log
 
+### Update on 16 April 2022
+
+#### Polished
+
+* Several OCaml execution times have been added to the benchmark table. These programs are stored in `comparison/OCaml`.
+
+
 
 ### v0.8.1-1 minor update (released on 10 March 2022)
+
 #### Polished
 
 * **Sample file (Tower of Hanoi)**: A new sample file for Tower of Hanoi is included in `sample` directory.
