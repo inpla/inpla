@@ -23,7 +23,7 @@ Inpla is a multi-threaded parallel interpreter of interaction nets. Once you wri
   
   - The above table contains execution time in second on average of ten times execution by using Linux PC (Core i7-9700 (8 threads, no Hyper-threading), 16GB memory). The fastest one is shown with bold style.  Scripts for the comparison table are in the `comparison` directory.
   
-  - Inpla8  and Inpla8r mean 8 threads without/with reuse-annotated execution, respectively. 
+  - Inpla8  and Inpla8r mean 8 threads without/with [reuse-annotated](#Reuse-annotations) execution, respectively. 
   
   - "ack(3,11)" is computation of Ackermann function.  Execution time of Python is a blank due to stack size limitation error. 
   
