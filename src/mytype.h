@@ -52,7 +52,7 @@ typedef struct EQList_tag {
 
 #define FIXNUM_FLAG 0x01
 #define INT2FIX(i) ((VALUE)(((long)(i) << 1) | FIXNUM_FLAG))
-#define FIX2INT(i) ((int)(i) >> 1)
+#define FIX2INT(i) ((long)(i) >> 1)
 #define IS_FIXNUM(i) ((VALUE)(i) & FIXNUM_FLAG)
 
 

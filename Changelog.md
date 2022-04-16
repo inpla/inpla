@@ -1,6 +1,10 @@
 # Change log
 
-### Update on 16 April 2022
+### v0.8.1-2 minor update (released on 16 April 2022)
+
+#### Bug fix
+* Integer numbers had been put out with 32-bit format, though it is manages as 61bit FIXINT. Now it is put out as a long integer.
+
 
 #### Polished
 

@@ -33,8 +33,8 @@
 //#define COUNT_MKAGENT // count of execution fo mkagent
 
 
-#define VERSION "0.8.1-1"
-#define BUILT_DATE  "10 Mar. 2022"  
+#define VERSION "0.8.1-2"
+#define BUILT_DATE  "16 Apr. 2022"  
 // ------------------------------------------------------------------
 
 
@@ -1483,7 +1483,7 @@ static int Puts_list_element=0;
 static int PutIndirection = 1; // indirected term t for x is put as x->t
 void puts_term(VALUE ptr) {
   if (IS_FIXNUM(ptr)) {
-    printf("%d", FIX2INT(ptr));
+    printf("%ld", FIX2INT(ptr));
     return;
   } else if (BASIC(ptr) == NULL) {
     printf("<NULL>");
@@ -2847,7 +2847,7 @@ void VMCode_puts(void **code, int n) {
       i+=2;
 
     } else if (code[i] == CodeAddr[OP_PUSHI]) {
-      printf("pushi reg%lu $%d\n",
+      printf("pushi reg%lu $%ld\n",
 	     (unsigned long)code[i+1],
 	     FIX2INT((unsigned long)code[i+2]));
       i+=2;
@@ -2871,7 +2871,7 @@ void VMCode_puts(void **code, int n) {
       puts("ret_free_lr");
 
     } else if (code[i] == CodeAddr[OP_LOADI]) {
-      printf("loadi $%d reg%lu\n",
+      printf("loadi $%ld reg%lu\n",
 	     FIX2INT((unsigned long)code[i+1]),
 	     (unsigned long)code[i+2]);
       i+=2;
@@ -2981,7 +2981,7 @@ void VMCode_puts(void **code, int n) {
       i+=3;
 
     } else if (code[i] == CodeAddr[OP_EQI]) {
-      printf("eqi reg%lu $%d reg%lu\n",
+      printf("eqi reg%lu $%ld reg%lu\n",
 	     (unsigned long)code[i+1],
 	     FIX2INT((unsigned long)code[i+2]),
 	     (unsigned long)code[i+3]);
@@ -3013,7 +3013,7 @@ void VMCode_puts(void **code, int n) {
       i+=2;
 
     } else if (code[i] == CodeAddr[OP_EQI_R0]) {
-      printf("eqi_r0 reg%lu $%d\n",
+      printf("eqi_r0 reg%lu $%ld\n",
 	     (unsigned long)code[i+1],
 	     FIX2INT((unsigned long)code[i+2]));
       i+=2;
@@ -8621,7 +8621,7 @@ loop:
 loop_a2IsFixnum:    
     if (IS_FIXNUM(a1)) {
       printf("Runtime ERROR: "); puts_term(a1); printf("~"); puts_term(a2); 
-      printf("\nInteger %d >< %d can not be used as an active pair\n",
+      printf("\nInteger %ld >< %ld can not be used as an active pair\n",
 	     FIX2INT(a1), FIX2INT(a2));
 #ifndef THREAD
       mark_and_sweep();
