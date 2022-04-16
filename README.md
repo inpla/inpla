@@ -6,7 +6,7 @@
 
 Inpla is a multi-threaded parallel interpreter of interaction nets. Once you write programs for sequential execution, it works also in multi-threaded parallel execution. Each thread is managed on each CPU-core with POSIX-thread library. 
 
-* The current version is 0.8.1-1 (minor update) released on **10 March 2022**. (See [Changelog.md](Changelog.md) for details.)
+* The current version is 0.8.1-2 (minor update) released on **16 April 2022**. (See [Changelog.md](Changelog.md) for details.)
 
 ![speedup-ratio](pic/benchmark_reuse_v0.8.1.png)
 
@@ -29,7 +29,7 @@ Inpla is a multi-threaded parallel interpreter of interaction nets. Once you wri
   
   - "fib 38" is computation to get the 38th Fibonacci number. 
   
-  - "bsort *n*", "isort *n*", "qsort *n*" and "msort *n*" are computation of bubble sort, insertion sort, quick sort and merge sort for random *n*-element lists, respectively. The blanks in OCaml are due to error: `Stack overflow during evaluation (looping recursion?).`
+  - "bsort *n*", "isort *n*", "qsort *n*" and "msort *n*" are computation of bubble sort, insertion sort, quick sort and merge sort for random *n*-element lists, respectively. The blanks in OCaml are due to the following error: `Stack overflow during evaluation (looping recursion?).`
   
     
 
