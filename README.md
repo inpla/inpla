@@ -10,26 +10,26 @@ Inpla is a multi-threaded parallel interpreter of interaction nets. Once you wri
 
 ![speedup-ratio](pic/benchmark_reuse_v0.8.1.png)
 
-|                | Haskell  |   SML    | Python | Inpla1 | Inpla1_r | Inpla8 | Inpla8_r |
-| -------------- | :------: | :------: | :----: | :----: | :------: | :----: | :------: |
-| ack(3,11)    |   2.31   | **0.41** |   -    |  4.32  |   3.49   |  0.82  |   0.70   |
-| fib 38       |   1.60   | **0.26** |  8.49  |  2.29  |   2.80   |  0.38  |   0.40   |
-| bsort 40000  |  34.81   |  11.17   | 76.72  | 18.01 | 16.42 |  3.03  | **2.42** |
-| isort 40000  | **0.02** |   2.97   | 36.63  | 6.98 |   8.08   |  1.18  |   1.18   |
-| qsort 800000 | **0.15** |   1.16   | 97.30  |  6.09  |   1.79   |  0.61  |   0.35   |
-| msort 800000 | 0.46 |   1.00   | 98.27  |  3.93  |   1.35   |  0.48  |   **0.35**   |
+|                | Haskell  |   OCaml   |   SML    | Python | Inpla8 | Inpla8r |
+| -------------- | :------: | :------: | :----: | :----: | :------: | :------: |
+| ack(3,11)    |   2.31   | 0.46 | **0.41** |   -    |  0.82  |   0.70   |
+| fib 38       |   1.60   | **0.15** | *0.26* |  8.49  |  0.38  |   0.40   |
+| bsort 40000  |  34.81   |  35.52  |  11.17   | 76.72  |  3.03  | **2.42** |
+| isort 40000  | **0.02** |   7.44   |   2.97   | 36.63  |  1.18  |   1.18   |
+| qsort 800000 | **0.15** |   -   |   1.16   | 97.30  |  0.61  |   0.35   |
+| msort 800000 | 0.46 |   -   |   1.00   | 98.27  |  0.48  |   **0.35**   |
 
-- **Comparison in execution time** with other implementations: **Haskell** (GHC version 8.10.7), **Standard ML of New Jersey** v110.74 (interpreter mode) and **Python** 3.8.5 in execution time.
+- **Comparison in execution time** with other implementations: **Haskell** (GHC version 8.10.7), **OCaml** (ocamlopt, the native-code compiler, version 4.08.1), **Standard ML of New Jersey** v110.74 (interpreter mode) and **Python** 3.8.5 in execution time.
   
   - The above table contains execution time in second on average of ten times execution by using Linux PC (Core i7-9700 (8 threads, no Hyper-threading), 16GB memory). The fastest one is shown with bold style.  Scripts for the comparison table are in the `comparison` directory.
   
-  - Inpla*n*  and Inpla*n*_**r** mean *n* threads without/with reuse-annotated execution, respectively. 
+  - Inpla8  and Inpla8r mean 8 threads without/with reuse-annotated execution, respectively. 
   
   - "ack(3,11)" is computation of Ackermann function.  Execution time of Python is a blank due to stack size limitation error. 
   
   - "fib 38" is computation to get the 38th Fibonacci number. 
   
-  - "bsort *n*", "isort *n*", "qsort *n*" and "msort *n*" are computation of bubble sort, insertion sort, quick sort and merge sort for random *n*-element lists, respectively.
+  - "bsort *n*", "isort *n*", "qsort *n*" and "msort *n*" are computation of bubble sort, insertion sort, quick sort and merge sort for random *n*-element lists, respectively. The blanks in OCaml are due to error: `Stack overflow during evaluation (looping recursion?).`
   
     
 
