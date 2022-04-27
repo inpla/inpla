@@ -12,7 +12,7 @@ Inpla is a multi-threaded parallel interpreter of interaction nets. Once you wri
 
 |                | Haskell  |   OCaml   |   SML    | Python | Inpla8 | Inpla8r |
 | -------------- | :------: | :------: | :----: | :----: | :------: | :------: |
-| ack(3,11)    |   2.31   | 0.46 | **0.41** |   -    |  0.82  |   0.70   |
+| ack(3,11)    |   [2.31](comparison/Haskell/ack3-11.hs)   | 0.46 | **0.41** |   -    |  0.82  |   0.70   |
 | fib 38       |   1.60   | **0.15** | 0.26 |  8.49  |  0.38  |   0.40   |
 | bsort 40000  |  34.81   |  35.52  |  11.17   | 76.72  |  3.03  | **2.42** |
 | isort 40000  | **0.02** |   7.44   |   2.97   | 36.63  |  1.18  |   1.18   |
