@@ -28,8 +28,6 @@ fun msort [] = []
     end;
 
 
-
-
 (* mkRandList *)
 local 
     val nextInt = Random.randRange(1,10000);
@@ -41,5 +39,4 @@ end;
 
 
 msort (mkRandList 800000);
-
 

@@ -51,6 +51,5 @@ def mkRandList ( n ):
     return a
 
 a = mkRandList(800000)
-#a = mkRandList(8)
 mergeSort(a)
 #print(a)

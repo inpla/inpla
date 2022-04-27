@@ -20,5 +20,3 @@ def mkRandList(n):
 a = mkRandList(40000)
 insert_sort(a)
 #print(a)
-
-        

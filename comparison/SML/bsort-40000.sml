@@ -26,5 +26,3 @@ end;
 
 
 bsort (mkRandList 40000);
-
-

@@ -18,5 +18,3 @@ MkRandList(ret) >< (int n)
 MkRandList(cnt)~(LIST_ELEM),
 IS(ret)~cnt;
 ret;
-
-

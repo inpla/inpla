@@ -8,7 +8,6 @@ fun insertsort [] = []
     in insert(x, insertsort xs)
     end;
     
-    
 (* mkRandList *)
 local 
     val nextInt = Random.randRange(1,10000);

@@ -7,9 +7,6 @@ QS(ret) >< (int x):xs =>
 
 // Note: `Append' is implemented as built-in.
 
-// Apnd(ret, a)~b  -->  ret ~ b@a
-//Apnd(ret, a) >< [] => ret~a;
-//Apnd(ret, a) >< x:xs => ret~(x:cnt), Apnd(cnt, a)~xs;
 
 Part(int x, a, b) >< [] => a~(*L)[], b~(*R)[];
 Part(int x, a, b) >< (int y):ys

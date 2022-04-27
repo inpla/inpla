@@ -4,6 +4,3 @@ fib n = fib (n - 2) + fib (n - 1)
 
 
 main = print $ fib 38
-
-
-
