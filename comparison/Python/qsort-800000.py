@@ -29,6 +29,5 @@ def mkRandList ( n ):
     return a
 
 a = mkRandList(800000)
-#a = mkRandList(8)
 b = quickSort(a)
-#print(a)
+#print(b)

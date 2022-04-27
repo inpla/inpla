@@ -22,14 +22,12 @@ main = print $ bsort [3,2,8,5]
 -}
 
 
-
 randomList :: Int -> IO([Int])
 randomList 0 = return []
 randomList n = do
   r  <- randomRIO (1,10000)
   rs <- randomList (n-1)
   return (r:rs)
-
 
 
 main = do

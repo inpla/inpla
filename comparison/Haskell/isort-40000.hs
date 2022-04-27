@@ -1,5 +1,5 @@
 {-
-(* http://www.codecodex.com/wiki/Insertion_sort#Standard_ML *)
+http://www.codecodex.com/wiki/Insertion_sort#Standard_ML
 -}
 import System.Random
 
@@ -25,12 +25,7 @@ randomList n = do
   return (r:rs)
 
 
-
 main = do
   list <- randomList 40000
   let sorted = isort list
   print (take 10 sorted)
-
-
-
-

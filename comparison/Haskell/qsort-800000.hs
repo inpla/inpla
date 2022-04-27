@@ -3,7 +3,6 @@
 -}
 import System.Random
 
-
 qsort [] = []
 qsort [x] = [x]
 qsort (x:xs) = (qsort left) ++ [x] ++ (qsort right)
@@ -16,7 +15,6 @@ part pivot (x:xs)
   where
     (below, above) = part pivot xs
 
-  
 {-
 main = print $ qsort [3,2,8,5]
 -}
@@ -29,9 +27,7 @@ randomList n = do
   return (r:rs)
 
 
-
 main = do
   list <- randomList 800000
   let sorted = qsort list
   print (take 10 sorted)
-
