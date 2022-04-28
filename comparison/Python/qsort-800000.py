@@ -22,12 +22,22 @@ def quickSort(arr):
         more = quickSort(more)
         return less + pivotList + more
 
+    
 def mkRandList ( n ):
     a=[]
     for i in range(1,n+1):
         a.insert(0, random.randint(0,10000))
     return a
 
+
+def validation(alist):
+    for i in range(len(alist)-1):
+        if (alist[i] > alist[i+1]):
+            return False
+
+    return True
+
+
 a = mkRandList(800000)
 b = quickSort(a)
-#print(b)
+print(validation(b))

@@ -1,34 +1,51 @@
 // Merge sort
-MS(ret) >< [] => ret~[];
-MS(ret) >< x:xs => (*L)MS_tail(ret, x)~xs;
+msort(ret) >< [] => ret~[];
+msort(ret) >< x:xs => (*L)msort_tail(ret, x)~xs;
 
-MS_tail(ret, int n) >< [] => ret~[n];
-MS_tail(ret, int n) >< x:xs => 
-	Split(left,right) ~ (*R)(n:x:xs),
-	MS(a)~left, MS(b)~right, (*L)Merge(ret,b)~a;
+msort_tail(ret, int n) >< [] => ret~[n];
+msort_tail(ret, int n) >< x:xs => 
+	split(left,right) ~ (*R)(n:x:xs),
+	msort(a)~left, msort(b)~right, (*L)merge(ret,b)~a;
 
-Merge(ret, snd) >< [] => ret~snd;
-Merge(ret, snd) >< x:xs => (*L)MergeCC(ret, x, xs)~snd;
+merge(ret, snd) >< [] => ret~snd;
+merge(ret, snd) >< x:xs => (*L)mergeCC(ret, x, xs)~snd;
 
-MergeCC(ret, int y, ys) >< [] => ret~(*R)(y:ys);
-MergeCC(ret, int y, ys) >< (int x):xs
-| x <= y => ret~(x:cnt), (*L)MergeCC(cnt, y, ys) ~ xs
-| _      => ret~(y:cnt), (*L)MergeCC(cnt, x, xs) ~ ys;
-
-
-Split(right,left) >< [] => right~[], left~[];
-Split(right,left) >< x:xs =>
-	right~(*R)(x:cntl), left~cntr, (*L)Split(cntr,cntl)~xs;
+mergeCC(ret, int y, ys) >< [] => ret~(*R)(y:ys);
+mergeCC(ret, int y, ys) >< (int x):xs
+| x <= y => ret~(x:cnt), (*L)mergeCC(cnt, y, ys) ~ xs
+| _      => ret~(y:cnt), (*L)mergeCC(cnt, x, xs) ~ ys;
 
 
+split(right,left) >< [] => right~[], left~[];
+split(right,left) >< x:xs =>
+	right~(*R)(x:cntl), left~cntr, (*L)split(cntr,cntl)~xs;
 
-const LIST_ELEM=800000;
 
-MkRandList(ret) >< (int n)
-| n>0 => ret~(rd:cnt), (*L)MkRandList(cnt)~(n-1) 
+// creates a random list
+make_RandList(ret) >< (int n)
+| n>0 => ret~(rd:cnt), (*L)make_RandList(cnt)~(n-1) 
   where rd=rand(10000)
 | _ => ret~[];
 
-MkRandList(cnt)~(LIST_ELEM),
-MS(ret)~cnt;
+
+// validation checks
+valid(ret) >< [] => ret~False;
+valid(ret) >< x:xs => (*L)valid_Cons(ret,x)~xs;
+
+valid_Cons(ret, int x) >< [] => ret~True;
+valid_Cons(ret, int x) >< (int y):ys
+| x<=y => (*L)valid_Cons(ret,y)~ys
+| _ => ret~False, Eraser~ys;
+
+// The `Eraser' is a built-in agent defined for any agents as follows:
+//Eraser >< Alpha(a1, ..., a5) => Eraser~a1, ..., Eraser~a5;
+
+
+// Main
+const LIST_ELEM=800000;
+
+make_RandList(rndlist)~(LIST_ELEM),
+msort(sorted)~rndlist,
+valid(ret)~sorted;
+
 ret;

@@ -51,7 +51,9 @@ void IdTable_init() {
   IdTable[ID_DIV2].aux.arity = 2;
   IdTable[ID_MOD].aux.arity = 2;
   IdTable[ID_MOD2].aux.arity = 2;
+  IdTable[ID_ERASER].aux.arity = 0;
 
+  
   IdTable[ID_INT].name = "int";
   IdTable[ID_TUPLE0].name = "Tuple0";
   IdTable[ID_TUPLE1].name = "Tuple1";
@@ -76,6 +78,9 @@ void IdTable_init() {
   IdTable[ID_DIV2].name = "_Div";
   IdTable[ID_MOD].name = "Mod";
   IdTable[ID_MOD2].name = "_Mod";
+
+  IdTable[ID_ERASER].name = "Eraser";
+
 }
 
 
@@ -104,55 +109,13 @@ int IdTable_getid_builtin_funcAgent(Ast *agent) {
     id = ID_INTAGENT;
   } else if (strcmp((char *)agent->left->sym, "Merger") == 0) {
     id = ID_MERGER;
+  } else if (strcmp((char *)agent->left->sym, "Eraser") == 0) {
+    id = ID_ERASER;
   }
 
   return id;
 }
 
-
-int IdTable_is_builtin_rule(Ast *agentL, Ast *agentR) {
-  //  puts_ast(agentL);
-  //  printf(" ");
-  //  puts_ast(agentR);
-  //  printf("\n");
-  
-  
-  if ( (agentL->id == AST_TUPLE) && (agentR->id == AST_TUPLE) ) {
-    // compare these arities
-    if (agentL->intval == agentR->intval) {
-      return 1;
-    }
-    return 0;
-  }
-
-  int idL = IdTable_getid_builtin_funcAgent(agentL);
-  if (agentR->id == AST_INT) {
-    if ((idL == ID_ADD) || (idL == ID_SUB) || (idL == ID_MUL)
-	|| (idL == ID_DIV) || (idL == ID_MOD)) {
-      return 1;
-    }
-    return 0;
-  }
-
-  if (idL == ID_APPEND) {
-    if ((agentR->id == AST_OPCONS) || (agentR->id == AST_NIL)) {
-      return 1;
-    }
-    return 0;
-  }
-
-  if (idL == ID_MERGER) {
-    if ((agentR->id == AST_TUPLE) && (agentR->intval == 2)) {
-      // Merger >< Tuple2
-      return 1;
-    }
-    return 0;
-  }
-
-
-  
-  return 0;
-}
 
 
 void IdTable_set_name(int id, char *symname)

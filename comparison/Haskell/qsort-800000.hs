@@ -15,9 +15,11 @@ part pivot (x:xs)
   where
     (below, above) = part pivot xs
 
+
 {-
 main = print $ qsort [3,2,8,5]
 -}
+
 
 randomList :: Int -> IO([Int])
 randomList 0 = return []
@@ -27,7 +29,15 @@ randomList n = do
   return (r:rs)
 
 
+validation [] = True
+validation (x:xs) = validation_cons x xs
+validation_cons x [] = True
+validation_cons x (y:ys) =
+  if x<=y then validation_cons y ys
+  else False
+
+
 main = do
   list <- randomList 800000
   let sorted = qsort list
-  print (take 10 sorted)
+  print (validation sorted)

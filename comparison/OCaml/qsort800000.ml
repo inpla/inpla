@@ -21,10 +21,20 @@ let rec mkRandList n =
     0 -> []
   | n -> (Random.int 10000)::(mkRandList (n-1)) ;;
 
-let main = qsort (mkRandList 800000) ;;
+
+let rec validation alist =
+  let rec validation_cons x blist =
+    match blist with
+      [] -> true
+    | y::ys -> if x<=y then (validation_cons y ys) else false
+  in
+  match alist with
+    [] -> true
+  | x::xs -> validation_cons x xs;;
+
+
+let main = validation(qsort (mkRandList 800000));;
 
 (* 
-The following error arises:
-
-Stack overflow during evaluation (looping recursion?).
+Fatal error: exception Stack_overflow
 *)

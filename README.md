@@ -6,18 +6,18 @@
 
 Inpla is a multi-threaded parallel interpreter of interaction nets. Once you write programs for sequential execution, it works also in multi-threaded parallel execution. Each thread is managed on each CPU-core with POSIX-thread library. 
 
-* The current version is 0.8.1-2 (minor update) released on **16 April 2022**. (See [Changelog.md](Changelog.md) for details.)
+* The current version is 0.8.2, released on **28 April 2022**. (See [Changelog.md](Changelog.md) for details.)
 
-![speedup-ratio](pic/benchmark_reuse_v0.8.1.png)
+![speedup-ratio](pic/benchmark_reuse_v0.8.2.png)
 
 |                | Haskell  |   OCaml   |   SML    | Python | Inpla8 | Inpla8r |
 | -------------- | :------: | :------: | :----: | :----: | :------: | :------: |
-| ack(3,11)    |   [2.31](comparison/Haskell/ack3-11.hs)   | [0.46](comparison/OCaml/ack3_11.ml) | [**0.41**](comparison/SML/ack3-11.sml) |   [-](comparison/Python/ack3-11.py)    |  [0.82](comparison/Inpla/src/ack-stream_3-11.in)  |   [0.70](comparison/Inpla/src/ack-stream_3-11-reuse.in)   |
-| fib 38       |   [1.60](comparison/Haskell/fib38.hs)   | [**0.15**](comparison/OCaml/fib38.ml) | [0.26](comparison/SML/fib38.sml) |  [8.49](comparison/Python/fib38.py)  |  [0.38](comparison/Inpla/src/fib-38.in)  |   [0.40](comparison/Inpla/src/fib-38-reuse.in)   |
-| bsort 40000  |  [34.81](comparison/Haskell/bsort-40000.hs)   |  [35.52](comparison/OCaml/bsort40000.ml)  |  [11.17](comparison/SML/bsort-40000.sml)   | [76.72](comparison/Python/bsort-40000.py)  |  [3.03](comparison/Inpla/src/bsort-40000.in)  | [**2.42**](comparison/Inpla/src/bsort-40000-reuse.in) |
-| isort 40000  | [**0.02**](comparison/Haskell/isort-40000.hs) |   [7.44](comparison/OCaml/isort40000.ml)   |   [2.97](comparison/SML/isort-40000.sml)   | [36.63](comparison/Python/isort-40000.py)  |  [1.18](comparison/Inpla/src/isort-40000.in)  |   [1.18](comparison/Inpla/src/isort-40000-reuse.in)   |
-| qsort 800000 | [**0.15**](comparison/Haskell/qsort-800000.hs) |   [-](comparison/OCaml/qsort800000.ml)   |   [1.16](comparison/SML/qsort-800000.sml)   | [97.30](comparison/Python/qsort-800000.py)  |  [0.61](comparison/Inpla/src/qsort-800000.in)  |   [0.35](comparison/Inpla/src/qsort-800000-reuse.in)   |
-| msort 800000 | [0.46](comparison/Haskell/msort-800000.hs) |   [-](comparison/OCaml/msort800000.ml)   |   [1.00](comparison/SML/msort-800000.sml)   | [98.27](comparison/Python/msort-800000.py)  |  [0.48](comparison/Inpla/src/msort-800000.in)  |   [**0.35**](comparison/Inpla/src/msort-800000-reuse.in)   |
+| ack(3,11)    |   [2.30](comparison/Haskell/ack3-11.hs)   | [0.46](comparison/OCaml/ack3_11.ml) | [**0.43**](comparison/SML/ack3-11.sml) |   [-](comparison/Python/ack3-11.py)    |  [0.83](comparison/Inpla/src/ack-stream_3-11.in)  |   [0.71](comparison/Inpla/src/ack-stream_3-11-reuse.in)   |
+| fib 38       |   [1.60](comparison/Haskell/fib38.hs)   | [**0.15**](comparison/OCaml/fib38.ml) | [0.27](comparison/SML/fib38.sml) |  [8.88](comparison/Python/fib38.py)  |  [0.39](comparison/Inpla/src/fib-38.in)  |   [0.40](comparison/Inpla/src/fib-38-reuse.in)   |
+| bsort 40000  |  [34.48](comparison/Haskell/bsort-40000.hs)  |  [34.62](comparison/OCaml/bsort40000.ml)  |  [12.06](comparison/SML/bsort-40000.sml)  | [79.53](comparison/Python/bsort-40000.py) |  [2.98](comparison/Inpla/src/bsort-40000.in)  | [**2.48**](comparison/Inpla/src/bsort-40000-reuse.in) |
+| isort 40000  | [12.54](comparison/Haskell/isort-40000.hs) |   [7.45](comparison/OCaml/isort40000.ml)   |   [2.94](comparison/SML/isort-40000.sml)   | [36.89](comparison/Python/isort-40000.py) |  [**1.15**](comparison/Inpla/src/isort-40000.in)  |   [1.21](comparison/Inpla/src/isort-40000-reuse.in)   |
+| qsort 800000 | [1.56](comparison/Haskell/qsort-800000.hs) |   [-](comparison/OCaml/qsort800000.ml)   |   [1.14](comparison/SML/qsort-800000.sml)   | [97.37](comparison/Python/qsort-800000.py) |  [0.66](comparison/Inpla/src/qsort-800000.in)  |   [**0.37**](comparison/Inpla/src/qsort-800000-reuse.in)   |
+| msort 800000 | [1.55](comparison/Haskell/msort-800000.hs) |   [-](comparison/OCaml/msort800000.ml)   |   [1.04](comparison/SML/msort-800000.sml)   | [100.04](comparison/Python/msort-800000.py) |  [0.48](comparison/Inpla/src/msort-800000.in)  |   [**0.35**](comparison/Inpla/src/msort-800000-reuse.in)   |
 
 - **Comparison in execution time** with other implementations: **Haskell** (GHC version 8.10.7), **OCaml** (ocamlopt, the native-code compiler, version 4.08.1), **Standard ML of New Jersey** v110.74 (interpreter mode) and **Python** 3.8.5 in execution time.
   
@@ -29,7 +29,7 @@ Inpla is a multi-threaded parallel interpreter of interaction nets. Once you wri
   
   - "fib 38" is computation to get the 38th Fibonacci number. 
   
-  - "bsort *n*", "isort *n*", "qsort *n*" and "msort *n*" are computation of bubble sort, insertion sort, quick sort and merge sort for random *n*-element lists, respectively. The blanks in OCaml are due to the following error: `Stack overflow during evaluation (looping recursion?).`
+  - "bsort *n*", "isort *n*", "qsort *n*" and "msort *n*" are computation of bubble sort, insertion sort, quick sort and merge sort for random *n*-element lists, respectively, followed by a validation check process.  The blanks in OCaml are due to the following error: `Fatal error: exception Stack_overflow`
   
     
 
@@ -479,26 +479,17 @@ Inpla has built-in agents:
 
 ### Tuples
 
-* `Tuple0`,  `Tuple2(x1,x2)`,  `Tuple3(x1,x2,x2)`,  `Tuple4(x1,x2,x3,x4)`,  `Tuple5(x1,x2,x3,x4,x5)`, 
-  are written as  
-  `()`,  `(x1,x2)`,  `(x1,x2,x3)`, `(x1,x2,x3,x4)`, `(x1,x2,x3,x4,x5)`.
+* `Tuple0`,  `Tuple2(x1,x2)`,  `Tuple3(x1,x2,x2)`,  `Tuple4(x1,x2,x3,x4)`,  `Tuple5(x1,x2,x3,x4,x5)`,   written as   `()`,  `(x1,x2)`,  `(x1,x2,x3)`, `(x1,x2,x3,x4)`, `(x1,x2,x3,x4,x5)`, respectively.
   
 * There is no Tuple1, and so `(x)` is evaluated as just `x`.
 
 
 ### Lists
 
-* `Nil`, `Cons(x,xs)`  
-  are written as  
-  `[]` and `x:xs`, respectively. 
-* A nested `Cons` that terminated at `Nil` is written as a list notation using brackets `[` and `]`.  For instance,  
-  `x1 : x2: x3 : Nil`  
-  is written as  
-  `[x1,x2,x3]` .  
+* `Nil`, `Cons(x,xs)`, written as  `[]` and `x:xs`, respectively. 
+* A nested `Cons` that is terminated at `Nil` is written as a list notation using brackets `[` and `]`.  For instance,  `x1 : x2: x3 : Nil`  is written as  `[x1,x2,x3]` .  
 
-
-
-### Built-in rules for tuples and lists
+#### Built-in rules for tuples and lists
 
 There are built-in rules for pairs of the same built-in agents that match and connect each element such that:
 
@@ -539,7 +530,33 @@ Append(r, listB) ~ listA --> r ~ (listA ++ listB)  // pseudo code
   >>>
   ```
 
+* We also have a built-in abbreviation for the Append to denote the operation naturally:
+  ```
+  >>> r << Append([A,B,C], [Z, S(Z)]);
+  (4 interactions, 0.00 sec)
+  >>> r;
+  [A,B,C,Z,S(Z)]
+  >>> free x1 x2 y1 y2 y3 r;
+  >>>
+  ```
+
+
+
+### Eraser
+
+* Eraser agent `Eraser` removes any nets gragually:
+  ![Eraser](pic/eraser.png)
   
+  ```
+  >>> Eraser ~ A(x1,x2);
+  (1 interactions, 0.00 sec)
+  >>> x1 x2
+  Eraser Eraser
+  >>> free x1 x2;
+  >>>
+  ```
+
+
 ## Attributes (integers)
 
 Agents can be extended so that these can have integers in their ports. These integers are called *attributes*. 

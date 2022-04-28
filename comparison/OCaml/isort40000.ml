@@ -1,11 +1,3 @@
-(*
-let rec insert x ylist =
-  match ylist with
-    [] -> [x]
-  | y::ys when x<=y -> x::y::ys
-  | y::ys           -> y::(insert x ys);;
-*)
-
 let rec insert x ylist =
   match ylist with
     [] -> [x]
@@ -26,5 +18,17 @@ let rec mkRandList n =
     0 -> []
   | n -> (Random.int 10000)::(mkRandList (n-1));;
 
-let main = isort (mkRandList 40000);;
+
+let rec validation alist =
+  let rec validation_cons x blist =
+    match blist with
+      [] -> true
+    | y::ys -> if x<=y then (validation_cons y ys) else false
+  in
+  match alist with
+    [] -> true
+  | x::xs -> validation_cons x xs;;
+
+
+let main = validation(isort (mkRandList 40000));;
 

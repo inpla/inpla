@@ -2,7 +2,7 @@
 
 // Rules
 hanoi(return, source, target, auxiliary) >< (int n)
-| n==0 => return~[], Eps~source, Eps~target, Eps~auxiliary
+| n==0 => return~[], Eraser~source, Eraser~target, Eraser~auxiliary
 | _    => source ~ dup(src1, dup(src2, src3)),
          target ~ dup(tgt1, dup(tgt2, tgt3)),
          auxiliary ~ dup(aux1, aux2),
@@ -14,9 +14,9 @@ hanoi(return, source, target, auxiliary) >< (int n)
 dup(a,b)><A => a~A, b~A;
 dup(a,b)><B => a~B, b~B;
 dup(a,b)><C => a~C, b~C;
-Eps><A =>;
-Eps><B =>;
-Eps><C =>;
+
+// The `Eraser' is defined as a built-in agent for any agents as follows:
+//Eraser >< Alpha(a1, ..., a5) => Eraser~a1, ..., Eraser~a5;
 
 
 // Net
@@ -26,7 +26,8 @@ result; // should be [(1,A,C),(2,A,B),(1,C,B),(3,A,C),(1,B,A),(2,B,C),(1,A,C)]
 
 // These are also written using abbreviation as follows:
 //   hanoi(return, source, target, auxiliary) >< (int n)
-//   | n==0 => return~[], << Eps(source), << Eps(target), << Eps(auxiliary)
+//   | n==0 => return~[],
+//             << Eraser(source), << Eraser(target), << Eraser(auxiliary)
 //   | _    => src1, dup(src2, src3) << dup(source),
 //            tgt1, dup(tgt2, tgt3) << dup(target),
 //            aux1, aux2 << dup(auxiliary),
