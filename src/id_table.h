@@ -47,7 +47,8 @@
 #define ID_DIV2     25
 #define ID_MOD      26
 #define ID_MOD2     27
-#define END_ID_OF_BUILTIN_AGENT 27
+#define ID_ERASER   28
+#define END_ID_OF_BUILTIN_AGENT 28
 
  
 #define START_ID_OF_AGENT END_ID_OF_BUILTIN_AGENT+1
@@ -102,7 +103,6 @@ int IdTable_new_agentid();
 int IdTable_new_gnameid();
 
 int IdTable_getid_builtin_funcAgent(Ast *agent);
-int IdTable_is_builtin_rule(Ast *agentL, Ast *agentR);
 
 
 #endif

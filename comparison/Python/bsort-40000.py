@@ -17,8 +17,15 @@ def mkRandList(n):
     return a
 
 
-                                
+def validation(alist):
+    for i in range(len(alist)-1):
+        if (alist[i] > alist[i+1]):
+            return False
+
+    return True
+
+
+
 a=mkRandList(40000)
 bubblesort(a)
-
-#print(a)
+print(validation(a))

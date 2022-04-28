@@ -20,23 +20,20 @@
 #include "config.h"  
 
 
-
-  
-
-
 // ----------------------------------------------
   
+#define VERSION "0.8.2"
+#define BUILT_DATE  "28 Apr. 2022"  
+
+// ------------------------------------------------------------------
+
+
+
 //#define DEBUG
   
 // For experiments of the tail recursion optimisation.
 //#define COUNT_CNCT    // count of execution of JMP_CNCT
 //#define COUNT_MKAGENT // count of execution fo mkagent
-
-
-#define VERSION "0.8.1-2"
-#define BUILT_DATE  "16 Apr. 2022"  
-// ------------------------------------------------------------------
-
 
 
 
@@ -882,6 +879,14 @@ void myfree(VALUE ptr) {
 
 }
 
+static inline
+void myfree2(VALUE ptr, VALUE ptr2) {
+
+  SET_HOOPFLAG_READYFORUSE(BASIC(ptr)->id);
+  SET_HOOPFLAG_READYFORUSE(BASIC(ptr2)->id);
+
+}
+
 
 
 
@@ -1200,6 +1205,14 @@ void myfree(VALUE ptr) {
 
 }
 
+static inline
+void myfree2(VALUE ptr, VALUE ptr2) {
+
+  SET_HOOPFLAG_READYFORUSE(BASIC(ptr)->id);
+  SET_HOOPFLAG_READYFORUSE(BASIC(ptr2)->id);
+
+}
+
 
 #else
 // v0.5.6 -------------------------------------
@@ -1363,6 +1376,16 @@ void myfree(VALUE ptr) {
   SET_HEAPFLAG_READYFORUSE(BASIC(ptr)->id);
 
 }
+
+
+//static inline
+void myfree2(VALUE ptr, VALUE ptr2) {
+
+  //  TOGGLE_HEAPFLAG_READYFORUSE(BASIC(ptr)->id);
+  SET_HEAPFLAG_READYFORUSE(BASIC(ptr)->id);
+  SET_HEAPFLAG_READYFORUSE(BASIC(ptr2)->id);
+}
+
 
 
 //---------------------------------------------
@@ -1970,12 +1993,23 @@ void VM_Clear_InteractionCount(VirtualMachine *vm) {
 //static inline
 void free_Agent(VALUE ptr) {
   
-  if (ptr == (VALUE)NULL) {
-    puts("ERROR: NULL is applied to free_Agent.");
-    return;
-  }
+  //  if (ptr == (VALUE)NULL) {
+  //    puts("ERROR: NULL is applied to free_Agent.");
+  //    return;
+  //  }
 
   myfree(ptr);
+}
+
+
+void free_Agent2(VALUE ptr, VALUE ptr2) {
+  
+  //  if (ptr == (VALUE)NULL) {
+  //    puts("ERROR: NULL is applied to free_Agent.");
+  //    return;
+  //  }
+
+  myfree2(ptr, ptr2);
 }
 
 //static inline
@@ -7863,8 +7897,10 @@ void *exec_code(int mode, VirtualMachine * restrict vm, void * restrict *code) {
 
  E_RET_FREE_LR:
   //    puts("ret_free_LR");
-  free_Agent(reg[VM_OFFSET_ANNOTATE_L]);
-  free_Agent(reg[VM_OFFSET_ANNOTATE_R]);
+
+  //free_Agent(reg[VM_OFFSET_ANNOTATE_L]);
+  //free_Agent(reg[VM_OFFSET_ANNOTATE_R]);
+  free_Agent2(reg[VM_OFFSET_ANNOTATE_L], reg[VM_OFFSET_ANNOTATE_R]);
   return NULL;
   
  E_RET_FREE_L:
@@ -8757,6 +8793,14 @@ loop_a2IsFixnum:
 	    a1 = a1port0;
 	    goto loop;
 	  }
+	case ID_ERASER:
+	  {
+	    COUNTUP_INTERACTION(vm);
+
+	    // Eps ~ (int n)
+	    free_Agent(a1);
+	    return;
+	  }
 	}
       
 	
@@ -8777,7 +8821,7 @@ loop_a2IsFixnum:
 #endif
       }
 
-      /*
+      /* JIT experimentation
       if (BASIC(a1)->id == 28) {
 	vm->reg[VM_OFFSET_METAVAR_L(0)] = AGENT(a1)->port[0];
 	
@@ -8906,7 +8950,7 @@ loop_a2IsAgent:
 
 	if (BASIC(a2)->id < START_ID_OF_BUILTIN_AGENT)  {
 	
-	  // built-in
+	  // a2 is a constructor
 	  switch (BASIC(a1)->id) {
 	  
 	  case ID_TUPLE0:
@@ -8914,8 +8958,9 @@ loop_a2IsAgent:
 	      // [] ~ [] --> nothing
 	      COUNTUP_INTERACTION(vm);
       
-	      free_Agent(a1);
-	      free_Agent(a2);	    
+	      //	      free_Agent(a1);
+	      //	      free_Agent(a2);
+	      free_Agent2(a1, a2);
 	      return;
 	    }
 	  
@@ -8931,8 +8976,9 @@ loop_a2IsAgent:
 	      VALUE a2p1 = AGENT(a2)->port[1];
 	      PUSH(vm, a1p1, a2p1);
 
-	      free_Agent(a1);
-	      free_Agent(a2);	    
+	      //	      free_Agent(a1);
+	      //	      free_Agent(a2);
+	      free_Agent2(a1,a2);
 	      a1 = AGENT(a1)->port[0];
 	      a2 = AGENT(a2)->port[0];
 	      goto loop;
@@ -8948,8 +8994,9 @@ loop_a2IsAgent:
 	      PUSH(vm, AGENT(a1)->port[2], AGENT(a2)->port[2]);
 	      PUSH(vm, AGENT(a1)->port[1], AGENT(a2)->port[1]);
 
-	      free_Agent(a1);
-	      free_Agent(a2);	    
+	      //	      free_Agent(a1);
+	      //	      free_Agent(a2);
+	      free_Agent2(a1, a2);
 	      a1 = AGENT(a1)->port[0];
 	      a2 = AGENT(a2)->port[0];
 	      goto loop;
@@ -8967,8 +9014,9 @@ loop_a2IsAgent:
 	      PUSH(vm, AGENT(a1)->port[2], AGENT(a2)->port[2]);
 	      PUSH(vm, AGENT(a1)->port[1], AGENT(a2)->port[1]);
 
-	      free_Agent(a1);
-	      free_Agent(a2);	    
+	      //	      free_Agent(a1);
+	      //	      free_Agent(a2);
+	      free_Agent2(a1, a2);	      
 	      a1 = AGENT(a1)->port[0];
 	      a2 = AGENT(a2)->port[0];
 	      goto loop;
@@ -8987,8 +9035,9 @@ loop_a2IsAgent:
 	      PUSH(vm, AGENT(a1)->port[2], AGENT(a2)->port[2]);
 	      PUSH(vm, AGENT(a1)->port[1], AGENT(a2)->port[1]);
 
-	      free_Agent(a1);
-	      free_Agent(a2);	    
+	      //	      free_Agent(a1);
+	      //	      free_Agent(a2);
+	      free_Agent2(a1, a2);	      
 	      a1 = AGENT(a1)->port[0];
 	      a2 = AGENT(a2)->port[0];
 	      goto loop;
@@ -9002,8 +9051,10 @@ loop_a2IsAgent:
 	      // [] ~ [] --> nothing
 	      COUNTUP_INTERACTION(vm);
 	      
-	      free_Agent(a1);
-	      free_Agent(a2);	    
+	      //	      free_Agent(a1);
+	      //	      free_Agent(a2);
+	      free_Agent2(a1, a2);
+	      
 	      return;
 	    }
 	  
@@ -9019,8 +9070,9 @@ loop_a2IsAgent:
 	      VALUE a2p1 = AGENT(a2)->port[1];
 	      PUSH(vm, a1p1, a2p1);
 
-	      free_Agent(a1);
-	      free_Agent(a2);	    
+	      //	      free_Agent(a1);
+	      //	      free_Agent(a2);	    
+	      free_Agent2(a1, a2);
 	      a1 = AGENT(a1)->port[0];
 	      a2 = AGENT(a2)->port[0];
 	      goto loop;
@@ -9040,8 +9092,9 @@ loop_a2IsAgent:
 	      
 		VALUE a1p0 = AGENT(a1)->port[0];
 		VALUE a1p1 = AGENT(a1)->port[1];
-		free_Agent(a1);
-		free_Agent(a2);
+		//		free_Agent(a1);
+		//		free_Agent(a2);
+		free_Agent2(a1, a2);
 		a1=a1p0;
 		a2=a1p1;
 		goto loop;
@@ -9102,8 +9155,10 @@ loop_a2IsAgent:
 		return;
 	      } else {
 		VALUE a1p0 = AGENT(a1)->port[0];
-		free_Agent(AGENT(a1)->port[1]);
-		free_Agent(a1);
+		//		free_Agent(AGENT(a1)->port[1]);
+		//		free_Agent(a1);
+		free_Agent2(AGENT(a1)->port[1], a1);
+		
 		a1 = a1p0;
 		goto loop;
 	      }
@@ -9124,8 +9179,9 @@ loop_a2IsAgent:
 		COUNTUP_INTERACTION(vm);
 		
 		VALUE a1p0 = AGENT(a1)->port[0];
-		free_Agent(AGENT(a1)->port[2]);
-		free_Agent(a1);
+		//		free_Agent(AGENT(a1)->port[2]);
+		//		free_Agent(a1);
+		free_Agent2(AGENT(a1)->port[2], a1);		
 		a1 = a1p0;
 		goto loop;
 	      } else {
@@ -9159,8 +9215,9 @@ loop_a2IsAgent:
 		  COUNTUP_INTERACTION(vm);
 		  
 		  VALUE a1p0 = AGENT(a1)->port[0];
-		  free_Agent(AGENT(a1)->port[2]);   // free the lock for NIL
-		  free_Agent(a1);
+		  //		  free_Agent(AGENT(a1)->port[2]);   // free the lock for NIL
+		  //		  free_Agent(a1);
+		  free_Agent2(AGENT(a1)->port[2], a1);
 		  a1 = a1p0;
 		  goto loop;
 		  
@@ -9197,12 +9254,53 @@ loop_a2IsAgent:
 		
 #endif
 	      }
-	      
 	    }
 	    break; // end ID_MERGER_P
+	    
+	    
+	  } // end switch(BASIC(a1)->id)
+	  
+	} else {
+	  // a2 is not a constructor
+
+	  switch (BASIC(a1)->id) {
+	  case ID_ERASER:
+	    {
+	      // Eps ~ Alpha(a1,...,a5)		
+	      COUNTUP_INTERACTION(vm);
+	      
+	      int arity = IdTable_get_arity(BASIC(a2)->id);
+	      switch (arity) {
+	      case 0:
+		{
+		  free_Agent2(a1, a2);
+		  return;
+		}
+		
+	      case 1:
+		{
+		  VALUE a2p0 = AGENT(a2)->port[0];
+		  free_Agent(a2);
+		  a2 = a2p0;
+		  goto loop;
+		}
+		
+	      default:
+		for (int i=1; i<arity; i++) {
+		  VALUE a2port = AGENT(a2)->port[1];
+		  VALUE eps = make_Agent(vm, ID_ERASER);
+		  PUSH(vm, eps, a2port);
+		}
+		
+		VALUE a2p0 = AGENT(a2)->port[0];
+		free_Agent(a2);
+		a2 = a2p0;
+		goto loop;
+	      }
+	    }
+	    break; // end case ID_ERASER
 	  }
-	}
-    
+	}    
 
 	
 	printf("Runtime Error: There is no interaction rule for the following pair:\n  ");

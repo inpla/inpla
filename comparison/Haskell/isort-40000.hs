@@ -25,7 +25,15 @@ randomList n = do
   return (r:rs)
 
 
+validation [] = True
+validation (x:xs) = validation_cons x xs
+validation_cons x [] = True
+validation_cons x (y:ys) =
+  if x<=y then validation_cons y ys
+  else False
+
+
 main = do
   list <- randomList 40000
   let sorted = isort list
-  print (take 10 sorted)
+  print (validation sorted)
