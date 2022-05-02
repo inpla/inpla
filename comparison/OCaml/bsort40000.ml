@@ -1,3 +1,5 @@
+open Format
+
 let rec bs (alist : int list) n =
   match alist with
     (x::y::ys) ->
@@ -11,9 +13,12 @@ let rec go xs n =
     0 -> xs
   | n -> go (bs xs n) (n-1);;
 
-let bsort xs = go xs (List.length(xs) - 1);;
+let bsort alist =
+  match alist with
+    [] -> []
+  | xs -> go xs (List.length(xs) - 1);;
 
-
+		  
 let rec mkRandList n =
   match n with
     0 -> []
@@ -31,5 +36,4 @@ let rec validation alist =
   | x::xs -> validation_cons x xs;;
 
 
-let main = validation (bsort (mkRandList 40000));;
-
+let () = print_bool (validation (bsort (mkRandList 40000)));;

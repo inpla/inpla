@@ -34,6 +34,7 @@ typedef enum {
 typedef struct abstract_syntax_tree {
   AST_ID id;
   int intval;
+  long longval;
   char *sym;
   struct abstract_syntax_tree *left,*right;
 } Ast;
@@ -41,7 +42,7 @@ typedef struct abstract_syntax_tree {
 void ast_heapInit(void);
 void ast_heapReInit(void);
 Ast *ast_makeSymbol(char *name);
-Ast *ast_makeInt(int num);
+Ast *ast_makeInt(long num);
 Ast *ast_makeAST(AST_ID id, Ast *left, Ast *right);
 Ast *ast_makeTuple(Ast *tuple);
 Ast *ast_addLast(Ast *l, Ast *p);

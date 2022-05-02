@@ -1,8 +1,7 @@
 CC      = stack ghc
 CFLAGS  = -O2
 BENCHMARK  = bash ../tools/sptest_commands.sh
-TARGET  = ack3-11 fib38 bsort-40000 isort-40000 qsort-800000 msort-800000
-#TARGET  = ack3-11
+TARGET  = ack3-11 fib38 bsort-40000 isort-40000 qsort-260000 msort-260000
 LOG = log.txt
 
 
@@ -25,10 +24,10 @@ bsort-40000: bsort-40000.hs
 isort-40000: isort-40000.hs
 	$(CC) -- $(CFLAGS) $<
 
-qsort-800000: qsort-800000.hs
+qsort-260000: qsort-260000.hs
 	$(CC) -- $(CFLAGS) $<
 
-msort-800000: msort-800000.hs
+msort-260000: msort-260000.hs
 	$(CC) -- $(CFLAGS) $<
 
 

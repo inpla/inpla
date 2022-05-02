@@ -11,7 +11,7 @@
 #define MAX_SYMBOLS 256
 typedef struct {
   char* sym[MAX_SYMBOLS];
-  int val[MAX_SYMBOLS];
+  long val[MAX_SYMBOLS];
   int nth;
 } SymbolTable;
 
@@ -71,9 +71,9 @@ int ast_getRecordedVal(int entry) {
 }
 
 
-void recordVal(SymbolTable *table, char *name, int val) {
+void recordVal(SymbolTable *table, char *name, long val) {
   int i;
-
+  
   for (i=0; i< table->nth; i++) {
     if (strcmp(table->sym[i], name) == 0) {
 
@@ -142,11 +142,11 @@ Ast *ast_makeSymbol(char *name) {
   return ptr;
 }
 
-Ast *ast_makeInt(int num) {
+Ast *ast_makeInt(long num) {
   Ast *ptr;
   ptr = ast_myalloc();
   ptr->id = AST_INT;
-  ptr->intval = num;
+  ptr->longval = num;
   return ptr;
 }
 
@@ -169,7 +169,7 @@ Ast *ast_makeAST(AST_ID id, Ast *left, Ast *right) {
       
       ptr = ast_myalloc();
       ptr->id = AST_INT;
-      ptr->intval = ConstTable.val[entry];
+      ptr->longval = ConstTable.val[entry];
       return ptr;
     }
   }

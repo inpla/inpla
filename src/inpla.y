@@ -22,8 +22,8 @@
 
 // ----------------------------------------------
   
-#define VERSION "0.8.2"
-#define BUILT_DATE  "28 Apr. 2022"  
+#define VERSION "0.8.2-1"
+#define BUILT_DATE  "2 May 2022"  
 
 // ------------------------------------------------------------------
 
@@ -153,13 +153,13 @@ static char *Errormsg = NULL;
 
 %}
 %union{
-  int intval;
+  long longval;
   char *chval;
   Ast *ast;
 }
 
 %token <chval> NAME AGENT
-%token <intval> INT_LITERAL
+%token <longval> INT_LITERAL
 %token <chval> STRING_LITERAL
 %token LP RP LC RC LB RB COMMA CROSS DELIMITER ABR
 %token COLON
@@ -2358,7 +2358,7 @@ void CodeAddr_init(void) {
 #define MAX_IMCODE_SEQUENCE 1024
 struct IMCode_tag {
   int opcode;
-  int operand1, operand2, operand3, operand4, operand5, operand6, operand7;
+  long operand1, operand2, operand3, operand4, operand5, operand6, operand7;
 } IMCode[MAX_IMCODE_SEQUENCE];
 
 int IMCode_n;
@@ -2373,26 +2373,26 @@ void IMCode_genCode0(int opcode) {
   IMCode[IMCode_n++].opcode = opcode;
   IMCODE_OVERFLOW_CHECK
 }
-void IMCode_genCode1(int opcode, int operand1) {
+void IMCode_genCode1(int opcode, long operand1) {
   IMCode[IMCode_n].operand1 = operand1;
   IMCode[IMCode_n++].opcode = opcode;
   IMCODE_OVERFLOW_CHECK
 }
-void IMCode_genCode2(int opcode, int operand1, int operand2) {
+void IMCode_genCode2(int opcode, long operand1, long operand2) {
   IMCode[IMCode_n].operand1 = operand1;
   IMCode[IMCode_n].operand2 = operand2;
   IMCode[IMCode_n++].opcode = opcode;  
   IMCODE_OVERFLOW_CHECK
 }
-void IMCode_genCode3(int opcode, int operand1, int operand2, int operand3) {
+void IMCode_genCode3(int opcode, long operand1, long operand2, long operand3) {
   IMCode[IMCode_n].operand1 = operand1;
   IMCode[IMCode_n].operand2 = operand2;
   IMCode[IMCode_n].operand3 = operand3;
   IMCode[IMCode_n++].opcode = opcode;  
   IMCODE_OVERFLOW_CHECK
 }
-void IMCode_genCode4(int opcode, int operand1, int operand2, int operand3,
-		     int operand4) {
+void IMCode_genCode4(int opcode, long operand1, long operand2, long operand3,
+		     long operand4) {
   IMCode[IMCode_n].operand1 = operand1;
   IMCode[IMCode_n].operand2 = operand2;
   IMCode[IMCode_n].operand3 = operand3;
@@ -2400,8 +2400,8 @@ void IMCode_genCode4(int opcode, int operand1, int operand2, int operand3,
   IMCode[IMCode_n++].opcode = opcode;  
   IMCODE_OVERFLOW_CHECK
 }
-void IMCode_genCode5(int opcode, int operand1, int operand2, int operand3,
-		     int operand4, int operand5) {
+void IMCode_genCode5(int opcode, long operand1, long operand2, long operand3,
+		     long operand4, long operand5) {
   IMCode[IMCode_n].operand1 = operand1;
   IMCode[IMCode_n].operand2 = operand2;
   IMCode[IMCode_n].operand3 = operand3;
@@ -2410,8 +2410,8 @@ void IMCode_genCode5(int opcode, int operand1, int operand2, int operand3,
   IMCode[IMCode_n++].opcode = opcode;  
   IMCODE_OVERFLOW_CHECK
 }
-void IMCode_genCode6(int opcode, int operand1, int operand2, int operand3,
-		     int operand4, int operand5, int operand6) {
+void IMCode_genCode6(int opcode, long operand1, long operand2, long operand3,
+		     long operand4, long operand5, long operand6) {
   IMCode[IMCode_n].operand1 = operand1;
   IMCode[IMCode_n].operand2 = operand2;
   IMCode[IMCode_n].operand3 = operand3;
@@ -2421,8 +2421,8 @@ void IMCode_genCode6(int opcode, int operand1, int operand2, int operand3,
   IMCode[IMCode_n++].opcode = opcode;  
   IMCODE_OVERFLOW_CHECK
 }
-void IMCode_genCode7(int opcode, int operand1, int operand2, int operand3,
-		     int operand4, int operand5, int operand6, int operand7) {
+void IMCode_genCode7(int opcode, long operand1, long operand2, long operand3,
+		     long operand4, long operand5, long operand6, long operand7) {
   IMCode[IMCode_n].operand1 = operand1;
   IMCode[IMCode_n].operand2 = operand2;
   IMCode[IMCode_n].operand3 = operand3;
@@ -2498,47 +2498,47 @@ void IMCode_puts(int n) {
     
     switch (imcode->opcode) {
     case OP_MKNAME:
-      printf("%s var%d\n", string_opcode[imcode->opcode],
+      printf("%s var%ld\n", string_opcode[imcode->opcode],
 	     imcode->operand1);
       break;
 
     case OP_MKGNAME:
-      printf("%s id:%d var%d; \"%s\"\n", string_opcode[imcode->opcode],
+      printf("%s id:%ld var%ld; \"%s\"\n", string_opcode[imcode->opcode],
 	     imcode->operand1, imcode->operand2,
 	     IdTable_get_name(imcode->operand1));
       break;
 
     case OP_MKAGENT0:
-      printf("%s id:%d var%d\n", string_opcode[imcode->opcode],
+      printf("%s id:%ld var%ld\n", string_opcode[imcode->opcode],
 	     imcode->operand1, imcode->operand2);
       break;
 
     case OP_MKAGENT1:
-      printf("%s id:%d var%d var%d\n", string_opcode[imcode->opcode],
+      printf("%s id:%ld var%ld var%ld\n", string_opcode[imcode->opcode],
 	     imcode->operand1, imcode->operand2, imcode->operand3);
       break;
 
     case OP_MKAGENT2:
-      printf("%s id:%d var%d var%d var%d\n", string_opcode[imcode->opcode],
+      printf("%s id:%ld var%ld var%ld var%ld\n", string_opcode[imcode->opcode],
 	     imcode->operand1, imcode->operand2,
 	     imcode->operand3, imcode->operand4);
       break;
 
     case OP_MKAGENT3:
-      printf("%s id:%d var%d var%d var%d var%d\n", string_opcode[imcode->opcode],
+      printf("%s id:%ld var%ld var%ld var%ld var%ld\n", string_opcode[imcode->opcode],
 	     imcode->operand1, imcode->operand2,
 	     imcode->operand3, imcode->operand4, imcode->operand5);
       break;
 
     case OP_MKAGENT4:
-      printf("%s id:%d var%d var%d var%d var%d var%d \n", string_opcode[imcode->opcode],
+      printf("%s id:%ld var%ld var%ld var%ld var%ld var%ld \n", string_opcode[imcode->opcode],
 	     imcode->operand1, imcode->operand2,
 	     imcode->operand3, imcode->operand4, imcode->operand5,
 	     imcode->operand6);
       break;
 
     case OP_MKAGENT5:
-      printf("%s id:%d var%d var%d var%d var%d var%d var%d \n", string_opcode[imcode->opcode],
+      printf("%s id:%ld var%ld var%ld var%ld var%ld var%ld var%ld \n", string_opcode[imcode->opcode],
 	     imcode->operand1, imcode->operand2,
 	     imcode->operand3, imcode->operand4, imcode->operand5,
 	     imcode->operand6, imcode->operand7);
@@ -2546,36 +2546,36 @@ void IMCode_puts(int n) {
 
       
     case OP_REUSEAGENT0:
-      printf("%s var%d id:%d\n", string_opcode[imcode->opcode],
+      printf("%s var%ld id:%ld\n", string_opcode[imcode->opcode],
 	     imcode->operand1, imcode->operand2);
       break;
 
     case OP_REUSEAGENT1:
-      printf("%s var%d id:%d var%d\n", string_opcode[imcode->opcode],
+      printf("%s var%ld id:%ld var%ld\n", string_opcode[imcode->opcode],
 	     imcode->operand1, imcode->operand2, imcode->operand3);
       break;
 
     case OP_REUSEAGENT2:
-      printf("%s var%d id:%d var%d var%d\n", string_opcode[imcode->opcode],
+      printf("%s var%ld id:%ld var%ld var%ld\n", string_opcode[imcode->opcode],
 	     imcode->operand1, imcode->operand2,
 	     imcode->operand3, imcode->operand4);
       break;
 
     case OP_REUSEAGENT3:
-      printf("%s var%d id:%d var%d var%d var%d\n", string_opcode[imcode->opcode],
+      printf("%s var%ld id:%ld var%ld var%ld var%ld\n", string_opcode[imcode->opcode],
 	     imcode->operand1, imcode->operand2,
 	     imcode->operand3, imcode->operand4, imcode->operand5);
       break;
 
     case OP_REUSEAGENT4:
-      printf("%s var%d id:%d var%d var%d var%d var%d\n", string_opcode[imcode->opcode],
+      printf("%s var%ld id:%ld var%ld var%ld var%ld var%ld\n", string_opcode[imcode->opcode],
 	     imcode->operand1, imcode->operand2,
 	     imcode->operand3, imcode->operand4, imcode->operand5,
 	     imcode->operand6);
       break;
 
     case OP_REUSEAGENT5:
-      printf("%s var%d id:%d var%d var%d var%d var%d var%d\n",
+      printf("%s var%ld id:%ld var%ld var%ld var%ld var%ld var%ld\n",
 	     string_opcode[imcode->opcode],
 	     imcode->operand1, imcode->operand2,
 	     imcode->operand3, imcode->operand4, imcode->operand5,
@@ -2584,7 +2584,7 @@ void IMCode_puts(int n) {
 
 
     case OP_LABEL:
-      printf("%s%d:\n", string_opcode[imcode->opcode],
+      printf("%s%ld:\n", string_opcode[imcode->opcode],
 	     imcode->operand1);
       break;
 
@@ -2612,7 +2612,7 @@ void IMCode_puts(int n) {
     case OP_LOOP_RREC2:
     case OP_LOOP_RREC1_FREE_R:
     case OP_LOOP_RREC2_FREE_R:
-      printf("%s var%d\n", string_opcode[imcode->opcode],
+      printf("%s var%ld\n", string_opcode[imcode->opcode],
 	     imcode->operand1);
       break;
 
@@ -2632,7 +2632,7 @@ void IMCode_puts(int n) {
     case OP_NE_R0:
     case OP_CNCTGN:
     case OP_SUBSTGN:
-      printf("%s var%d var%d\n", string_opcode[imcode->opcode],
+      printf("%s var%ld var%ld\n", string_opcode[imcode->opcode],
 	     imcode->operand1, imcode->operand2);
       break;
 
@@ -2641,14 +2641,14 @@ void IMCode_puts(int n) {
     case OP_PUSHI:
     case OP_LOADI:
     case OP_EQI_R0:
-      printf("%s $%d var%d\n", string_opcode[imcode->opcode],
+      printf("%s $%ld var%ld\n", string_opcode[imcode->opcode],
 	     imcode->operand1, imcode->operand2);
       break;
 
 
     case OP_LOOP_RREC:
     case OP_LOOP_RREC_FREE_R:
-      printf("%s var%d $%d\n", string_opcode[imcode->opcode],
+      printf("%s var%ld $%ld\n", string_opcode[imcode->opcode],
 	     imcode->operand1, imcode->operand2);
       break;
 
@@ -2664,7 +2664,7 @@ void IMCode_puts(int n) {
     case OP_LE:
     case OP_EQ:
     case OP_NE:
-      printf("%s var%d var%d var%d\n", string_opcode[imcode->opcode],
+      printf("%s var%ld var%ld var%ld\n", string_opcode[imcode->opcode],
 	     imcode->operand1, imcode->operand2, imcode->operand3);
       break;
       
@@ -2673,7 +2673,7 @@ void IMCode_puts(int n) {
     case OP_ADDI:
     case OP_SUBI:
     case OP_EQI:
-      printf("%s var%d $%d var%d\n", string_opcode[imcode->opcode],
+      printf("%s var%ld $%ld var%ld\n", string_opcode[imcode->opcode],
 	     imcode->operand1, imcode->operand2, imcode->operand3);
       break;
 
@@ -2682,7 +2682,7 @@ void IMCode_puts(int n) {
     case OP_JMPEQ0:
     case OP_JMPNEQ0:
     case OP_JMPCNCT_CONS:
-      printf("%s var%d %s%d\n", string_opcode[imcode->opcode],	     
+      printf("%s var%ld %s%ld\n", string_opcode[imcode->opcode],	     
 	     imcode->operand1,
 	     string_opcode[OP_LABEL],imcode->operand2);
       break;
@@ -2690,26 +2690,26 @@ void IMCode_puts(int n) {
       
       // arity is 3: opcode var1 id2 LABEL3
     case OP_JMPCNCT:
-      printf("%s var%d id:%d %s%d\n", string_opcode[imcode->opcode],
+      printf("%s var%ld id:%ld %s%ld\n", string_opcode[imcode->opcode],
 	     imcode->operand1, imcode->operand2,
 	     string_opcode[OP_LABEL],imcode->operand3);
       break;
       
       // others      
     case OP_JMPEQ0_R0:
-      printf("%s %s%d\n", string_opcode[imcode->opcode],
+      printf("%s %s%ld\n", string_opcode[imcode->opcode],
 	     string_opcode[OP_LABEL],imcode->operand1);
       break;
       
             
     case OP_JMP:
-      printf("%s %s%d\n", string_opcode[imcode->opcode],
+      printf("%s %s%ld\n", string_opcode[imcode->opcode],
 	     string_opcode[OP_LABEL],imcode->operand1);
       break;
       
             
     default:
-      printf("CODE %d %d %d %d %d %d\n",
+      printf("CODE %ld %ld %ld %ld %ld %ld\n",
 	     imcode->operand1, imcode->operand2, imcode->operand3, 
 	     imcode->operand4, imcode->operand5, imcode->operand6);
     }
@@ -3831,7 +3831,7 @@ int CmEnv_Optimise_check_occurence_in_block(int localvar,
 int CmEnv_Optimise_VMCode_CopyPropagation_LOADI(int target_imcode_addr) {
 
   struct IMCode_tag *imcode;
-  int load_i, load_to;
+  long load_i, load_to;
 
   load_i = IMCode[target_imcode_addr].operand1;
   load_to = IMCode[target_imcode_addr].operand2;
@@ -4214,7 +4214,7 @@ int CmEnv_generate_VMCode(void **code) {
     switch (imcode->opcode) {
     case OP_MKNAME: {
       //      printf("OP_MKNAME var%d\n", imcode->operand1);
-      int dest = imcode->operand1;
+      long dest = imcode->operand1;
 
 #ifdef OPTIMISE_IMCODE
       dest = CmEnv_get_newreg(dest);
@@ -4228,7 +4228,7 @@ int CmEnv_generate_VMCode(void **code) {
       //      printf("OP_MKGNAME sym:%d var%d (as `%s')\n",
       //	     imcode->operand1, imcode->operand2,
       //	     CmEnv.bind[imcode->operand1].name);
-      int dest = imcode->operand2;
+      long dest = imcode->operand2;
 
 #ifdef OPTIMISE_IMCODE
       dest = CmEnv_get_newreg(dest);
@@ -4244,7 +4244,7 @@ int CmEnv_generate_VMCode(void **code) {
     case OP_MKAGENT0: {
       //      printf("OP_MKAGENT0 id var%d:%d\n", 
       //	     imcode->operand1, imcode->operand2);
-      int dest = imcode->operand2;
+      long dest = imcode->operand2;
 
 #ifdef OPTIMISE_IMCODE
       dest = CmEnv_get_newreg(dest);
@@ -4258,8 +4258,8 @@ int CmEnv_generate_VMCode(void **code) {
     case OP_MKAGENT1: {
       //      printf("OP_MKAGENT1 id:%d var%d var%d\n", 
       //	     imcode->operand1, imcode->operand2, imcode->operand3);
-      int src1 = imcode->operand2;
-      int dest = imcode->operand3;
+      long src1 = imcode->operand2;
+      long dest = imcode->operand3;
 
 #ifdef OPTIMISE_IMCODE
       src1 = CmEnv_using_reg(src1);
@@ -4293,9 +4293,9 @@ int CmEnv_generate_VMCode(void **code) {
       //	     imcode->operand1, imcode->operand2,
       //	     imcode->operand3, imcode->operand4);
 
-      int src1 = imcode->operand2;
-      int src2 = imcode->operand3;
-      int dest = imcode->operand4;
+      long src1 = imcode->operand2;
+      long src2 = imcode->operand3;
+      long dest = imcode->operand4;
 
 
 #ifdef OPTIMISE_IMCODE
@@ -4338,10 +4338,10 @@ int CmEnv_generate_VMCode(void **code) {
       //      printf("OP_MKAGENT3 id:%d var%d var%d var%d var%d \n", 
       //	     imcode->operand1, imcode->operand2,
       //	     imcode->operand3, imcode->operand4, imcode->operand5);
-      int src1 = imcode->operand2;
-      int src2 = imcode->operand3;
-      int src3 = imcode->operand4;
-      int dest = imcode->operand5;
+      long src1 = imcode->operand2;
+      long src2 = imcode->operand3;
+      long src3 = imcode->operand4;
+      long dest = imcode->operand5;
       
 
 #ifdef OPTIMISE_IMCODE
@@ -4389,11 +4389,11 @@ int CmEnv_generate_VMCode(void **code) {
       //      printf("OP_MKAGENT4 var%d id:%d var%d var%d var%d var%d\n", 
       //	     imcode->operand1, imcode->operand2,
       //	     imcode->operand3, imcode->operand4, imcode->operand5);
-      int src1 = imcode->operand2;
-      int src2 = imcode->operand3;
-      int src3 = imcode->operand4;
-      int src4 = imcode->operand5;
-      int dest = imcode->operand6;
+      long src1 = imcode->operand2;
+      long src2 = imcode->operand3;
+      long src3 = imcode->operand4;
+      long src4 = imcode->operand5;
+      long dest = imcode->operand6;
 
 #ifdef OPTIMISE_IMCODE
       src1 = CmEnv_using_reg(src1);
@@ -4435,12 +4435,12 @@ int CmEnv_generate_VMCode(void **code) {
       //      printf("OP_MKAGENT5 var%d id:%d var%d var%d var%d var%d\n", 
       //	     imcode->operand1, imcode->operand2,
       //	     imcode->operand3, imcode->operand4, imcode->operand5);
-      int src1 = imcode->operand2;
-      int src2 = imcode->operand3;
-      int src3 = imcode->operand4;
-      int src4 = imcode->operand5;
-      int src5 = imcode->operand6;
-      int dest = imcode->operand7;
+      long src1 = imcode->operand2;
+      long src2 = imcode->operand3;
+      long src3 = imcode->operand4;
+      long src4 = imcode->operand5;
+      long src5 = imcode->operand6;
+      long dest = imcode->operand7;
 
 #ifdef OPTIMISE_IMCODE
       src1 = CmEnv_using_reg(src1);
@@ -4505,8 +4505,8 @@ int CmEnv_generate_VMCode(void **code) {
     case OP_REUSEAGENT1: {
       //      printf("OP_REUSEAGENT1 var%d id:%d var%d\n", 
       //	     imcode->operand1, imcode->operand2, imcode->operand3);
-      int dest = imcode->operand1;
-      int src1 = imcode->operand3;
+      long dest = imcode->operand1;
+      long src1 = imcode->operand3;
 
 #ifdef OPTIMISE_IMCODE
       src1 = CmEnv_using_reg(src1);
@@ -4522,9 +4522,9 @@ int CmEnv_generate_VMCode(void **code) {
     }
       
     case OP_REUSEAGENT2: {
-      int dest = imcode->operand1;
-      int src1 = imcode->operand3;
-      int src2 = imcode->operand4;
+      long dest = imcode->operand1;
+      long src1 = imcode->operand3;
+      long src2 = imcode->operand4;
 
 
 #ifdef OPTIMISE_IMCODE
@@ -4552,10 +4552,10 @@ int CmEnv_generate_VMCode(void **code) {
       //      printf("OP_REUSEAGENT3 var%d id:%d var%d var%d var%d\n", 
       //	     imcode->operand1, imcode->operand2,
       //	     imcode->operand3, imcode->operand4, imcode->operand5);
-      int dest = imcode->operand1;
-      int src1 = imcode->operand3;
-      int src2 = imcode->operand4;
-      int src3 = imcode->operand5;
+      long dest = imcode->operand1;
+      long src1 = imcode->operand3;
+      long src2 = imcode->operand4;
+      long src3 = imcode->operand5;
       
 
 #ifdef OPTIMISE_IMCODE
@@ -4589,11 +4589,11 @@ int CmEnv_generate_VMCode(void **code) {
       //      printf("OP_REUSEAGENT3 var%d id:%d var%d var%d var%d\n", 
       //	     imcode->operand1, imcode->operand2,
       //	     imcode->operand3, imcode->operand4, imcode->operand5);
-      int dest = imcode->operand1;
-      int src1 = imcode->operand3;
-      int src2 = imcode->operand4;
-      int src3 = imcode->operand5;
-      int src4 = imcode->operand6;
+      long dest = imcode->operand1;
+      long src1 = imcode->operand3;
+      long src2 = imcode->operand4;
+      long src3 = imcode->operand5;
+      long src4 = imcode->operand6;
 
 #ifdef OPTIMISE_IMCODE
       src1 = CmEnv_using_reg(src1);
@@ -4633,12 +4633,12 @@ int CmEnv_generate_VMCode(void **code) {
       //      printf("OP_REUSEAGENT3 var%d id:%d var%d var%d var%d\n", 
       //	     imcode->operand1, imcode->operand2,
       //	     imcode->operand3, imcode->operand4, imcode->operand5);
-      int dest = imcode->operand1;
-      int src1 = imcode->operand3;
-      int src2 = imcode->operand4;
-      int src3 = imcode->operand5;
-      int src4 = imcode->operand6;
-      int src5 = imcode->operand7;
+      long dest = imcode->operand1;
+      long src1 = imcode->operand3;
+      long src2 = imcode->operand4;
+      long src3 = imcode->operand5;
+      long src4 = imcode->operand6;
+      long src5 = imcode->operand7;
 
 #ifdef OPTIMISE_IMCODE
       src1 = CmEnv_using_reg(src1);
@@ -4687,8 +4687,8 @@ int CmEnv_generate_VMCode(void **code) {
       
     case OP_LOAD: {
       // OP_LOAD src1 dest
-      int src1 = imcode->operand1;
-      int dest = imcode->operand2;
+      long src1 = imcode->operand1;
+      long dest = imcode->operand2;
       
 #ifdef OPTIMISE_IMCODE      
       src1 = CmEnv_using_reg(src1);
@@ -4713,8 +4713,8 @@ int CmEnv_generate_VMCode(void **code) {
     case OP_LOAD_META: {
       // OP_LOAD_META src1 dest
       // the dest is used as it is
-      int src1 = imcode->operand1;
-      int dest = imcode->operand2;
+      long src1 = imcode->operand1;
+      long dest = imcode->operand2;
       
 #ifdef OPTIMISE_IMCODE
       src1 = CmEnv_using_reg(src1);
@@ -4744,7 +4744,7 @@ int CmEnv_generate_VMCode(void **code) {
       
     case OP_LOADI: {
       // OP_LOADI int1 dest
-      int dest = imcode->operand2;
+      long dest = imcode->operand2;
 
 #ifdef OPTIMISE_IMCODE
       dest = CmEnv_get_newreg(dest);
@@ -4762,8 +4762,8 @@ int CmEnv_generate_VMCode(void **code) {
     case OP_MYPUSH: {
       //      printf("OP_PUSH var%d var%d\n",
       //	     imcode->operand1, imcode->operand2);
-      int src1 = imcode->operand1;
-      int src2 = imcode->operand2;
+      long src1 = imcode->operand1;
+      long src2 = imcode->operand2;
       
       
 #ifdef OPTIMISE_IMCODE
@@ -4799,7 +4799,7 @@ int CmEnv_generate_VMCode(void **code) {
     case OP_JMPNEQ0:
     case OP_JMPCNCT_CONS: {
       // OP_JMPEQ0 reg label
-      int src1 = imcode->operand1;
+      long src1 = imcode->operand1;
       
 #ifdef OPTIMISE_IMCODE
       src1 = CmEnv_using_reg(src1);
@@ -4834,9 +4834,9 @@ int CmEnv_generate_VMCode(void **code) {
     case OP_EQ:
     case OP_NE: {
       // op src1 src2 dest
-      int src1 = imcode->operand1;
-      int src2 = imcode->operand2;
-      int dest = imcode->operand3;
+      long src1 = imcode->operand1;
+      long src2 = imcode->operand2;
+      long dest = imcode->operand3;
       
 #ifdef OPTIMISE_IMCODE
       src1 = CmEnv_using_reg(src1);
@@ -4862,8 +4862,8 @@ int CmEnv_generate_VMCode(void **code) {
     case OP_ADDI:
     case OP_SUBI: {
       // op src1 $2 dest
-      int src1 = imcode->operand1;
-      int dest = imcode->operand3;
+      long src1 = imcode->operand1;
+      long dest = imcode->operand3;
 
 #ifdef OPTIMISE_IMCODE
       src1 = CmEnv_using_reg(src1);
@@ -4884,8 +4884,8 @@ int CmEnv_generate_VMCode(void **code) {
 
     case OP_EQI: {
       // op src1 int2fix($2) dest
-      int src1 = imcode->operand1;
-      int dest = imcode->operand3;
+      long src1 = imcode->operand1;
+      long dest = imcode->operand3;
 
 #ifdef OPTIMISE_IMCODE
       src1 = CmEnv_using_reg(src1);
@@ -4908,8 +4908,8 @@ int CmEnv_generate_VMCode(void **code) {
     case OP_EQ_R0:
     case OP_NE_R0: {
       // op src1 src2
-      int src1 = imcode->operand1;
-      int src2 = imcode->operand2;
+      long src1 = imcode->operand1;
+      long src2 = imcode->operand2;
 
 #ifdef OPTIMISE_IMCODE
       src1 = CmEnv_using_reg(src1);
@@ -4948,7 +4948,7 @@ int CmEnv_generate_VMCode(void **code) {
 #endif
 
       
-      int src1 = imcode->operand1;
+      long src1 = imcode->operand1;
 
 #ifdef OPTIMISE_IMCODE
       src1 = CmEnv_using_reg(src1);
@@ -4968,8 +4968,8 @@ int CmEnv_generate_VMCode(void **code) {
     case OP_DEC:
     case OP_RAND: {
       // op src dest
-      int src1 = imcode->operand1;
-      int dest = imcode->operand2;
+      long src1 = imcode->operand1;
+      long dest = imcode->operand2;
 
 #ifdef OPTIMISE_IMCODE
       src1 = CmEnv_using_reg(src1);
@@ -4999,7 +4999,7 @@ int CmEnv_generate_VMCode(void **code) {
       
     case OP_PUSHI: {
       // OP src1 int2
-      int src1 = imcode->operand1;
+      long src1 = imcode->operand1;
 
 #ifdef OPTIMISE_IMCODE
       src1 = CmEnv_using_reg(src1);
@@ -5032,7 +5032,7 @@ int CmEnv_generate_VMCode(void **code) {
     case OP_LOOP_RREC2_FREE_R: {
       //      printf("OP_LOOP_RREC1 var%d\n",
       //	     imcode->operand1);
-      int src1 = imcode->operand1;
+      long src1 = imcode->operand1;
 
 #ifdef OPTIMISE_IMCODE
       src1 = CmEnv_using_reg(src1);
@@ -5050,7 +5050,7 @@ int CmEnv_generate_VMCode(void **code) {
     case OP_LOOP_RREC_FREE_R: {
       //      printf("OP_LOOP_RREC1 var%d $%d\n",
       //	     imcode->operand1, imcode->operand2);
-      int src1 = imcode->operand1;
+      long src1 = imcode->operand1;
 
 #ifdef OPTIMISE_IMCODE
       src1 = CmEnv_using_reg(src1);
@@ -5068,7 +5068,7 @@ int CmEnv_generate_VMCode(void **code) {
       // OP_JMPCNCT var id label
       //      printf("OP_JMPCNCT var%d id:%d $%d\n",
       //	     imcode->operand1, imcode->operand2, imcode->operand3);
-      int src1 = imcode->operand1;
+      long src1 = imcode->operand1;
 
 #ifdef OPTIMISE_IMCODE
       src1 = CmEnv_using_reg(src1);
@@ -5100,8 +5100,8 @@ int CmEnv_generate_VMCode(void **code) {
     case OP_SUBSTGN: {
       //      printf("OP_CNCTGN var%d $%d\n",
       //	     imcode->operand1, imcode->operand2);
-      int src1 = imcode->operand1;
-      int src2 = imcode->operand2;
+      long src1 = imcode->operand1;
+      long src2 = imcode->operand2;
       
 #ifdef OPTIMISE_IMCODE
       src1 = CmEnv_using_reg(src1);
@@ -5159,7 +5159,7 @@ int CmEnv_generate_VMCode(void **code) {
   // two pass for label
   for (int i=0; i<backpatch_num; i++) {
     int hole_addr = backpatch_table[i];
-    int jmp_label = (unsigned long)code[hole_addr];
+    long jmp_label = (unsigned long)code[hole_addr];
     code[hole_addr] = (void *)(unsigned long)
       (label_table[jmp_label]-(hole_addr+1));
   }
@@ -5677,10 +5677,9 @@ int Compile_expr_on_ast(Ast *ptr, int target) {
   if (ptr == NULL) {
     return 1;
   }
-
   switch (ptr->id) {
   case AST_INT:
-    IMCode_genCode2(OP_LOADI, ptr->intval, target);
+    IMCode_genCode2(OP_LOADI, ptr->longval, target);
     return 1;
     break;
 
@@ -5883,7 +5882,7 @@ int Compile_term_on_ast(Ast *ptr, int target) {
   int i, arity;
 
   int alloc[MAX_PORT];
-  
+
   if (ptr == NULL) {
     return -1;
   }
@@ -5901,8 +5900,7 @@ int Compile_term_on_ast(Ast *ptr, int target) {
 
   case AST_INT:
     result = CmEnv_newvar();
-    
-    IMCode_genCode2(OP_LOADI, ptr->intval, result);
+    IMCode_genCode2(OP_LOADI, ptr->longval, result);
     return result;
     break;
 
@@ -6038,7 +6036,6 @@ int Compile_term_on_ast(Ast *ptr, int target) {
     
     
   case AST_AGENT:
-
     if (target == -1) {      
       result = CmEnv_newvar();
     } else {
@@ -6046,6 +6043,7 @@ int Compile_term_on_ast(Ast *ptr, int target) {
     }
     
     int id = IdTable_getid_builtin_funcAgent(ptr);
+
     if (id == -1) {
       id = NameTable_get_set_id_with_IdTable_forAgent((char *)ptr->left->sym);
     }
@@ -6547,7 +6545,7 @@ int Compile_stmlist_on_ast(Ast *at) {
 
     } else if (ptr->right->id == AST_INT) {
       // y is an integer
-      IMCode_genCode2(OP_LOADI, ptr->right->intval, toRegLeft);
+      IMCode_genCode2(OP_LOADI, ptr->right->longval, toRegLeft);
       
     } else {
       // y is an expression
@@ -7986,8 +7984,8 @@ void *exec_code(int mode, VirtualMachine * restrict vm, void * restrict *code) {
   //    puts("ADD src1 src2 dest");
   pc++;
   {
-    int i = FIX2INT(reg[(unsigned long)code[pc++]]);
-    int j = FIX2INT(reg[(unsigned long)code[pc++]]);
+    long i = FIX2INT(reg[(unsigned long)code[pc++]]);
+    long j = FIX2INT(reg[(unsigned long)code[pc++]]);
     
     reg[(unsigned long)code[pc++]] = INT2FIX(i+j);
   }
@@ -7997,8 +7995,8 @@ void *exec_code(int mode, VirtualMachine * restrict vm, void * restrict *code) {
   //    puts("SUB src1 src2 dest");
   pc++;
   {
-    int i = FIX2INT(reg[(unsigned long)code[pc++]]);
-    int j = FIX2INT(reg[(unsigned long)code[pc++]]);
+    long i = FIX2INT(reg[(unsigned long)code[pc++]]);
+    long j = FIX2INT(reg[(unsigned long)code[pc++]]);
     
     reg[(unsigned long)code[pc++]] = INT2FIX(i-j);
   }
@@ -8009,8 +8007,8 @@ void *exec_code(int mode, VirtualMachine * restrict vm, void * restrict *code) {
   //  puts("ADDI src int dest");
   pc++;
   {
-    int i = FIX2INT(reg[(unsigned long)code[pc++]]);
-    int j = (unsigned long)code[pc++];
+    long i = FIX2INT(reg[(unsigned long)code[pc++]]);
+    long j = (unsigned long)code[pc++];
     
     reg[(unsigned long)code[pc++]] = INT2FIX(i+j);
   }
@@ -8021,8 +8019,8 @@ void *exec_code(int mode, VirtualMachine * restrict vm, void * restrict *code) {
   //  puts("SUBI src int dest");
   pc++;
   {
-    int i = FIX2INT(reg[(unsigned long)code[pc++]]);
-    int j = (unsigned long)code[pc++];
+    long i = FIX2INT(reg[(unsigned long)code[pc++]]);
+    long j = (unsigned long)code[pc++];
     
     reg[(unsigned long)code[pc++]] = INT2FIX(i-j);
   }
@@ -8033,8 +8031,8 @@ void *exec_code(int mode, VirtualMachine * restrict vm, void * restrict *code) {
   //    puts("MUL src1 src2 dest");
   pc++;
   {
-    int i = FIX2INT(reg[(unsigned long)code[pc++]]);
-    int j = FIX2INT(reg[(unsigned long)code[pc++]]);
+    long i = FIX2INT(reg[(unsigned long)code[pc++]]);
+    long j = FIX2INT(reg[(unsigned long)code[pc++]]);
     
     reg[(unsigned long)code[pc++]] = INT2FIX(i*j);
   }
@@ -8045,8 +8043,8 @@ void *exec_code(int mode, VirtualMachine * restrict vm, void * restrict *code) {
   //    puts("DIV src1 src2 dest");
   pc++;
   {
-    int i = FIX2INT(reg[(unsigned long)code[pc++]]);
-    int j = FIX2INT(reg[(unsigned long)code[pc++]]);
+    long i = FIX2INT(reg[(unsigned long)code[pc++]]);
+    long j = FIX2INT(reg[(unsigned long)code[pc++]]);
     
     reg[(unsigned long)code[pc++]] = INT2FIX(i/j);
   }
@@ -8056,8 +8054,8 @@ void *exec_code(int mode, VirtualMachine * restrict vm, void * restrict *code) {
   //    puts("MOD src1 src2 dest");
   pc++;
   {
-    int i = FIX2INT(reg[(unsigned long)code[pc++]]);
-    int j = FIX2INT(reg[(unsigned long)code[pc++]]);
+    long i = FIX2INT(reg[(unsigned long)code[pc++]]);
+    long j = FIX2INT(reg[(unsigned long)code[pc++]]);
     
     reg[(unsigned long)code[pc++]] = INT2FIX(i%j);
   }
@@ -8069,8 +8067,8 @@ void *exec_code(int mode, VirtualMachine * restrict vm, void * restrict *code) {
   {
     //    int i = FIX2INT(reg[(unsigned long)code[pc++]]);
     //    int j = FIX2INT(reg[(unsigned long)code[pc++]]);
-    int i = reg[(unsigned long)code[pc++]];
-    int j = reg[(unsigned long)code[pc++]];
+    long i = reg[(unsigned long)code[pc++]];
+    long j = reg[(unsigned long)code[pc++]];
 
     if (i<j) {
       reg[(unsigned long)code[pc++]] = INT2FIX(1);
@@ -8085,8 +8083,8 @@ void *exec_code(int mode, VirtualMachine * restrict vm, void * restrict *code) {
   //    puts("LT src1 src2 dest");
   pc++;
   {
-    int i = reg[(unsigned long)code[pc++]];
-    int j = reg[(unsigned long)code[pc++]];
+    long i = reg[(unsigned long)code[pc++]];
+    long j = reg[(unsigned long)code[pc++]];
 
     if (i<=j) {
       reg[(unsigned long)code[pc++]] = INT2FIX(1);
@@ -8101,8 +8099,8 @@ void *exec_code(int mode, VirtualMachine * restrict vm, void * restrict *code) {
   //    puts("EQ src1 src2 dest");
   pc++;
   {
-    int i = reg[(unsigned long)code[pc++]];
-    int j = reg[(unsigned long)code[pc++]];
+    long i = reg[(unsigned long)code[pc++]];
+    long j = reg[(unsigned long)code[pc++]];
 
     if (i==j) {
       reg[(unsigned long)code[pc++]] = INT2FIX(1);
@@ -8118,8 +8116,8 @@ void *exec_code(int mode, VirtualMachine * restrict vm, void * restrict *code) {
   //    puts("EQI src1 fixint dest");
   pc++;
   {
-    int i = reg[(unsigned long)code[pc++]];
-    int j = (unsigned long)code[pc++];
+    long i = reg[(unsigned long)code[pc++]];
+    long j = (unsigned long)code[pc++];
 
     if (i==j) {
       reg[(unsigned long)code[pc++]] = INT2FIX(1);
@@ -8135,8 +8133,8 @@ void *exec_code(int mode, VirtualMachine * restrict vm, void * restrict *code) {
   //    puts("NE src1 src2 dest");
   pc++;
   {
-    int i = reg[(unsigned long)code[pc++]];
-    int j = reg[(unsigned long)code[pc++]];
+    long i = reg[(unsigned long)code[pc++]];
+    long j = reg[(unsigned long)code[pc++]];
 
     if (i!=j) {
       reg[(unsigned long)code[pc++]] = INT2FIX(1);
@@ -8152,8 +8150,8 @@ void *exec_code(int mode, VirtualMachine * restrict vm, void * restrict *code) {
   //    puts("LT_R0 src1 src2");
   pc++;
   {
-    int i = reg[(unsigned long)code[pc++]];
-    int j = reg[(unsigned long)code[pc++]];
+    long i = reg[(unsigned long)code[pc++]];
+    long j = reg[(unsigned long)code[pc++]];
 
     if (i<j) {
       reg[0] = 1;
@@ -8168,8 +8166,8 @@ void *exec_code(int mode, VirtualMachine * restrict vm, void * restrict *code) {
   //    puts("LE_R0 src1 src2");
   pc++;
   {
-    int i = reg[(unsigned long)code[pc++]];
-    int j = reg[(unsigned long)code[pc++]];
+    long i = reg[(unsigned long)code[pc++]];
+    long j = reg[(unsigned long)code[pc++]];
 
     if (i<=j) {
       reg[0] = 1;
@@ -8184,8 +8182,8 @@ void *exec_code(int mode, VirtualMachine * restrict vm, void * restrict *code) {
   //    puts("EQ_R0 src1 src2");
   pc++;
   {
-    int i = reg[(unsigned long)code[pc++]];
-    int j = reg[(unsigned long)code[pc++]];
+    long i = reg[(unsigned long)code[pc++]];
+    long j = reg[(unsigned long)code[pc++]];
 
     if (i==j) {
       reg[0] = 1;
@@ -8200,8 +8198,8 @@ void *exec_code(int mode, VirtualMachine * restrict vm, void * restrict *code) {
   //      puts("EQI_R0 src1 int");
   pc++;
   {
-    int i = reg[(unsigned long)code[pc++]];
-    int j = (unsigned long)code[pc++];
+    long i = reg[(unsigned long)code[pc++]];
+    long j = (unsigned long)code[pc++];
 
     if (i==j) {
       reg[0] = 1;
@@ -8218,8 +8216,8 @@ void *exec_code(int mode, VirtualMachine * restrict vm, void * restrict *code) {
   //    puts("NE_R0 src1 src2");
   pc++;
   {
-    int i = reg[(unsigned long)code[pc++]];
-    int j = reg[(unsigned long)code[pc++]];
+    long i = reg[(unsigned long)code[pc++]];
+    long j = reg[(unsigned long)code[pc++]];
 
     if (i!=j) {
       reg[0] = 1;
@@ -8237,7 +8235,7 @@ void *exec_code(int mode, VirtualMachine * restrict vm, void * restrict *code) {
   //    the pc is a relative address, not absolute one!
   pc++;
   {
-    int i = reg[(unsigned long)code[pc++]];
+    long i = reg[(unsigned long)code[pc++]];
     if (!FIX2INT(i)) {
       int j = (unsigned long)code[pc++];
       pc += j;
@@ -8252,7 +8250,7 @@ void *exec_code(int mode, VirtualMachine * restrict vm, void * restrict *code) {
   //      puts("JMPEQ0_R0 pc");
   pc++;
   {
-    int i = reg[0];
+    long i = reg[0];
     if (!i) {
       int j = (unsigned long)code[pc++];
       pc += j;
@@ -8269,7 +8267,7 @@ void *exec_code(int mode, VirtualMachine * restrict vm, void * restrict *code) {
   //      puts("JMPNEQ0 reg pc");
   pc++;
   {
-    int i = reg[(unsigned long)code[pc++]];
+    long i = reg[(unsigned long)code[pc++]];
     if (FIX2INT(i)) {
       int j = (unsigned long)code[pc++];
       pc += j;
@@ -8389,14 +8387,14 @@ void *exec_code(int mode, VirtualMachine * restrict vm, void * restrict *code) {
   //    puts("UNM src dest");
   pc++;
   {
-    int i = FIX2INT(reg[(unsigned long)code[pc++]]);    
+    long i = FIX2INT(reg[(unsigned long)code[pc++]]);    
     reg[(unsigned long)code[pc++]] = INT2FIX(-1 * i);
   }
 #else
   //    puts("UNM dest");
   pc++;
   {
-    int i = FIX2INT(reg[(unsigned long)code[pc]]);
+    long i = FIX2INT(reg[(unsigned long)code[pc]]);
     reg[(unsigned long)code[pc++]] = INT2FIX(-1 * i);
   }
 #endif  
@@ -8408,14 +8406,14 @@ void *exec_code(int mode, VirtualMachine * restrict vm, void * restrict *code) {
   //    puts("RAND src dest");
   pc++;
   {
-    int i = FIX2INT(reg[(unsigned long)code[pc++]]);    
+    long i = FIX2INT(reg[(unsigned long)code[pc++]]);    
     reg[(unsigned long)code[pc++]] = INT2FIX(rand() % i);
   }
 #else
   //    puts("RAND dest");
   pc++;
   {
-    int i = FIX2INT(reg[(unsigned long)code[pc]]);    
+    long i = FIX2INT(reg[(unsigned long)code[pc]]);    
     reg[(unsigned long)code[pc++]] = INT2FIX(rand() % i);
   }  
 #endif  
@@ -8427,14 +8425,14 @@ void *exec_code(int mode, VirtualMachine * restrict vm, void * restrict *code) {
   //    puts("INC src dest");
   pc++;
   {
-    int i = FIX2INT(reg[(unsigned long)code[pc++]]);    
+    long i = FIX2INT(reg[(unsigned long)code[pc++]]);    
     reg[(unsigned long)code[pc++]] = INT2FIX(++i);
   }
 #else
   //    puts("INC src");
   pc++;
   {
-    int i = FIX2INT(reg[(unsigned long)code[pc]]);    
+    long i = FIX2INT(reg[(unsigned long)code[pc]]);    
     reg[(unsigned long)code[pc++]] = INT2FIX(++i);
   }  
 #endif  
@@ -8446,14 +8444,14 @@ void *exec_code(int mode, VirtualMachine * restrict vm, void * restrict *code) {
   //    puts("DEC src dest");
   pc++;
   {
-    int i = FIX2INT(reg[(unsigned long)code[pc++]]);    
+    long i = FIX2INT(reg[(unsigned long)code[pc++]]);    
     reg[(unsigned long)code[pc++]] = INT2FIX(--i);
   }
 #else
   //    puts("DEC dest");
   pc++;
   {
-    int i = FIX2INT(reg[(unsigned long)code[pc]]);    
+    long i = FIX2INT(reg[(unsigned long)code[pc]]);    
     reg[(unsigned long)code[pc++]] = INT2FIX(--i);
   }
   
@@ -8519,7 +8517,7 @@ void exec_code_fib(VirtualMachine * restrict vm) {
 
   // 0000: jmpneq0 reg12 $4
   {
-    int i = reg[12];
+    long i = reg[12];
     if (FIX2INT(i)) {
       goto LABEL_0007;
     }
@@ -8539,8 +8537,8 @@ void exec_code_fib(VirtualMachine * restrict vm) {
   // 0007: eqi_r0 reg12 $1
 LABEL_0007:
   {
-    int i = reg[12];
-    int j = INT2FIX(1);
+    long i = reg[12];
+    long j = INT2FIX(1);
 
     if (i==j) {
       reg[0] = 1;
@@ -8551,7 +8549,7 @@ LABEL_0007:
   
   // 0010: jmpeq0_r0 $4
   {
-    int i = reg[0];
+    long i = reg[0];
     if (!i) {
       goto LABEL_0016;
     }
@@ -8597,7 +8595,7 @@ LABEL_0016:
   
   // 0027: dec reg12 reg15
   {
-    int i = FIX2INT(reg[12]);
+    long i = FIX2INT(reg[12]);
     
     reg[15] = INT2FIX(--i);
   }
@@ -8619,8 +8617,8 @@ LABEL_0016:
   
   // 0037: subi reg12 $2 reg14
   {
-    int i = FIX2INT(reg[12]);
-    int j = 2;
+    long i = FIX2INT(reg[12]);
+    long j = 2;
     
     reg[14] = INT2FIX(i-j);
   }
@@ -8693,8 +8691,8 @@ loop_a2IsFixnum:
 	    COUNTUP_INTERACTION(vm);
 	    
 	    // r << Add(m,n)
-	    int n = FIX2INT(AGENT(a1)->port[1]);
-	    int m = FIX2INT(a2);
+	    long n = FIX2INT(AGENT(a1)->port[1]);
+	    long m = FIX2INT(a2);
 	    a2 = INT2FIX(m+n);
 	    VALUE a1port0 = AGENT(a1)->port[0];
 	    free_Agent(a1);
@@ -8716,8 +8714,8 @@ loop_a2IsFixnum:
 	    COUNTUP_INTERACTION(vm);
 	    
 	    // r << Sub(m,n)
-	    int n = FIX2INT(AGENT(a1)->port[1]);
-	    int m = FIX2INT(a2);
+	    long n = FIX2INT(AGENT(a1)->port[1]);
+	    long m = FIX2INT(a2);
 	    a2 = INT2FIX(m-n);
 	    VALUE a1port0 = AGENT(a1)->port[0];
 	    free_Agent(a1);
@@ -8739,8 +8737,8 @@ loop_a2IsFixnum:
 	    COUNTUP_INTERACTION(vm);
 	    
 	    // r << Mult(m,n)
-	    int n = FIX2INT(AGENT(a1)->port[1]);
-	    int m = FIX2INT(a2);
+	    long n = FIX2INT(AGENT(a1)->port[1]);
+	    long m = FIX2INT(a2);
 	    a2 = INT2FIX(m*n);
 	    VALUE a1port0 = AGENT(a1)->port[0];
 	    free_Agent(a1);
@@ -8762,8 +8760,8 @@ loop_a2IsFixnum:
 	    COUNTUP_INTERACTION(vm);
 	    
 	    // r << DIV(m,n)
-	    int n = FIX2INT(AGENT(a1)->port[1]);
-	    int m = FIX2INT(a2);
+	    long n = FIX2INT(AGENT(a1)->port[1]);
+	    long m = FIX2INT(a2);
 	    a2 = INT2FIX(m/n);
 	    VALUE a1port0 = AGENT(a1)->port[0];
 	    free_Agent(a1);
@@ -8785,8 +8783,8 @@ loop_a2IsFixnum:
 	    COUNTUP_INTERACTION(vm);
 	    
 	    // r << MOD(m,n)
-	    int n = FIX2INT(AGENT(a1)->port[1]);
-	    int m = FIX2INT(a2);
+	    long n = FIX2INT(AGENT(a1)->port[1]);
+	    long m = FIX2INT(a2);
 	    a2 = INT2FIX(m%n);
 	    VALUE a1port0 = AGENT(a1)->port[0];
 	    free_Agent(a1);
@@ -9567,7 +9565,6 @@ int exec(Ast *at) {
 
   Ast_RewriteOptimisation_eqlist(at);
 	
-  
   // Syntax error check
   {
     Ast *tmp_at=at;
@@ -10060,8 +10057,9 @@ int main(int argc, char *argv[])
 	       Hoop_init_size, 1 << Hoop_init_size);
 	printf(" -Xmt <num>       Set multiple heap increment to 2^<num>  (Defalut: %2u (=%4u))\n",
 	       Hoop_increasing_magnitude, 1 << Hoop_increasing_magnitude);
-	printf("                    0: the same size heap is inserted when it runs up.\n");
-	printf("                    1: the twice (=2^1) size heap is inserted.\n");	
+	printf("                    0: the same (=2^0) size heap is inserted when it runs up.\n");
+	printf("                    1: the heap size is twice (=2^1).\n");	
+	printf("                    2: the size is four times (=2^2).\n");	
 #else
 	//v0.5.6
 	printf(" -c <num>         Set size of heaps                       (Defalut: %10u)\n", heap_size);

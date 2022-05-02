@@ -12,7 +12,8 @@ fun go xs 0 = xs
   | go xs n = go (bs xs n) (n-1);
 
 
-fun bsort xs = go xs (length(xs) - 1);
+fun bsort [] = []
+  | bsort xs = go xs (length(xs) - 1);
 
 
 (* Creates a random list *)
