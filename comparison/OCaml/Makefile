@@ -1,8 +1,7 @@
 CC      = ocamlopt
 CFLAGS  = 
 BENCHMARK  = bash ../tools/sptest_commands.sh
-#TARGET  = ack3_11 fib38 bsort40000 isort40000 qsort800000 msort800000
-TARGET  = ack3_11 fib38 bsort40000 isort40000
+TARGET  = ack3_11 fib38 bsort40000 isort40000 qsort260000 msort260000
 LOG = log.txt
 
 
@@ -25,10 +24,10 @@ bsort40000: bsort40000.ml
 isort40000: isort40000.ml
 	$(CC) $(CFLAGS) $< -o $@
 
-qsort800000: qsort-800000.ml
+qsort260000: qsort260000.ml
 	$(CC) $(CFLAGS) $< -o $@
 
-msort800000: msort-800000.ml
+msort260000: msort260000.ml
 	$(CC) $(CFLAGS) $< -o $@
 
 

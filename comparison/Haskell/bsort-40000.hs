@@ -15,6 +15,7 @@ bs xs n = xs
 go xs 0 = xs
 go xs n = go (bs xs n) (n-1)
 
+bsort [] = []
 bsort xs = go xs (length xs -1)
 
 {-

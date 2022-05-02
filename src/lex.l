@@ -141,7 +141,7 @@ char *Parse_closeStringBuffer() {
          return (NAME);}
 <INITIAL>[A-Z][a-zA-Z0-9_'\.]* { yylval.chval = strdup(yytext);
          return (AGENT);}
-<INITIAL>[0-9]+ { yylval.intval = atoi(yytext);
+<INITIAL>[0-9]+ { yylval.longval = atol(yytext);
          return (INT_LITERAL);}
 
 <INITIAL>"//"[^\n]* ; //comment

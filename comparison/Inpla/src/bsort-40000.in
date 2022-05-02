@@ -18,7 +18,7 @@ make_RandList(ret) >< (int n)
 
 
 // validation checks
-valid(ret) >< [] => ret~False;
+valid(ret) >< [] => ret~True;
 valid(ret) >< x:xs => valid_Cons(ret,x)~xs;
 
 valid_Cons(ret, int x) >< [] => ret~True;

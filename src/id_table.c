@@ -86,7 +86,8 @@ void IdTable_init() {
 
 int IdTable_getid_builtin_funcAgent(Ast *agent) {
   // returns -1 if the agent is not built-in.
-  
+
+  //  puts("!!");
   int id = -1;
 
   if (agent->id != AST_AGENT) {

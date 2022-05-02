@@ -1,16 +1,20 @@
-// Bubble sort
-bsort(ret) >< [] => ret~[];
-bsort(ret) >< x:xs => (*L)bsort(ret)~cnt, (*R)B(cnt, x)~xs;
-bsort(ret) >< M(x) => ret~x;
+// Quick sort
+qsort(ret) >< [] => ret~(*R)[];
+qsort(ret) >< (int x):xs =>
+	(*R)part(x, left, right)~xs,
+	(*L)qsort(cntl)~left, qsort(cntr)~right,
+	Append(ret, x:cntl)~cntr;
 
-B(ret, int x) >< [] => ret~M([x]);
-B(ret, int x) >< M(w) => ret~M(x:w);
-B(ret, int x) >< (int y):ys
-| x<y => ret~(*R)(x:cnt), (*L)B(cnt, y)~ys
-| _   => ret~(*R)(y:cnt), (*L)B(cnt, x)~ys;
+// Note: `Append' is implemented as built-in.
 
 
-// Creates a random list
+part(int x, a, b) >< [] => a~(*L)[], b~(*R)[];
+part(int x, a, b) >< (int y):ys
+| y<x => b~(*R)(y:cnt), (*L)part(x, a, cnt)~ys
+| _   => a~(*R)(y:cnt), (*L)part(x, cnt, b)~ys;
+
+
+// creates a random list
 make_RandList(ret) >< (int n)
 | n>0 => ret~(rd:cnt), (*L)make_RandList(cnt)~(n-1) 
   where rd=rand(10000)
@@ -31,10 +35,10 @@ valid_Cons(ret, int x) >< (int y):ys
 
 
 // Main
-const LIST_ELEM=40000;
+const LIST_ELEM=260000;
 
 make_RandList(rndlist)~(LIST_ELEM),
-bsort(sorted)~rndlist,
+qsort(sorted)~rndlist,
 valid(ret)~sorted;
 
 ret;

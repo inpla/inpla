@@ -1,3 +1,5 @@
+open Format
+
 let rec insert x ylist =
   match ylist with
     [] -> [x]
@@ -30,5 +32,5 @@ let rec validation alist =
   | x::xs -> validation_cons x xs;;
 
 
-let main = validation(isort (mkRandList 40000));;
+let () = print_bool (validation (isort (mkRandList 40000)));;
 

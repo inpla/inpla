@@ -1,6 +1,31 @@
 # Change log
 
+### v0.8.1-2 minor update (released on 1 May 2022)
+
+|              |                  Haskell                   |                  OCaml                  |                   SML                   |                   Python                   |                      Inpla8                      |                        Inpla8r                         |
+| ------------ | :----------------------------------------: | :-------------------------------------: | :-------------------------------------: | :----------------------------------------: | :----------------------------------------------: | :----------------------------------------------------: |
+| ack(3,11)    |   [2.30](comparison/Haskell/ack3-11.hs)    |   [0.46](comparison/OCaml/ack3_11.ml)   | [**0.43**](comparison/SML/ack3-11.sml)  |     [-](comparison/Python/ack3-11.py)      | [0.84](comparison/Inpla/src/ack-stream_3-11.in)  | [0.71](comparison/Inpla/src/ack-stream_3-11-reuse.in)  |
+| fib 38       |    [1.60](comparison/Haskell/fib38.hs)     |  [**0.15**](comparison/OCaml/fib38.ml)  |    [0.27](comparison/SML/fib38.sml)     |     [8.88](comparison/Python/fib38.py)     |      [0.41](comparison/Inpla/src/fib-38.in)      |      [0.43](comparison/Inpla/src/fib-38-reuse.in)      |
+| bsort 40000  | [34.48](comparison/Haskell/bsort-40000.hs) | [34.62](comparison/OCaml/bsort40000.ml) | [12.06](comparison/SML/bsort-40000.sml) | [79.53](comparison/Python/bsort-40000.py)  |   [3.02](comparison/Inpla/src/bsort-40000.in)    | [**2.52**](comparison/Inpla/src/bsort-40000-reuse.in)  |
+| isort 40000  | [12.54](comparison/Haskell/isort-40000.hs) | [7.45](comparison/OCaml/isort40000.ml)  | [2.94](comparison/SML/isort-40000.sml)  | [36.89](comparison/Python/isort-40000.py)  | [**1.15**](comparison/Inpla/src/isort-40000.in)  |   [1.24](comparison/Inpla/src/isort-40000-reuse.in)    |
+| qsort 260000 | [0.34](comparison/Haskell/qsort-800000.hs) | [0.25](comparison/OCaml/qsort800000.ml) | [0.27](comparison/SML/qsort-800000.sml) | [10.40](comparison/Python/qsort-800000.py) |   [0.15](comparison/Inpla/src/qsort-800000.in)   | [**0.12**](comparison/Inpla/src/qsort-800000-reuse.in) |
+| msort 260000 | [0.39](comparison/Haskell/msort-800000.hs) | [0.29](comparison/OCaml/msort800000.ml) | [0.26](comparison/SML/msort-800000.sml) | [10.96](comparison/Python/msort-800000.py) | [**0.15**](comparison/Inpla/src/msort-800000.in) | [**0.15**](comparison/Inpla/src/msort-800000-reuse.in) |
+
+#### Bug fix
+
+* **Output format of integers** (again): Calculation and management of integer numbers had been 32-bit format. Now these are re-fixed as long integers correctly.
+
+#### Changes
+
+* From this version Quick and Merge sorts work for smaller lists whose elements are 260000, while it was 400000. This is because OCaml raises stack overflow error for over 260000 elements. As the result, the ratio looks not so good.
+
+  ![speedup-ratio-v0.8.2-1](pic/benchmark_reuse_v0.8.2-1.png)
+
+
+
 ### v0.8.2 (released on 28 April 2022)
+
+![speedup-ratio-v0.8.2](pic/benchmark_reuse_v0.8.2.png)
 
 |              |                  Haskell                   |                  OCaml                  |                   SML                   |                   Python                    |                     Inpla8                      |                        Inpla8r                         |
 | ------------ | :----------------------------------------: | :-------------------------------------: | :-------------------------------------: | :-----------------------------------------: | :---------------------------------------------: | :----------------------------------------------------: |
@@ -18,7 +43,7 @@
 ![Eraser](pic/eraser.png)
 
 #### Bug fix
-* **The benchmark table was wrong**: With respect to the results in Haskell, the execution times of sort works were too short due to its lazy evaluation strategy. To solve it, every sort work will be followed by a validation check if a given list is correctly sorted, not only in Haskell but also in others.
+* **The benchmark table was wrong**: With respect to the results in Haskell, the execution times of sort works were too short. This is thanks to its lazy evaluation strategy, quite nice, that gets only the first 10 elements the same as the written program, though these are expected to be taken after finishing these sort works. So, every sort work will be followed by a validation check if a given list is correctly sorted, not only in Haskell but also in others.
 
 
 

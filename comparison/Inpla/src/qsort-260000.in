@@ -1,11 +1,17 @@
-// Insertion sort
-isort(ret) >< [] => ret~[];
-isort(ret) >< x:xs => I(ret, x)~cnt, isort(cnt)~xs;
+// Quick sort
+qsort(ret) >< [] => ret~[];
+qsort(ret) >< (int x):xs =>
+	part(x, left, right)~xs,
+	qsort(cntl)~left, qsort(cntr)~right,
+	Append(ret, x:cntl)~cntr;
 
-I(ret, int x) >< [] => ret~[x];
-I(ret, int x) >< (int y):ys
-| x<=y => ret~(x:y:ys)
-| _    => ret~(y:cnt), I(cnt, x)~ys;
+// Note: `Append' is implemented as built-in.
+
+
+part(int x, a, b) >< [] => a~[], b~[];
+part(int x, a, b) >< (int y):ys
+| y<x => b~(y:cnt), part(x, a, cnt)~ys
+| _   => a~(y:cnt), part(x, cnt, b)~ys;
 
 
 // creates a random list
@@ -29,10 +35,10 @@ valid_Cons(ret, int x) >< (int y):ys
 
 
 // Main
-const LIST_ELEM=40000;
+const LIST_ELEM=260000;
 
 make_RandList(rndlist)~(LIST_ELEM),
-isort(sorted)~rndlist,
+qsort(sorted)~rndlist,
 valid(ret)~sorted;
 
 ret;

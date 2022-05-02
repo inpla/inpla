@@ -1,0 +1,16 @@
+pow2(r, int m) >< (int n)
+| n == 0 => r~m
+| _ => pow2(r, m*2)~(n-1);
+
+pow(r) >< (int n)
+| n == 0 => r~1
+| _ => pow2(r, 1)~(n);
+
+
+// Caclulate 2^10
+const NUM=10;
+pow(r)~NUM; // it can also be written with abbreviation: r << pow(NUM)
+r;
+
+
+

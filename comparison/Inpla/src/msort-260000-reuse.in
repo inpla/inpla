@@ -1,0 +1,51 @@
+// Merge sort
+msort(ret) >< [] => ret~[];
+msort(ret) >< x:xs => (*L)msort_tail(ret, x)~xs;
+
+msort_tail(ret, int n) >< [] => ret~[n];
+msort_tail(ret, int n) >< x:xs => 
+	split(left,right) ~ (*R)(n:x:xs),
+	msort(a)~left, msort(b)~right, (*L)merge(ret,b)~a;
+
+merge(ret, snd) >< [] => ret~snd;
+merge(ret, snd) >< x:xs => (*L)mergeCC(ret, x, xs)~snd;
+
+mergeCC(ret, int y, ys) >< [] => ret~(*R)(y:ys);
+mergeCC(ret, int y, ys) >< (int x):xs
+| x <= y => ret~(x:cnt), (*L)mergeCC(cnt, y, ys) ~ xs
+| _      => ret~(y:cnt), (*L)mergeCC(cnt, x, xs) ~ ys;
+
+
+split(right,left) >< [] => right~[], left~[];
+split(right,left) >< x:xs =>
+	right~(*R)(x:cntl), left~cntr, (*L)split(cntr,cntl)~xs;
+
+
+// creates a random list
+make_RandList(ret) >< (int n)
+| n>0 => ret~(rd:cnt), (*L)make_RandList(cnt)~(n-1) 
+  where rd=rand(10000)
+| _ => ret~[];
+
+
+// validation checks
+valid(ret) >< [] => ret~True;
+valid(ret) >< x:xs => (*L)valid_Cons(ret,x)~xs;
+
+valid_Cons(ret, int x) >< [] => ret~True;
+valid_Cons(ret, int x) >< (int y):ys
+| x<=y => (*L)valid_Cons(ret,y)~ys
+| _ => ret~False, Eraser~ys;
+
+// The `Eraser' is a built-in agent defined for any agents as follows:
+//Eraser >< Alpha(a1, ..., a5) => Eraser~a1, ..., Eraser~a5;
+
+
+// Main
+const LIST_ELEM=260000;
+
+make_RandList(rndlist)~(LIST_ELEM),
+msort(sorted)~rndlist,
+valid(ret)~sorted;
+
+ret;
