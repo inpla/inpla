@@ -7,7 +7,7 @@
 Inpla is a multi-threaded parallel interpreter of interaction nets. Once you write programs for sequential execution, it works also in multi-threaded parallel execution. Each thread is managed on each CPU-core with POSIX-thread library. 
 
 * The current version is 0.8.2-1, released on **2 May 2022**. (See [Changelog.md](Changelog.md) for details.) 
-* The below graph shows speed-up ratio to threads numbers for programs in the following benchmark table. In this version Quick and Merge sorts work for smaller lists whose elements are 260000, while it was 400000. This is because OCaml raises stack overflow error for over 260000 elements. As the result, the ratio looks not so good. For the results for 400000 elements (that are not so bad), which had been shown here, see the description of v0.8.2 in [Changelog.md](./Changelog.md) 
+* The below graph shows speed-up ratio to threads numbers for programs in the following benchmark table, though quick sort and merge sort are for 800000 elements. This is because 260000 elements, which are in the following benchmark table, are too small for Inpla to perform in parallel as shown in the description of v0.8.2-1 in [Changelog.md](./Changelog.md). 
 
 ![speedup-ratio](pic/benchmark_reuse_v0.8.2-1.png)
 

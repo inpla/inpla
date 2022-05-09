@@ -13,15 +13,15 @@
 
 #### Bug fix
 
-* **Output format of integers** (again): Calculation and management of integer numbers had been 32-bit format. Now these are re-fixed as long integers correctly.
+* **Output format of integers** (again): Only these outputs had been fixed on v0.8.1-2, so these calculation and management had been 32-bit format. Now re-fixed as 64-bit format.
 
 #### Changes
 
-* From this version Quick and Merge sorts work for smaller lists whose elements are 260000, while it was 400000. This is because OCaml raises stack overflow error for over 260000 elements. As the result, the ratio looks not so good.
+* In the benchmark table from this version Quick and Merge sorts are for smaller lists whose elements are 260000, while it was 400000. This is because OCaml raises stack overflow error for over 260000 elements. As shown the following graph, the speed-up ratio has chahged not so good, while these sort works for 800000 elements have good performance. So, it seems that 260K elements are too small for Inpla to perform in parallel.
 
-  ![speedup-ratio-v0.8.2-1](pic/benchmark_reuse_v0.8.2-1.png)
+  ![speedup-ratio-v0.8.2-1-280k](pic/benchmark_reuse_v0.8.2-1-260K.png)
 
-
+![speedup-ratio-v0.8.2-1](pic/benchmark_reuse_v0.8.2-1.png)
 
 ### v0.8.2 (released on 28 April 2022)
 
