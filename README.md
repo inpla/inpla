@@ -6,20 +6,20 @@
 
 Inpla is a multi-threaded parallel interpreter of interaction nets. Once you write programs for sequential execution, it works also in multi-threaded parallel execution. Each thread is managed on each CPU-core with POSIX-thread library. 
 
-* The current version is 0.8.2-1, released on **2 May 2022**. (See [Changelog.md](Changelog.md) for details.) 
+* The current version is 0.8.2-2 (bugfix), released on **30 May 2022**. (See [Changelog.md](Changelog.md) for details.) 
 * The below graph shows speed-up ratio to threads numbers for programs in the following benchmark table, though quick sort and merge sort are for 800000 elements. This is because 260000 elements, which are in the following benchmark table, are too small for Inpla to perform in parallel as shown in the description of v0.8.2-1 in [Changelog.md](./Changelog.md). 
 
-![speedup-ratio](pic/benchmark_reuse_v0.8.2-1.png)
+![speedup-ratio](pic/benchmark_reuse_v0.8.2-2.png)
 
 
 
 |                | Haskell  |   OCaml   |   SML    | Python | Inpla8 | Inpla8r |
 | -------------- | :------: | :------: | :----: | :----: | :------: | :------: |
-| ack(3,11)    |   [2.30](comparison/Haskell/ack3-11.hs)   | [0.46](comparison/OCaml/ack3_11.ml) | [**0.43**](comparison/SML/ack3-11.sml) |   [-](comparison/Python/ack3-11.py)    |  [0.84](comparison/Inpla/src/ack-stream_3-11.in)  |   [0.71](comparison/Inpla/src/ack-stream_3-11-reuse.in)   |
-| fib 38       |   [1.60](comparison/Haskell/fib38.hs)   | [**0.15**](comparison/OCaml/fib38.ml) | [0.27](comparison/SML/fib38.sml) |  [8.88](comparison/Python/fib38.py)  |  [0.41](comparison/Inpla/src/fib-38.in)  |   [0.43](comparison/Inpla/src/fib-38-reuse.in)   |
-| bsort 40000  |  [34.48](comparison/Haskell/bsort-40000.hs)  |  [34.62](comparison/OCaml/bsort40000.ml)  |  [12.06](comparison/SML/bsort-40000.sml)  | [79.53](comparison/Python/bsort-40000.py) |  [3.02](comparison/Inpla/src/bsort-40000.in)  | [**2.52**](comparison/Inpla/src/bsort-40000-reuse.in) |
-| isort 40000  | [12.54](comparison/Haskell/isort-40000.hs) |   [7.45](comparison/OCaml/isort40000.ml)   |   [2.94](comparison/SML/isort-40000.sml)   | [36.89](comparison/Python/isort-40000.py) |  [**1.15**](comparison/Inpla/src/isort-40000.in)  |   [1.24](comparison/Inpla/src/isort-40000-reuse.in)   |
-| qsort 260000 | [0.34](comparison/Haskell/qsort-800000.hs) |   [0.25](comparison/OCaml/qsort800000.ml)   |   [0.27](comparison/SML/qsort-800000.sml)   | [10.40](comparison/Python/qsort-800000.py) |  [0.15](comparison/Inpla/src/qsort-800000.in)  |   [**0.12**](comparison/Inpla/src/qsort-800000-reuse.in)   |
+| ack(3,11)    |   [2.30](comparison/Haskell/ack3-11.hs)   | [0.46](comparison/OCaml/ack3_11.ml) | [**0.43**](comparison/SML/ack3-11.sml) |   [-](comparison/Python/ack3-11.py)    |  [0.86](comparison/Inpla/src/ack-stream_3-11.in)  |   [0.71](comparison/Inpla/src/ack-stream_3-11-reuse.in)   |
+| fib 38       |   [1.60](comparison/Haskell/fib38.hs)   | [**0.15**](comparison/OCaml/fib38.ml) | [0.27](comparison/SML/fib38.sml) |  [8.88](comparison/Python/fib38.py)  |  [0.40](comparison/Inpla/src/fib-38.in)  |   [0.43](comparison/Inpla/src/fib-38-reuse.in)   |
+| bsort 20000 |  [4.98](comparison/Haskell/bsort-40000.hs)  |  [6.78](comparison/OCaml/bsort40000.ml)  |  [2.38](comparison/SML/bsort-40000.sml)  | [19.91](comparison/Python/bsort-40000.py) |  [2.16](comparison/Inpla/src/bsort-40000.in)  | [**1.58**](comparison/Inpla/src/bsort-40000-reuse.in) |
+| isort 20000 | [2.15](comparison/Haskell/isort-40000.hs) |   [1.52](comparison/OCaml/isort40000.ml)   |   [0.60](comparison/SML/isort-40000.sml)   | [9.58](comparison/Python/isort-40000.py) |  [**0.29**](comparison/Inpla/src/isort-40000.in)  |   [0.33](comparison/Inpla/src/isort-40000-reuse.in)   |
+| qsort 260000 | [0.34](comparison/Haskell/qsort-800000.hs) |   [0.25](comparison/OCaml/qsort800000.ml)   |   [0.27](comparison/SML/qsort-800000.sml)   | [10.40](comparison/Python/qsort-800000.py) |  [0.15](comparison/Inpla/src/qsort-800000.in)  |   [**0.11**](comparison/Inpla/src/qsort-800000-reuse.in)   |
 | msort 260000 | [0.39](comparison/Haskell/msort-800000.hs) |   [0.29](comparison/OCaml/msort800000.ml)   |   [0.26](comparison/SML/msort-800000.sml)   | [10.96](comparison/Python/msort-800000.py) |  [**0.15**](comparison/Inpla/src/msort-800000.in)  |   [**0.15**](comparison/Inpla/src/msort-800000-reuse.in)   |
 
 - **Comparison in execution time** with other implementations: **Haskell** (GHC version 8.10.7), **OCaml** (ocamlopt, the native-code compiler, version 4.08.1), **Standard ML of New Jersey** v110.74 (interpreter mode) and **Python** 3.8.5 in execution time.

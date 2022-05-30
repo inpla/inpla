@@ -22,14 +22,13 @@
 
 // ----------------------------------------------
   
-#define VERSION "0.8.2-1"
-#define BUILT_DATE  "2 May 2022"  
+#define VERSION "0.8.2-2"
+#define BUILT_DATE  "29 May 2022"  
 
 // ------------------------------------------------------------------
 
 
 
-//#define DEBUG
   
 // For experiments of the tail recursion optimisation.
 //#define COUNT_CNCT    // count of execution of JMP_CNCT
@@ -1750,7 +1749,7 @@ typedef struct {
   int eqStack_size;
 
 #ifdef COUNT_INTERACTION
-  unsigned int count_interaction;  
+  unsigned long count_interaction;  
 #endif
 
 
@@ -1963,7 +1962,7 @@ VALUE make_Name(VirtualMachine * restrict vm) {
 //  Count for Interaction operation
 // ------------------------------------------------------
 #ifdef COUNT_INTERACTION
-int VM_Get_InteractionCount(VirtualMachine *vm) {
+unsigned long VM_Get_InteractionCount(VirtualMachine *vm) {
   return(vm->count_interaction);
 }
 
@@ -2335,7 +2334,8 @@ typedef enum {
 
   // These are used for translation from intermediate codes to Bytecodes
   OP_LABEL, OP_DEAD_CODE, OP_BEGIN_BLOCK, OP_BEGIN_JMPCNCT_BLOCK,
-  OP_LOAD_META // keep dest as it is
+  OP_LOAD_META, // keep the `dest' in `OP_LOAD_META src dest' as it is
+  OP_LOADI_SHARED // The same register will be assigned for the `dest`.
 } Code;
 
 
@@ -2468,7 +2468,8 @@ void IMCode_puts(int n) {
     "NOP",
 
     "LABEL", "__DEAD_CODE", "BEGIN_BLOCK", "BEGIN_CNCT_BLOCK",
-    "LOAD_META"
+    "LOAD_META",
+    "LOADI_SHARED"
 
     
   };
@@ -2641,6 +2642,7 @@ void IMCode_puts(int n) {
     case OP_PUSHI:
     case OP_LOADI:
     case OP_EQI_R0:
+    case OP_LOADI_SHARED:
       printf("%s $%ld var%ld\n", string_opcode[imcode->opcode],
 	     imcode->operand1, imcode->operand2);
       break;
@@ -3532,15 +3534,14 @@ void CmEnv_retrieve_MKGNAME(void) {
 
 
 
-int CmEnv_using_reg(int localvar) {
+int CmEnv_using_reg_with_nothing_info(int localvar) {
 #ifndef OPTIMISE_TWO_ADDRESS
   for (int i=0; i<VM_REG_SIZE; i++) {
     if (CmEnv.tmpRegState[i] == localvar) {
       return i;
     }
   }
-  printf("ERROR[CmEnv_using_reg]: No register assigned to var%d\n", localvar);  
-  exit(1);
+  return -1; // nothing
 #else
 
   // For two address
@@ -3558,13 +3559,38 @@ int CmEnv_using_reg(int localvar) {
       }
     }
   }
+  return -1; // nothing
+#endif  
+}
+
+
+
+int CmEnv_using_reg(int localvar) {
+#ifndef OPTIMISE_TWO_ADDRESS
+  int retval = CmEnv_using_reg_with_nothing_info(localvar);
+  if (retval != -1) {
+    return retval;
+  } 
+  printf("ERROR[CmEnv_using_reg]: No register assigned to var%d\n", localvar);  
+  exit(1);
+#else
+
+  // For two address
+  int retval = CmEnv_using_reg_with_nothing_info(localvar);
+  if (retval != -1) {
+    return retval;
+  } 
   printf("ERROR[CmEnv_using_reg]: No register assigned to var%d\n", localvar);
-  printf("is_in:%d\n", CmEnv.is_in_jmpcnctBlock);
+  printf("is_in_jmpcnctBlock:%d\n", CmEnv.is_in_jmpcnctBlock);
   exit(1);
 #endif  
   
 
 }
+
+
+
+
 
 int CmEnv_get_newreg(int localvar) {
 #ifndef OPTIMISE_TWO_ADDRESS
@@ -3614,8 +3640,10 @@ void CmEnv_free_reg(int reg) {
     CmEnv.jmpcnctBlockRegState[reg] = -1;
     return;
   } else {
-    //  if (reg >= VM_OFFSET_LOCALVAR)
-    CmEnv.tmpRegState[reg] = -1;
+    // if (reg >= VM_OFFSET_LOCALVAR)  // removed this comment out for v0.8.2-2
+    //                            // so, regs for meta variables are not freed.
+    if (reg >= VM_OFFSET_LOCALVAR)
+      CmEnv.tmpRegState[reg] = -1;
   }
 #endif
 }
@@ -3843,6 +3871,10 @@ int CmEnv_Optimise_VMCode_CopyPropagation_LOADI(int target_imcode_addr) {
       // This optimisation will last until OP_BEGIN_BLOCK
       return 0;
     }
+    if (imcode->opcode == OP_LABEL) {
+      // This optimisation will last until OP_LABEL
+      return 0;
+    }
     //    if (imcode->opcode == OP_BEGIN_JMPCNCT_BLOCK) {
     //      // This optimisation will last until OP_BEGIN_BLOCK
     //      return 0;
@@ -3962,13 +3994,13 @@ int CmEnv_Optimise_VMCode_CopyPropagation(int target_imcode_addr) {
   load_from = IMCode[target_imcode_addr].operand1;
   load_to = IMCode[target_imcode_addr].operand2;
 
-  // When the given line is: LOAD src src
+  // When the given line is: LOAD src1 src1
   if ((load_from == load_to) &&
       (IMCode[target_imcode_addr].opcode == OP_LOAD)) {
     IMCode[target_imcode_addr].opcode = OP_DEAD_CODE;
     return 1;
   }
-  // When the given line is: LOAD_META src src
+  // When the given line is: LOAD_META src1 src1
   if ((load_from == load_to) &&
       (IMCode[target_imcode_addr].opcode == OP_LOAD_META)) {
     IMCode[target_imcode_addr].opcode = OP_DEAD_CODE;
@@ -4190,6 +4222,11 @@ int CmEnv_generate_VMCode(void **code) {
   for (int line_num=0; line_num<IMCode_n; line_num++) {
     imcode = &IMCode[line_num];    
 
+    // DEBUG
+    //    printf("%d\n", line_num);
+    //    VMCode_puts(code, addr);
+
+    
 #ifdef OPTIMISE_IMCODE
     // optimisation
     // Copy Propagation for OP_LOAD reg1, reg2 --> [reg2/reg1].
@@ -4756,6 +4793,33 @@ int CmEnv_generate_VMCode(void **code) {
       
       break;
     }
+
+    case OP_LOADI_SHARED: {
+      // OP_LOADI int1 dest
+      long dest = imcode->operand2;
+
+#ifdef OPTIMISE_IMCODE
+      //      dest = CmEnv_get_newreg(dest);
+      {
+	dest = CmEnv_using_reg_with_nothing_info(dest);
+	if (dest == -1) {
+	  dest = CmEnv_get_newreg(imcode->operand2);
+	}
+      }
+#endif
+      
+      code[addr++] = CodeAddr[OP_LOADI];
+      code[addr++] = (void *)INT2FIX(imcode->operand1);      
+      code[addr++] = (void *)(unsigned long)dest;      
+      
+      break;
+    }
+
+      
+      // OP_LOADI_META を入れよう
+      // META ではなく、KEEP_REG とか、OPT を遠ざける意味としよう。
+      // TODO: and と or の LABEL分岐による結果導出 loadi $1 reg1, load $0 reg1
+      // の reg1 を同じものに割り当てたい。だから、この KEEP_REG を使いたい
       
       
     case OP_PUSH:
@@ -5784,13 +5848,13 @@ int Compile_expr_on_ast(Ast *ptr, int target) {
     if (!Compile_expr_on_ast(ptr->right, newreg2)) return 0;
     IMCode_genCode2(OP_JMPEQ0, newreg2, label1);
 
-    IMCode_genCode2(OP_LOADI, 1, target);
+    IMCode_genCode2(OP_LOADI_SHARED, 1, target);
     
     int label2 = CmEnv_get_newlabel();
     IMCode_genCode1(OP_JMP, label2);
 
     IMCode_genCode1(OP_LABEL, label1);
-    IMCode_genCode2(OP_LOADI, 0, target);
+    IMCode_genCode2(OP_LOADI_SHARED, 0, target);
     
     IMCode_genCode1(OP_LABEL, label2);
 
@@ -5819,13 +5883,13 @@ int Compile_expr_on_ast(Ast *ptr, int target) {
     if (!Compile_expr_on_ast(ptr->right, newreg2)) return 0;
     IMCode_genCode2(OP_JMPNEQ0, newreg2, label1);
 
-    IMCode_genCode2(OP_LOADI, 0, target);
+    IMCode_genCode2(OP_LOADI_SHARED, 0, target);
     
     int label2 = CmEnv_get_newlabel();
     IMCode_genCode1(OP_JMP, label2);
 
     IMCode_genCode1(OP_LABEL, label1);
-    IMCode_genCode2(OP_LOADI, 1, target);
+    IMCode_genCode2(OP_LOADI_SHARED, 1, target);
     
     IMCode_genCode1(OP_LABEL, label2);
 
@@ -7249,7 +7313,7 @@ int make_rule_oneway(Ast *ast) {
 #endif
   
 
-  //    #define MKRULE_DEBUG  
+  //      #define MKRULE_DEBUG  
 #ifndef MKRULE_DEBUG  
   gencode_num += CmEnv_generate_VMCode(&code[2]);
 #else
@@ -8674,7 +8738,8 @@ loop_a2IsFixnum:
       RuleTable_get_code_for_Int(a1, &code);
 
       if (code == NULL) {	
-	// built-in
+	// built-in: BUILT-IN_OP >< int 
+
 	switch (BASIC(a1)->id) {
 	case ID_ADD:
 	  {
@@ -8944,362 +9009,366 @@ loop_a2IsAgent:
       code = RuleTable_get_code(a1, a2, &result);
 
       if (result == 0) {
+loop_agent_a1_a2_this_order:
 
-
-	if (BASIC(a2)->id < START_ID_OF_BUILTIN_AGENT)  {
 	
-	  // a2 is a constructor
-	  switch (BASIC(a1)->id) {
+	// suppose that a2 is a constructor
+	switch (BASIC(a1)->id) {
 	  
-	  case ID_TUPLE0:
-	    if (BASIC(a2)->id == ID_TUPLE0) {
-	      // [] ~ [] --> nothing
-	      COUNTUP_INTERACTION(vm);
-      
-	      //	      free_Agent(a1);
-	      //	      free_Agent(a2);
-	      free_Agent2(a1, a2);
-	      return;
-	    }
-	  
-	    break; // end ID_TUPLE0
-
-
-	  case ID_TUPLE2:
-	    if (BASIC(a2)->id == ID_TUPLE2) {
-	      // (x1,x2) ~ (y1,y2) --> x1~y1, x2~y2
-	      COUNTUP_INTERACTION(vm);
-	      
-	      VALUE a1p1 = AGENT(a1)->port[1];
-	      VALUE a2p1 = AGENT(a2)->port[1];
-	      PUSH(vm, a1p1, a2p1);
-
-	      //	      free_Agent(a1);
-	      //	      free_Agent(a2);
-	      free_Agent2(a1,a2);
-	      a1 = AGENT(a1)->port[0];
-	      a2 = AGENT(a2)->port[0];
-	      goto loop;
-	    }
-	  
-	    break; // end ID_TUPLE2
-
-	  case ID_TUPLE3:
-	    if (BASIC(a2)->id == ID_TUPLE3) {
-	      // (x1,x2,x3) ~ (y1,y2,y3) --> x1~y1, x2~y2, x3~y3
-	      COUNTUP_INTERACTION(vm);
-	      
-	      PUSH(vm, AGENT(a1)->port[2], AGENT(a2)->port[2]);
-	      PUSH(vm, AGENT(a1)->port[1], AGENT(a2)->port[1]);
-
-	      //	      free_Agent(a1);
-	      //	      free_Agent(a2);
-	      free_Agent2(a1, a2);
-	      a1 = AGENT(a1)->port[0];
-	      a2 = AGENT(a2)->port[0];
-	      goto loop;
-	    }
-	  
-	    break; // end ID_TUPLE2
-
-
-	  case ID_TUPLE4:
-	    if (BASIC(a2)->id == ID_TUPLE4) {
-	      // (x1,x2,x3) ~ (y1,y2,y3) --> x1~y1, x2~y2, x3~y3
-	      COUNTUP_INTERACTION(vm);
-	      
-	      PUSH(vm, AGENT(a1)->port[3], AGENT(a2)->port[3]);
-	      PUSH(vm, AGENT(a1)->port[2], AGENT(a2)->port[2]);
-	      PUSH(vm, AGENT(a1)->port[1], AGENT(a2)->port[1]);
-
-	      //	      free_Agent(a1);
-	      //	      free_Agent(a2);
-	      free_Agent2(a1, a2);	      
-	      a1 = AGENT(a1)->port[0];
-	      a2 = AGENT(a2)->port[0];
-	      goto loop;
-	    }
-	  
-	    break; // end ID_TUPLE2
-
-	  
-	  case ID_TUPLE5:
-	    if (BASIC(a2)->id == ID_TUPLE5) {
-	      // (x1,x2,x3) ~ (y1,y2,y3) --> x1~y1, x2~y2, x3~y3
-	      COUNTUP_INTERACTION(vm);
-	      
-	      PUSH(vm, AGENT(a1)->port[4], AGENT(a2)->port[4]);
-	      PUSH(vm, AGENT(a1)->port[3], AGENT(a2)->port[3]);
-	      PUSH(vm, AGENT(a1)->port[2], AGENT(a2)->port[2]);
-	      PUSH(vm, AGENT(a1)->port[1], AGENT(a2)->port[1]);
-
-	      //	      free_Agent(a1);
-	      //	      free_Agent(a2);
-	      free_Agent2(a1, a2);	      
-	      a1 = AGENT(a1)->port[0];
-	      a2 = AGENT(a2)->port[0];
-	      goto loop;
-	    }
-	  
-	    break; // end ID_TUPLE2
-
-	  
-	  case ID_NIL:
-	    if (BASIC(a2)->id == ID_NIL) {
-	      // [] ~ [] --> nothing
-	      COUNTUP_INTERACTION(vm);
-	      
-	      //	      free_Agent(a1);
-	      //	      free_Agent(a2);
-	      free_Agent2(a1, a2);
-	      
-	      return;
-	    }
-	  
-	    break; // end ID_NIL
-
-	  
-	  case ID_CONS:
-	    if (BASIC(a2)->id == ID_CONS) {
-	      // a:b ~ c:d --> a~c, b~d
-	      COUNTUP_INTERACTION(vm);
-	      
-	      VALUE a1p1 = AGENT(a1)->port[1];
-	      VALUE a2p1 = AGENT(a2)->port[1];
-	      PUSH(vm, a1p1, a2p1);
-
-	      //	      free_Agent(a1);
-	      //	      free_Agent(a2);	    
-	      free_Agent2(a1, a2);
-	      a1 = AGENT(a1)->port[0];
-	      a2 = AGENT(a2)->port[0];
-	      goto loop;
-	    }
-	  
-	    break; // end ID_CONS
-
-
-	  
-	    // built-in funcAgent for lists and tuples
-	  case ID_APPEND:
-	    switch (BASIC(a2)->id) {
-	    case ID_NIL:
+	case ID_ERASER:
+	  {
+	    // Eps ~ Alpha(a1,...,a5)		
+	    COUNTUP_INTERACTION(vm);
+	    
+	    int arity = IdTable_get_arity(BASIC(a2)->id);
+	    switch (arity) {
+	    case 0:
 	      {
-		// App(r,a) >< [] => r~a;
-		COUNTUP_INTERACTION(vm);
-	      
-		VALUE a1p0 = AGENT(a1)->port[0];
-		VALUE a1p1 = AGENT(a1)->port[1];
-		//		free_Agent(a1);
-		//		free_Agent(a2);
 		free_Agent2(a1, a2);
-		a1=a1p0;
-		a2=a1p1;
-		goto loop;
-	      }
-	    
-	    case ID_CONS:
-	      {
-		// App(r,a) >< [x|xs] => r~(*R)[x|w], (*L)App(w,a)~xs;
-		COUNTUP_INTERACTION(vm);
-		
-		VALUE a1p0 = AGENT(a1)->port[0];
-		VALUE a2p1 = AGENT(a2)->port[1];
-		VALUE w = make_Name(vm);
-	      
-		AGENT(a2)->port[1] = w;
-		PUSH(vm, a1p0, a2);
-		//VM_EQStack_Push(vm, a1p1, a2);
-	      
-		AGENT(a1)->port[0] = w;
-		a2 = a2p1;
-		goto loop;
-	      }
-	    }
-	    
-	    break; // end ID_APPEND
-
-	  
-	  case ID_MERGER:
-	    switch (BASIC(a2)->id) {
-	    case ID_TUPLE2:
-	      {
-		// MG(r) ~ (a|b) => *MGp(*r)~a, *MGp(*r)~b
-		COUNTUP_INTERACTION(vm);
-		
-		BASIC(a1)->id = ID_MERGER_P;
-		AGENT(a1)->port[1] = (VALUE)NULL;
-		AGENT(a1)->port[2] = (VALUE)NULL;
-		PUSH(vm, a1, AGENT(a2)->port[1]);
-		PUSH(vm, a1, AGENT(a2)->port[0]);
-		free_Agent(a2);
 		return;
-		
-		
-	      }
-	    }
-	    break; // end ID_MG
-
-	  case ID_MERGER_P:
-	    switch (BASIC(a2)->id) {
-	    case ID_NIL:
-	      // *MGP(r)~[]
-#ifndef THREAD
-
-	      COUNTUP_INTERACTION(vm);
-	      
-	      if (AGENT(a1)->port[1] == (VALUE)NULL) {
-		AGENT(a1)->port[1] = a2;
-		return;
-	      } else {
-		VALUE a1p0 = AGENT(a1)->port[0];
-		//		free_Agent(AGENT(a1)->port[1]);
-		//		free_Agent(a1);
-		free_Agent2(AGENT(a1)->port[1], a1);
-		
-		a1 = a1p0;
-		goto loop;
-	      }
-#else
-	      // AGENT(a1)->port[2] is used as a lock for NIL case
-	      if (AGENT(a1)->port[2] == (VALUE)NULL) {
-		if (!(__sync_bool_compare_and_swap(&(AGENT(a1)->port[2]),
-						   NULL, a2))) {
-		  // something exists already
-		  goto loop;		
-		  
-		} else {
-		  return;
-		}
-	      } else if ((AGENT(a1)->port[2] != (VALUE)NULL) &&
-			 (BASIC(AGENT(a1)->port[2])->id == ID_NIL)) {
-
-		COUNTUP_INTERACTION(vm);
-		
-		VALUE a1p0 = AGENT(a1)->port[0];
-		//		free_Agent(AGENT(a1)->port[2]);
-		//		free_Agent(a1);
-		free_Agent2(AGENT(a1)->port[2], a1);		
-		a1 = a1p0;
-		goto loop;
-	      } else {
-		goto loop;
 	      }
 	      
-#endif
-	    case ID_CONS:
-	      // *MGP(r)~x:xs => r~x:w, *MGP(w)~xs;
+	    case 1:
 	      {
-#ifndef THREAD
-
-		COUNTUP_INTERACTION(vm);
-		
-		VALUE a1p0 = AGENT(a1)->port[0];
-		VALUE w = make_Name(vm);
-		AGENT(a1)->port[0] = w;
-		PUSH(vm, a1, AGENT(a2)->port[1]);
-		
-		AGENT(a2)->port[1] = w;
-		a1 = a1p0;
-		goto loop;
-#else
-		// AGENT(a1)->port[1] is used as a lock for CONS case
-		// AGENT(a1)->port[2] is used as a lock for NIL case
-
-		if (AGENT(a1)->port[2] != (VALUE)NULL) {
-		  // The other MGP finished still, so:
-		  // *MGP(r)~x:xs => r~x:xs;
-
-		  COUNTUP_INTERACTION(vm);
-		  
-		  VALUE a1p0 = AGENT(a1)->port[0];
-		  //		  free_Agent(AGENT(a1)->port[2]);   // free the lock for NIL
-		  //		  free_Agent(a1);
-		  free_Agent2(AGENT(a1)->port[2], a1);
-		  a1 = a1p0;
-		  goto loop;
-		  
-		} else if (AGENT(a1)->port[1] == (VALUE)NULL) {
-		  if (!(__sync_bool_compare_and_swap(&(AGENT(a1)->port[1]),
-						     NULL,
-						     a2))) {
-		    // Failure to be locked.
-		    goto loop;
-		  }
-
-		  // Succeed the lock
-		  COUNTUP_INTERACTION(vm);
-		  
-		  VALUE a1p0 = AGENT(a1)->port[0];		  
-		  VALUE w = make_Name(vm);
-		  AGENT(a1)->port[0] = w;
-		  PUSH(vm, a1, AGENT(a2)->port[1]);
-		  
-		  AGENT(a2)->port[1] = w;
-		  
-		  AGENT(a1)->port[1] = (VALUE)NULL; // free the lock
-		  
-		  a1 = a1p0;
-		  
-		  goto loop;
-		  
-		} else {
-		  // MPG works for the other now.
-		  
-		  goto loop;
-		}
-		
-		
-#endif
-	      }
-	    }
-	    break; // end ID_MERGER_P
-	    
-	    
-	  } // end switch(BASIC(a1)->id)
-	  
-	} else {
-	  // a2 is not a constructor
-
-	  switch (BASIC(a1)->id) {
-	  case ID_ERASER:
-	    {
-	      // Eps ~ Alpha(a1,...,a5)		
-	      COUNTUP_INTERACTION(vm);
-	      
-	      int arity = IdTable_get_arity(BASIC(a2)->id);
-	      switch (arity) {
-	      case 0:
-		{
-		  free_Agent2(a1, a2);
-		  return;
-		}
-		
-	      case 1:
-		{
-		  VALUE a2p0 = AGENT(a2)->port[0];
-		  free_Agent(a2);
-		  a2 = a2p0;
-		  goto loop;
-		}
-		
-	      default:
-		for (int i=1; i<arity; i++) {
-		  VALUE a2port = AGENT(a2)->port[1];
-		  VALUE eps = make_Agent(vm, ID_ERASER);
-		  PUSH(vm, eps, a2port);
-		}
-		
 		VALUE a2p0 = AGENT(a2)->port[0];
 		free_Agent(a2);
 		a2 = a2p0;
 		goto loop;
 	      }
+	      
+	    default:
+	      for (int i=1; i<arity; i++) {
+		VALUE a2port = AGENT(a2)->port[1];
+		VALUE eps = make_Agent(vm, ID_ERASER);
+		PUSH(vm, eps, a2port);
+	      }
+	      
+	      VALUE a2p0 = AGENT(a2)->port[0];
+	      free_Agent(a2);
+	      a2 = a2p0;
+	      goto loop;
 	    }
-	    break; // end case ID_ERASER
 	  }
-	}    
+	  break;
+	  
+	case ID_TUPLE0:
+	  if (BASIC(a2)->id == ID_TUPLE0) {
+	    // [] ~ [] --> nothing
+	    COUNTUP_INTERACTION(vm);
+	    
+	    //	      free_Agent(a1);
+	    //	      free_Agent(a2);
+	    free_Agent2(a1, a2);
+	    return;
+	  }
+	  
+	  break; // end ID_TUPLE0
+	  
+	  
+	case ID_TUPLE2:
+	  if (BASIC(a2)->id == ID_TUPLE2) {
+	    // (x1,x2) ~ (y1,y2) --> x1~y1, x2~y2
+	    COUNTUP_INTERACTION(vm);
+	    
+	    VALUE a1p1 = AGENT(a1)->port[1];
+	    VALUE a2p1 = AGENT(a2)->port[1];
+	    PUSH(vm, a1p1, a2p1);
+	    
+	    //	      free_Agent(a1);
+	    //	      free_Agent(a2);
+	    free_Agent2(a1,a2);
+	    a1 = AGENT(a1)->port[0];
+	    a2 = AGENT(a2)->port[0];
+	    goto loop;
+	  }
+	  
+	  break; // end ID_TUPLE2
+	  
+	case ID_TUPLE3:
+	  if (BASIC(a2)->id == ID_TUPLE3) {
+	    // (x1,x2,x3) ~ (y1,y2,y3) --> x1~y1, x2~y2, x3~y3
+	    COUNTUP_INTERACTION(vm);
+	    
+	    PUSH(vm, AGENT(a1)->port[2], AGENT(a2)->port[2]);
+	    PUSH(vm, AGENT(a1)->port[1], AGENT(a2)->port[1]);
+	    
+	    //	      free_Agent(a1);
+	    //	      free_Agent(a2);
+	    free_Agent2(a1, a2);
+	    a1 = AGENT(a1)->port[0];
+	    a2 = AGENT(a2)->port[0];
+	    goto loop;
+	  }
+	  
+	  break; // end ID_TUPLE2
+	  
+	  
+	case ID_TUPLE4:
+	  if (BASIC(a2)->id == ID_TUPLE4) {
+	    // (x1,x2,x3) ~ (y1,y2,y3) --> x1~y1, x2~y2, x3~y3
+	    COUNTUP_INTERACTION(vm);
+	    
+	    PUSH(vm, AGENT(a1)->port[3], AGENT(a2)->port[3]);
+	    PUSH(vm, AGENT(a1)->port[2], AGENT(a2)->port[2]);
+	    PUSH(vm, AGENT(a1)->port[1], AGENT(a2)->port[1]);
+	    
+	    //	      free_Agent(a1);
+	    //	      free_Agent(a2);
+	    free_Agent2(a1, a2);	      
+	    a1 = AGENT(a1)->port[0];
+	    a2 = AGENT(a2)->port[0];
+	    goto loop;
+	  }
+	  
+	  break; // end ID_TUPLE2
+	  
+	  
+	case ID_TUPLE5:
+	  if (BASIC(a2)->id == ID_TUPLE5) {
+	    // (x1,x2,x3) ~ (y1,y2,y3) --> x1~y1, x2~y2, x3~y3
+	    COUNTUP_INTERACTION(vm);
+	    
+	    PUSH(vm, AGENT(a1)->port[4], AGENT(a2)->port[4]);
+	    PUSH(vm, AGENT(a1)->port[3], AGENT(a2)->port[3]);
+	    PUSH(vm, AGENT(a1)->port[2], AGENT(a2)->port[2]);
+	    PUSH(vm, AGENT(a1)->port[1], AGENT(a2)->port[1]);
+	    
+	    //	      free_Agent(a1);
+	    //	      free_Agent(a2);
+	    free_Agent2(a1, a2);	      
+	    a1 = AGENT(a1)->port[0];
+	    a2 = AGENT(a2)->port[0];
+	    goto loop;
+	  }
+	  
+	  break; // end ID_TUPLE2
+	  
+	  
+	case ID_NIL:
+	  if (BASIC(a2)->id == ID_NIL) {
+	    // [] ~ [] --> nothing
+	    COUNTUP_INTERACTION(vm);
+	    
+	    //	      free_Agent(a1);
+	    //	      free_Agent(a2);
+	    free_Agent2(a1, a2);
+	    
+	    return;
+	  }
+	  
+	  break; // end ID_NIL
+	  
+	  
+	case ID_CONS:
+	  if (BASIC(a2)->id == ID_CONS) {
+	    // a:b ~ c:d --> a~c, b~d
+	    COUNTUP_INTERACTION(vm);
+	    
+	    VALUE a1p1 = AGENT(a1)->port[1];
+	    VALUE a2p1 = AGENT(a2)->port[1];
+	    PUSH(vm, a1p1, a2p1);
+	    
+	    //	      free_Agent(a1);
+	    //	      free_Agent(a2);	    
+	    free_Agent2(a1, a2);
+	    a1 = AGENT(a1)->port[0];
+	    a2 = AGENT(a2)->port[0];
+	    goto loop;
+	  }
+	  
+	  break; // end ID_CONS
+	  
+	  
+	  
+	  // built-in funcAgent for lists and tuples
+	case ID_APPEND:
+	  switch (BASIC(a2)->id) {
+	  case ID_NIL:
+	    {
+	      // App(r,a) >< [] => r~a;
+	      COUNTUP_INTERACTION(vm);
+	      
+	      VALUE a1p0 = AGENT(a1)->port[0];
+	      VALUE a1p1 = AGENT(a1)->port[1];
+	      //		free_Agent(a1);
+	      //		free_Agent(a2);
+	      free_Agent2(a1, a2);
+	      a1=a1p0;
+	      a2=a1p1;
+	      goto loop;
+	    }
+	    
+	  case ID_CONS:
+	    {
+	      // App(r,a) >< [x|xs] => r~(*R)[x|w], (*L)App(w,a)~xs;
+	      COUNTUP_INTERACTION(vm);
+	      
+	      VALUE a1p0 = AGENT(a1)->port[0];
+	      VALUE a2p1 = AGENT(a2)->port[1];
+	      VALUE w = make_Name(vm);
+	      
+	      AGENT(a2)->port[1] = w;
+	      PUSH(vm, a1p0, a2);
+	      //VM_EQStack_Push(vm, a1p1, a2);
+	      
+	      AGENT(a1)->port[0] = w;
+	      a2 = a2p1;
+	      goto loop;
+	    }
+	  }
+	  
+	  break; // end ID_APPEND
+	  
+	  
+	case ID_MERGER:
+	  switch (BASIC(a2)->id) {
+	  case ID_TUPLE2:
+	    {
+	      // MG(r) ~ (a|b) => *MGp(*r)~a, *MGp(*r)~b
+	      COUNTUP_INTERACTION(vm);
+	      
+	      BASIC(a1)->id = ID_MERGER_P;
+	      AGENT(a1)->port[1] = (VALUE)NULL;
+	      AGENT(a1)->port[2] = (VALUE)NULL;
+	      PUSH(vm, a1, AGENT(a2)->port[1]);
+	      PUSH(vm, a1, AGENT(a2)->port[0]);
+	      free_Agent(a2);
+	      return;
+	      
+	      
+	    }
+	  }
+	  break; // end ID_MG
+	  
+	case ID_MERGER_P:
+	  switch (BASIC(a2)->id) {
+	  case ID_NIL:
+	    // *MGP(r)~[]
+#ifndef THREAD
+	    
+	    COUNTUP_INTERACTION(vm);
+	    
+	    if (AGENT(a1)->port[1] == (VALUE)NULL) {
+	      AGENT(a1)->port[1] = a2;
+	      return;
+	    } else {
+	      VALUE a1p0 = AGENT(a1)->port[0];
+	      //		free_Agent(AGENT(a1)->port[1]);
+	      //		free_Agent(a1);
+	      free_Agent2(AGENT(a1)->port[1], a1);
+	      
+	      a1 = a1p0;
+	      goto loop;
+	    }
+#else
+	    // AGENT(a1)->port[2] is used as a lock for NIL case
+	    if (AGENT(a1)->port[2] == (VALUE)NULL) {
+	      if (!(__sync_bool_compare_and_swap(&(AGENT(a1)->port[2]),
+						 NULL, a2))) {
+		// something exists already
+		goto loop;		
+		
+	      } else {
+		return;
+	      }
+	    } else if ((AGENT(a1)->port[2] != (VALUE)NULL) &&
+		       (BASIC(AGENT(a1)->port[2])->id == ID_NIL)) {
+	      
+	      COUNTUP_INTERACTION(vm);
+	      
+	      VALUE a1p0 = AGENT(a1)->port[0];
+	      //		free_Agent(AGENT(a1)->port[2]);
+	      //		free_Agent(a1);
+	      free_Agent2(AGENT(a1)->port[2], a1);		
+	      a1 = a1p0;
+	      goto loop;
+	    } else {
+	      goto loop;
+	    }
+	    
+#endif
+	  case ID_CONS:
+	    // *MGP(r)~x:xs => r~x:w, *MGP(w)~xs;
+	    {
+#ifndef THREAD
+	      
+	      COUNTUP_INTERACTION(vm);
+	      
+	      VALUE a1p0 = AGENT(a1)->port[0];
+	      VALUE w = make_Name(vm);
+	      AGENT(a1)->port[0] = w;
+	      PUSH(vm, a1, AGENT(a2)->port[1]);
+	      
+	      AGENT(a2)->port[1] = w;
+	      a1 = a1p0;
+	      goto loop;
+#else
+	      // AGENT(a1)->port[1] is used as a lock for CONS case
+	      // AGENT(a1)->port[2] is used as a lock for NIL case
+	      
+	      if (AGENT(a1)->port[2] != (VALUE)NULL) {
+		// The other MGP finished still, so:
+		// *MGP(r)~x:xs => r~x:xs;
+		
+		COUNTUP_INTERACTION(vm);
+		
+		VALUE a1p0 = AGENT(a1)->port[0];
+		//		  free_Agent(AGENT(a1)->port[2]);   // free the lock for NIL
+		//		  free_Agent(a1);
+		free_Agent2(AGENT(a1)->port[2], a1);
+		a1 = a1p0;
+		goto loop;
+		
+	      } else if (AGENT(a1)->port[1] == (VALUE)NULL) {
+		if (!(__sync_bool_compare_and_swap(&(AGENT(a1)->port[1]),
+						   NULL,
+						   a2))) {
+		  // Failure to be locked.
+		  goto loop;
+		}
+		
+		// Succeed the lock
+		COUNTUP_INTERACTION(vm);
+		
+		VALUE a1p0 = AGENT(a1)->port[0];		  
+		VALUE w = make_Name(vm);
+		AGENT(a1)->port[0] = w;
+		PUSH(vm, a1, AGENT(a2)->port[1]);
+		
+		AGENT(a2)->port[1] = w;
+		
+		AGENT(a1)->port[1] = (VALUE)NULL; // free the lock
+		
+		a1 = a1p0;
+		
+		goto loop;
+		
+	      } else {
+		// MPG works for the other now.
+		
+		goto loop;
+	      }
+	      
+	      
+#endif
+	    }
+	  }
+	  break; // end ID_MERGER_P
+	  
+	    
+	} // end switch(BASIC(a1)->id)
 
+
+
+	if ((BASIC(a1)->id < BASIC(a2)->id)
+	    || (BASIC(a2)->id == ID_ERASER)){
+	  VALUE tmp;
+	  tmp = a1;
+	  a1 = a2;
+	  a2 = tmp;
+	  goto loop_agent_a1_a2_this_order;
+	}
+	
 	
 	printf("Runtime Error: There is no interaction rule for the following pair:\n  ");
 	puts_term(a1);
@@ -9620,15 +9689,13 @@ int exec(Ast *at) {
   CmEnv_retrieve_MKGNAME();
   CmEnv_generate_VMCode(code);
 
-  /*
-  // for debug
-  CmEnv_retrieve_MKGNAME();
-  IMCode_puts(0); //exit(1);
-
-  int codenum = CmEnv_generate_VMCode(code);
-  VMCode_puts(code, codenum-2); //exit(1);
-  // end for debug
-  */
+  //    // for debug
+  //    CmEnv_retrieve_MKGNAME();
+  //    IMCode_puts(0); //exit(1);
+  //  
+  //    int codenum = CmEnv_generate_VMCode(code);
+  //    VMCode_puts(code, codenum-2); //exit(1);
+  //    // end for debug
   
 #ifdef COUNT_MKAGENT
   NumberOfMkAgent=0;
@@ -9671,7 +9738,7 @@ int exec(Ast *at) {
 
   time=stop_timer(&t);
 #ifdef COUNT_INTERACTION
-  printf("(%d interactions, %.2f sec)\n", VM_Get_InteractionCount(&VM),
+  printf("(%lu interactions, %.2f sec)\n", VM_Get_InteractionCount(&VM),
 	 (double)(time)/1000000);
 #else
   printf("(%.2f sec)\n", 

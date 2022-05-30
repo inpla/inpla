@@ -31,9 +31,10 @@
 
 #define ID_INTAGENT 10   // This is an experimental dummy agent
                          // to show the use effect of Int agent.
+#define START_ID_OF_BUILTIN_CONSTRUCTOR_AGENT 10
 
 
-#define START_ID_OF_BUILTIN_AGENT 15
+#define START_ID_OF_BUILTIN_OP_AGENT 15
 #define ID_APPEND   15
 #define ID_MERGER   16
 #define ID_MERGER_P 17
@@ -48,10 +49,10 @@
 #define ID_MOD      26
 #define ID_MOD2     27
 #define ID_ERASER   28
-#define END_ID_OF_BUILTIN_AGENT 28
+#define END_ID_OF_BUILTIN_OP_AGENT 28
 
  
-#define START_ID_OF_AGENT END_ID_OF_BUILTIN_AGENT+1
+#define START_ID_OF_AGENT END_ID_OF_BUILTIN_OP_AGENT+1
 //#define NUM_AGENTS 1024
 #define END_ID_OF_AGENT 255
 #define NUM_AGENTS END_ID_OF_AGENT+1  // 256
