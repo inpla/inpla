@@ -1,6 +1,25 @@
 # Change log
+### v0.8.1-2 minor update (released on 30 May 2022)
 
-### v0.8.1-2 minor update (released on 1 May 2022)
+|              |                  Haskell                   |                  OCaml                  |                   SML                   |                   Python                   |                      Inpla8                      |                        Inpla8r                         |
+| ------------ | :----------------------------------------: | :-------------------------------------: | :-------------------------------------: | :----------------------------------------: | :----------------------------------------------: | :----------------------------------------------------: |
+| ack(3,11)    |   [2.30](comparison/Haskell/ack3-11.hs)    |   [0.46](comparison/OCaml/ack3_11.ml)   | [**0.43**](comparison/SML/ack3-11.sml)  |     [-](comparison/Python/ack3-11.py)      | [0.86](comparison/Inpla/src/ack-stream_3-11.in)  | [0.71](comparison/Inpla/src/ack-stream_3-11-reuse.in)  |
+| fib 38       |    [1.60](comparison/Haskell/fib38.hs)     |  [**0.15**](comparison/OCaml/fib38.ml)  |    [0.27](comparison/SML/fib38.sml)     |     [8.88](comparison/Python/fib38.py)     |      [0.40](comparison/Inpla/src/fib-38.in)      |      [0.43](comparison/Inpla/src/fib-38-reuse.in)      |
+| bsort 20000  | [4.98](comparison/Haskell/bsort-40000.hs)  | [6.78](comparison/OCaml/bsort40000.ml)  | [2.38](comparison/SML/bsort-40000.sml)  | [19.91](comparison/Python/bsort-40000.py)  |   [2.16](comparison/Inpla/src/bsort-40000.in)    | [**1.58**](comparison/Inpla/src/bsort-40000-reuse.in)  |
+| isort 20000  | [2.15](comparison/Haskell/isort-40000.hs)  | [1.52](comparison/OCaml/isort40000.ml)  | [0.60](comparison/SML/isort-40000.sml)  |  [9.58](comparison/Python/isort-40000.py)  | [**0.29**](comparison/Inpla/src/isort-40000.in)  |   [0.33](comparison/Inpla/src/isort-40000-reuse.in)    |
+| qsort 260000 | [0.34](comparison/Haskell/qsort-800000.hs) | [0.25](comparison/OCaml/qsort800000.ml) | [0.27](comparison/SML/qsort-800000.sml) | [10.40](comparison/Python/qsort-800000.py) |   [0.15](comparison/Inpla/src/qsort-800000.in)   | [**0.11**](comparison/Inpla/src/qsort-800000-reuse.in) |
+| msort 260000 | [0.39](comparison/Haskell/msort-800000.hs) | [0.29](comparison/OCaml/msort800000.ml) | [0.26](comparison/SML/msort-800000.sml) | [10.96](comparison/Python/msort-800000.py) | [**0.15**](comparison/Inpla/src/msort-800000.in) | [**0.15**](comparison/Inpla/src/msort-800000-reuse.in) |
+
+#### Bug fix
+
+* **`and` and `or` operations**: These operations had not work well due to bad effects of bytecode optimisations, and these has been fixed.
+
+#### Changes
+* **The benchmark table**: Bubble sort in Inpla has been changed to be done in the same method to others, and still Inpla keeps the fastest. 
+
+
+
+### v0.8.1-1 minor update (released on 2 May 2022)
 
 |              |                  Haskell                   |                  OCaml                  |                   SML                   |                   Python                   |                      Inpla8                      |                        Inpla8r                         |
 | ------------ | :----------------------------------------: | :-------------------------------------: | :-------------------------------------: | :----------------------------------------: | :----------------------------------------------: | :----------------------------------------------------: |

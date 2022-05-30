@@ -1,0 +1,38 @@
+// Insertion sort
+isort(ret) >< [] => ret~[];
+isort(ret) >< x:xs => I(ret, x)~cnt, isort(cnt)~xs;
+
+I(ret, int x) >< [] => ret~[x];
+I(ret, int x) >< (int y):ys
+| x<=y => ret~(x:y:ys)
+| _    => ret~(y:cnt), I(cnt, x)~ys;
+
+
+// creates a random list
+make_RandList(ret) >< (int n)
+| n>0 => ret~(rd:cnt), make_RandList(cnt)~(n-1) 
+  where rd=rand(10000)
+| _ => ret~[];
+
+
+// validation checks
+valid(ret) >< [] => ret~True;
+valid(ret) >< x:xs => valid_Cons(ret,x)~xs;
+
+valid_Cons(ret, int x) >< [] => ret~True;
+valid_Cons(ret, int x) >< (int y):ys
+| x<=y => valid_Cons(ret,y)~ys
+| _ => ret~False, Eraser~ys;
+
+// The `Eraser' is a built-in agent defined for any agents as follows:
+//Eraser >< Alpha(a1, ..., a5) => Eraser~a1, ..., Eraser~a5;
+
+
+// Main
+const LIST_ELEM=20000;
+
+make_RandList(rndlist)~(LIST_ELEM),
+isort(sorted)~rndlist,
+valid(ret)~sorted;
+
+ret;

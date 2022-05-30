@@ -1,0 +1,77 @@
+// Bubble sort with the same algorithm as others
+
+/*
+// length
+length_(r,n) >< [] => r~n;
+length_(r,int n) >< (int x):xs => length_(r,n+1)~xs;
+
+length(r) >< [] => r~0;
+length(r) >< x:xs => length_(r,0) ~ x:xs;
+*/
+
+
+// stream length
+len_stream_(len, list, int ct) >< [] => len~ct, list~[];
+len_stream_(len, list, int ct) >< x:xs => 
+	list~x:cnt, 
+	len_stream_(len, cnt, ct+1) ~xs; 
+
+
+len_stream(len, list) >< [] => len~0, list~[];
+len_stream(len, list) >< x:xs => 
+	list~x:cnt, 
+	len_stream_(len, cnt, 1)~xs;
+
+
+// bubble sort
+bs(r, xs) >< (int n)
+| n == 0 => r~xs
+| _ => bs_Cons(r, n)~xs;
+
+bs_Cons(r, int n)>< x:xs => bs_ConsCons(r, n, x) ~ xs;
+bs_Cons(r, int n)>< [] => r~[];
+
+bs_ConsCons(r, int n, int x) >< (int y):ys
+| x < y => r~x:cnt, bs(cnt, y:ys) ~(n-1)
+| _ => r~y:cnt, bs(cnt, x:ys)~(n-1);
+bs_ConsCons(r, int n, int x) >< [] => r~[x];
+
+go(r,xs) >< (int n)
+| n==0 => r~xs
+| _ => bs(cnt, xs)~n, go(r, cnt)~(n-1);
+
+bsort(r) >< [] => r~[];
+bsort(r) >< x:xs => 
+	len_stream(len, alist) ~ x:xs,
+	go(r, alist)~lengthDec1, 
+        Sub(lengthDec1,len)~1;
+
+
+// creates a random list
+make_RandList(ret) >< (int n)
+| n>0 => ret~(rd:cnt), make_RandList(cnt)~(n-1) 
+  where rd=rand(10000)
+| _ => ret~[];
+
+
+// validation checks
+valid(ret) >< [] => ret~True;
+valid(ret) >< x:xs => valid_Cons(ret,x)~xs;
+
+valid_Cons(ret, int x) >< [] => ret~True;
+valid_Cons(ret, int x) >< (int y):ys
+| x<=y => valid_Cons(ret,y)~ys
+| _ => ret~False, Eraser~ys;
+
+// The `Eraser' is a built-in agent defined for any agents as follows:
+//Eraser >< Alpha(a1, ..., a5) => Eraser~a1, ..., Eraser~a5;
+
+
+// Main
+const LIST_ELEM=20000;
+
+make_RandList(rndlist)~(LIST_ELEM),
+bsort(sorted)~rndlist,
+valid(ret)~sorted;
+
+ret;
