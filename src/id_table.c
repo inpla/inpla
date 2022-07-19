@@ -52,6 +52,7 @@ void IdTable_init() {
   IdTable[ID_MOD].aux.arity = 2;
   IdTable[ID_MOD2].aux.arity = 2;
   IdTable[ID_ERASER].aux.arity = 0;
+  IdTable[ID_DUP].aux.arity = 2;
 
   
   IdTable[ID_INT].name = "int";
@@ -80,6 +81,7 @@ void IdTable_init() {
   IdTable[ID_MOD2].name = "_Mod";
 
   IdTable[ID_ERASER].name = "Eraser";
+  IdTable[ID_DUP].name = "Dup";
 
 }
 
@@ -112,6 +114,8 @@ int IdTable_getid_builtin_funcAgent(Ast *agent) {
     id = ID_MERGER;
   } else if (strcmp((char *)agent->left->sym, "Eraser") == 0) {
     id = ID_ERASER;
+  } else if (strcmp((char *)agent->left->sym, "Dup") == 0) {
+    id = ID_DUP;
   }
 
   return id;

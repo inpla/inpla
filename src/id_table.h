@@ -49,11 +49,11 @@
 #define ID_MOD      26
 #define ID_MOD2     27
 #define ID_ERASER   28
-#define END_ID_OF_BUILTIN_OP_AGENT 28
+#define ID_DUP      29
+#define END_ID_OF_BUILTIN_OP_AGENT 29
 
  
 #define START_ID_OF_AGENT END_ID_OF_BUILTIN_OP_AGENT+1
-//#define NUM_AGENTS 1024
 #define END_ID_OF_AGENT 255
 #define NUM_AGENTS END_ID_OF_AGENT+1  // 256
 

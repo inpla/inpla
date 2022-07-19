@@ -22,8 +22,8 @@
 
 // ----------------------------------------------
   
-#define VERSION "0.8.2-2"
-#define BUILT_DATE  "29 May 2022"  
+#define VERSION "0.8.3"
+#define BUILT_DATE  "19 July 2022"  
 
 // ------------------------------------------------------------------
 
@@ -1345,7 +1345,7 @@ VALUE myalloc_Name(Heap *hp) {
 }
 
 
-unsigned long Heap_getnum_used_forName(Heap *hp) {
+unsigned long Heap_GetNum_Usage_forName(Heap *hp) {
   int i;
   unsigned long total=0;
   for (i=0; i < hp->size; i++) {
@@ -1355,7 +1355,7 @@ unsigned long Heap_getnum_used_forName(Heap *hp) {
   }
   return total;
 }
-unsigned long Heap_getnum_used_forAgent(Heap *hp) {
+unsigned long Heap_GetNum_Usage_forAgent(Heap *hp) {
   int i;
   unsigned long total=0;
   for (i=0; i < hp->size; i++) {
@@ -2124,8 +2124,8 @@ void flush_name_port0(VALUE ptr) {
 #ifdef VERBOSE_NODE_USE
 #ifndef THREAD  
   printf("(%lu agents and %lu names nodes are used.)\n", 
-	 Heap_getnum_used_forAgent(&VM.agentHeap),
-	 Heap_getnum_used_forName(&VM.nameHeap));
+	 Heap_GetNum_Usage_forAgent(&VM.agentHeap),
+	 Heap_GetNum_Usage_forName(&VM.nameHeap));
 #endif
 #endif
 
@@ -8864,6 +8864,21 @@ loop_a2IsFixnum:
 	    free_Agent(a1);
 	    return;
 	  }
+
+	case ID_DUP:
+	  {
+	    COUNTUP_INTERACTION(vm);
+
+	    // Dup(x,y) ~ (int n) --> x~n, y~n;
+	    VALUE a1port = AGENT(a1)->port[0];
+	    PUSH(vm, a1port, a2);
+
+	    a1port = AGENT(a1)->port[1];
+	    free_Agent(a1);
+	    a1 = a1port;
+	    goto loop;
+	  }
+
 	}
       
 	
@@ -9009,6 +9024,8 @@ loop_a2IsAgent:
       code = RuleTable_get_code(a1, a2, &result);
 
       if (result == 0) {
+	// there is no user-defined rule.
+	
 loop_agent_a1_a2_this_order:
 
 	
@@ -9050,6 +9067,143 @@ loop_agent_a1_a2_this_order:
 	    }
 	  }
 	  break;
+
+
+	case ID_DUP:
+	  {
+	    // Dup(p1,p2) ~ Alpha(b1,...,b5)
+	    COUNTUP_INTERACTION(vm);
+
+	    if (BASIC(a2)->id == ID_DUP) {
+	      // Dup(p1,p2) >< Dup(b1,b2) => p1~b1, b2~b2;
+	      VALUE a1p = AGENT(a1)->port[0];
+	      VALUE a2p = AGENT(a2)->port[0];
+	      PUSH(vm, a1p, a2p);
+
+	      a1p = AGENT(a1)->port[1];
+	      a2p = AGENT(a2)->port[1];
+
+	      free_Agent2(a1,a2);
+	      a1 = a1p;
+	      a2 = a2p;
+	      goto loop;	      
+	    }
+	    
+	    int arity = IdTable_get_arity(BASIC(a2)->id);
+	    switch (arity) {
+	    case 0:
+	      {
+		// Dup(p0,p1) >< A => p0~A, p1~A;
+		VALUE a1p = AGENT(a1)->port[0];
+		VALUE new_a2 = make_Agent(vm, BASIC(a2)->id);
+		PUSH(vm, a1p, new_a2);
+
+		a1p = AGENT(a1)->port[1];		
+		free_Agent(a1);
+		a1=a1p;
+		goto loop;
+	      }
+	      
+	    case 1:
+	      {
+		// Dup(p0,p1) >< A(a2p0) => p1~A(w2), p0~A(w1), 
+		//                          Dup(w1,w2)~a2p0;   	
+		VALUE a2p0 = AGENT(a2)->port[0];
+		int a2id = BASIC(a2)->id;
+
+		// p1
+		VALUE new_a2 = make_Agent(vm, a2id);
+		VALUE w = make_Name(vm);
+		AGENT(new_a2)->port[0] = w;
+		PUSH(vm, AGENT(a1)->port[1], new_a2);
+		AGENT(a1)->port[1] = w;
+
+		// p0
+		w = make_Name(vm);
+		AGENT(a2)->port[0] = w;
+		PUSH(vm, AGENT(a1)->port[0], a2);
+		AGENT(a1)->port[0] = w;
+
+		a2 = a2p0;
+		goto loop;
+	      }
+	      
+
+	    default:
+	      {
+		// Dup(p0,p1) >< A(a2p0, a2p1) =>
+		//      p0~A(w0,w1),        (*L)Dup(w0,ww0)~a2p0
+		//      p1~(*R)A(ww0,ww1),      Dup(w1,ww1)~a2p1, 
+
+		// Dup(p0,p1) >< A(a2p0, a2p1, a2p2) =>
+		//      p0~A(w0,w1,w2),        (*L)Dup(w0,ww0)~a2p0
+		//      p1~(*R)A(ww0,ww1,ww2),     Dup(w1,ww1)~a2p1, 
+		//                                 Dup(w2,ww2)~a2p2;
+
+		// Dup(p0,p1) >< A(a2p0, a2p1, a2p2 a2p3) =>
+		//      p0~A(w0,w1,w2,w3),         (*L)Dup(w0,ww0)~a2p0
+		//      p1~(*R)A(ww0,ww1,ww2,ww3),     Dup(w1,ww1)~a2p1, 
+		//                                     Dup(w2,ww2)~a2p2,
+		//                                     Dup(w3,ww3)~a2p3;
+
+		// newA = mkAgent(A);
+		// for (i=0; i<arity; i++) { newA->p[i] = w_i; }
+		//
+		// for (i=1; i<arity; i++) {
+		//    newDup( newA->p[i], newWW_i) ~ a2[i]
+		//    a2[i] = newWW_i;
+		// }
+		// p0_preserve = p0;
+		// p1_preserve = p1;
+		// (*L)Dup(w0, newWW0) ~ a2[0] // this destroys the p0 and p1.
+		//
+		// p0_preserve ~ newA
+		// a2[0] = newWW0;
+
+		// p1_preserve ~ a2; <-- This will be `goto loop`.
+
+		
+		int a2id = BASIC(a2)->id;
+		VALUE new_a2 = make_Agent(vm, a2id);
+		for (int i=0; i<arity; i++) {
+		  AGENT(new_a2)->port[i] = make_Name(vm);
+		}
+
+		for (int i=1; i<arity; i++) {
+		  VALUE new_dup = make_Agent(vm, ID_DUP);
+		  AGENT(new_dup)->port[0] = AGENT(new_a2)->port[i];
+
+		  VALUE new_ww = make_Name(vm);
+		  AGENT(new_dup)->port[1] = new_ww;
+
+		  PUSH(vm, new_dup, AGENT(a2)->port[i]);
+		  
+		  AGENT(a2)->port[i] = new_ww;
+		}
+
+		VALUE a1p0 = AGENT(a1)->port[0];
+		VALUE a1p1 = AGENT(a1)->port[1];
+
+		AGENT(a1)->port[0] = AGENT(new_a2)->port[0];
+		VALUE new_ww = make_Name(vm);
+		AGENT(a1)->port[1] = new_ww;
+		PUSH(vm, a1, AGENT(a2)->port[0]);
+
+		PUSH(vm, a1p0, new_a2);
+
+		AGENT(a2)->port[0] = new_ww;
+
+		a1 = a1p1;
+		
+		goto loop;
+	      }
+	      
+
+	    }
+	  }
+	  break;
+
+
 	  
 	case ID_TUPLE0:
 	  if (BASIC(a2)->id == ID_TUPLE0) {
@@ -9361,7 +9515,8 @@ loop_agent_a1_a2_this_order:
 
 
 	if ((BASIC(a1)->id < BASIC(a2)->id)
-	    || (BASIC(a2)->id == ID_ERASER)){
+	    || (BASIC(a2)->id == ID_ERASER)
+	    || (BASIC(a2)->id == ID_DUP)){
 	  VALUE tmp;
 	  tmp = a1;
 	  a1 = a2;
@@ -9752,8 +9907,8 @@ int exec(Ast *at) {
   
 #ifdef VERBOSE_NODE_USE
   printf("(%lu agents and %lu names nodes are used.)\n", 
-	 Heap_getnum_used_forAgent(&VM.agentHeap),
-	 Heap_getnum_used_forName(&VM.nameHeap));
+	 Heap_GetNum_Usage_forAgent(&VM.agentHeap),
+	 Heap_GetNum_Usage_forName(&VM.nameHeap));
 #endif	 
 
 #ifdef COUNT_CNCT
