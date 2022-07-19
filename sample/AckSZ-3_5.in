@@ -20,26 +20,26 @@
 // ack(r,y)>< Z    => r~S(y);
 // ack(r,y)>< S(x) => ack_Sx(r, x)~y;
 // ack_Sx(r,x)>< Z    => ack(r, S(Z))~x;
-// ack_Sx(r,x)>< S(y) => dup(x1,x2)~x, ack(r,cnt)~x1, ack(cnt,y)~S(x2);
+// ack_Sx(r,x)>< S(y) => Dup(x1,x2)~x, ack(r,cnt)~x1, ack(cnt,y)~S(x2);
 
 // The last connection can be optimised by applying the rule ack><S,
 // so finally we get the following as the result of the translation:
 ack(r,y)>< Z    => r~S(y);
 ack(r,y)>< S(x) => ack_Sx(r, x)~y;
 ack_Sx(r,x)>< Z    => ack(r, S(Z))~x;
-ack_Sx(r,x)>< S(y) => dup(x1,x2)~x, ack(r,cnt)~x1, ack_Sx(cnt,x2)~y;
+ack_Sx(r,x)>< S(y) => Dup(x1,x2)~x, ack(r,cnt)~x1, ack_Sx(cnt,x2)~y;
 
 
 // By the way, it is possible to write it by using abbreviation notation:
 // ack(r,y)>< Z    => r~S(y);
 // ack(r,y)>< S(x) => r<<ack_Sx(x,y);
 // ack_Sx(r,x)>< Z    => r<<ack(S(Z),x);
-// ack_Sx(r,x)>< S(y) => x1,x2<<dup(x), r<<ack(cnt,x1), cnt<<ack_Sx(x2,y);
+// ack_Sx(r,x)>< S(y) => x1,x2<<Dup(x), r<<ack(cnt,x1), cnt<<ack_Sx(x2,y);
 
 
-
-dup(a1,a2)>< Z => a1~Z, a2~Z;
-dup(a1,a2)>< S(x) => a1~S(w1), a2~S(w2), dup(w1,w2)~x;
+// Dup is defined as built-in:
+// Dup(a1,a2)>< Z => a1~Z, a2~Z;
+// Dup(a1,a2)>< S(x) => a1~S(w1), a2~S(w2), Dup(w1,w2)~x;
 
 // ack(result, y)~x
 // For computation `ack 3 5', it is written as follows:

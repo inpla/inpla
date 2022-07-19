@@ -3,17 +3,18 @@
 // Rules
 hanoi(return, source, target, auxiliary) >< (int n)
 | n==0 => return~[], Eraser~source, Eraser~target, Eraser~auxiliary
-| _    => source ~ dup(src1, dup(src2, src3)),
-         target ~ dup(tgt1, dup(tgt2, tgt3)),
-         auxiliary ~ dup(aux1, aux2),
+| _    => source ~ Dup(src1, Dup(src2, src3)),
+         target ~ Dup(tgt1, Dup(tgt2, tgt3)),
+         auxiliary ~ Dup(aux1, aux2),
          hanoi(ret1, src1, aux1, tgt1)~(n-1),
          hanoi(ret2, aux2, tgt2, src2)~(n-1),
          Append(return, (n,src3,tgt3):ret2)~ret1;
 	 // This Append is a bulit-in agent.
 
-dup(a,b)><A => a~A, b~A;
-dup(a,b)><B => a~B, b~B;
-dup(a,b)><C => a~C, b~C;
+// The Dup is defined as built-in:
+// Dup(a,b)><A => a~A, b~A;
+// Dup(a,b)><B => a~B, b~B;
+// Dup(a,b)><C => a~C, b~C;
 
 // The `Eraser' is defined as a built-in agent for any agents as follows:
 //Eraser >< Alpha(a1, ..., a5) => Eraser~a1, ..., Eraser~a5;
@@ -28,9 +29,9 @@ result; // should be [(1,A,C),(2,A,B),(1,C,B),(3,A,C),(1,B,A),(2,B,C),(1,A,C)]
 //   hanoi(return, source, target, auxiliary) >< (int n)
 //   | n==0 => return~[],
 //             << Eraser(source), << Eraser(target), << Eraser(auxiliary)
-//   | _    => src1, dup(src2, src3) << dup(source),
-//            tgt1, dup(tgt2, tgt3) << dup(target),
-//            aux1, aux2 << dup(auxiliary),
+//   | _    => src1, Dup(src2, src3) << Dup(source),
+//            tgt1, Dup(tgt2, tgt3) << Dup(target),
+//            aux1, aux2 << Dup(auxiliary),
 //            ret1 << hanoi(src1, aux1, tgt1, n-1),
 //            ret2 << hanoi(aux2, tgt2, src2, n-1),
 //            return << Append(ret1, (n,src3,tgt3):ret2);

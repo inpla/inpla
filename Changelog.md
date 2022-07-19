@@ -1,5 +1,25 @@
 # Change log
-### v0.8.1-2 minor update (released on 30 May 2022)
+### v0.8.3 (released on 19 July 2022)
+#### New Features
+
+* **A built-in agent** `Dup`: it duplicates any nets gradually with the following rules:
+
+![Eraser](pic/dup.png)
+
+```
+>>> Dup(a1,a2) ~ [1,2,3];
+(7 interactions, 0.00 sec)
+>>> ifce;
+a1 a2
+
+Connections:
+a1 ->[1,2,3]
+a2 ->[1,2,3]
+
+>>>
+```
+
+### v0.8.2-2 minor update (released on 30 May 2022)
 
 |              |                  Haskell                   |                  OCaml                  |                   SML                   |                   Python                   |                      Inpla8                      |                        Inpla8r                         |
 | ------------ | :----------------------------------------: | :-------------------------------------: | :-------------------------------------: | :----------------------------------------: | :----------------------------------------------: | :----------------------------------------------------: |
@@ -19,7 +39,7 @@
 
 
 
-### v0.8.1-1 minor update (released on 2 May 2022)
+### v0.8.2-1 minor update (released on 2 May 2022)
 
 |              |                  Haskell                   |                  OCaml                  |                   SML                   |                   Python                   |                      Inpla8                      |                        Inpla8r                         |
 | ------------ | :----------------------------------------: | :-------------------------------------: | :-------------------------------------: | :----------------------------------------: | :----------------------------------------------: | :----------------------------------------------------: |
@@ -36,7 +56,7 @@
 
 #### Changes
 
-* In the benchmark table from this version Quick and Merge sorts are for smaller lists whose elements are 260000, while it was 400000. This is because OCaml raises stack overflow error for over 260000 elements. As shown the following graph, the speed-up ratio has chahged not so good, while these sort works for 800000 elements have good performance. So, it seems that 260K elements are too small for Inpla to perform in parallel.
+* In the benchmark table from this version Quick and Merge sorts are for smaller lists whose elements are 260000, while it was 400000. This is because OCaml raises stack overflow error for over 260000 elements. As shown the following graph, the speed-up ratio has changed not so good, while these sort works for 800000 elements have good performance. So, it seems that 260K elements are too small for Inpla to perform in parallel.
 
   ![speedup-ratio-v0.8.2-1-280k](pic/benchmark_reuse_v0.8.2-1-260K.png)
 

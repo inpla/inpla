@@ -2,13 +2,8 @@
 fib(r)><Z => r~Z;
 fib(r)><S(x) => fibS(r)~x;
 fibS(r)><Z => r~S(Z);
-fibS(r)><S(x) => dup(x1,x2)~x, add(r,r2)~r1, fib(r2)~x2, fibS(r1)~x1;
+fibS(r)><S(x) => Dup(x1,x2)~x, add(r,r2)~r1, fib(r2)~x2, fibS(r1)~x1;
 
-
-
-// ------ DUP ------
-dup(x1,x2)><Z => x1~Z, x2~Z;
-dup(x1,x2)><S(x) => x1~S(w1), x2~S(w2), dup(w1,w2)~x;
 
 
 //------ ADD ------
@@ -19,6 +14,15 @@ add(r,x)><S(y) => r~S(w), add(w,x)~y;
 //Add_Seq
 //add(r,y)><Z => y~r;
 //add(r,y)><S(x) => add(r, S(y))~x;
+
+
+// ------ DUP ------
+// Dup is defined as built-in:
+//
+// Dup(x1,x2)><Z => x1~Z, x2~Z;
+// Dup(x1,x2)><S(x) => x1~S(w1), x2~S(w2), Dup(w1,w2)~x;
+
+
 
 
 // Execution
