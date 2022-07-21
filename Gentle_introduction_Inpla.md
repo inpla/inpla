@@ -1,4 +1,4 @@
-# Gentle introduction to programming in Inpla
+# Gentle introduction to Inpla
 #### Contents in this section
 * [Nets: terms and connections](#nets-terms-and-connections)
 * [Interaction rules: rewriting rules for nets](#interaction-rules-rewriting-rules-for-nets)
@@ -12,7 +12,10 @@
   - [Interaction rules with conditions on attributes](#interaction-rules-with-conditions-on-attributes)
 * [Commands](#commands)
 * [Execution Options](#execution-options)
-
+* [Advanced topics](#advanced-topics)
+  - [Reuse annotations](#reuse-annotations)
+  - [built-in agents more](#built-in-agents-more)
+  - [Weak reduction strategy](#weak-reduction-strategy)
 
 
 
@@ -130,21 +133,31 @@ Something complicated? No problem! Let's us learn how to define the rules with s
 
 ### Example: Operations on unary natural numbers
 
-Unary natural numbers are built by Z and S. For instance, 0, 1, 2, 3 are expressed as Z, S(Z), S(S(Z)), S(S(S(Z))). Here, let's think about an increment operation `inc` such that inc(n) = S(n). This is written as rules for Z and S(x) as follows:
-
+Unary natural numbers are built by Z and S. For instance, 0, 1, 2, 3 are expressed as Z, S(Z), S(S(Z)), S(S(S(Z))). Here, let's think about an increment operation "inc" such that:
 ```
-inc(ret) >< Z => ret~S(Z);
-inc(ret) >< S(x) => ret~S(S(x));
+ inc(n) = S(n).
+ ```
+
+First, we will think about the relationship between constructors and deconstructors in  this computation.
+Here, constructors are agents `Z`, `S(x)`, and a destructor is `inc(r)` which has an argument for the output. The behaviour of `inc(r)` will be as follows:
+* When `inc(r)` meets `Z`, the output `r` is connected to `S(Z)`. 
+* In the case of `S(x)`, the `r` is connected to `S(S(x))`. 
+
+
+ This is written as the followint rules:
+```
+inc(r) >< Z => r~S(Z);
+inc(r) >< S(x) => r~S(S(x));
 ```
 
-In the first rule, the name `ret` occurs twice, so it satisfies the rule proviso. The second rule is also OK because the `ret` and `x` are distinct and occur twice in the rule. 
+Let's check the rule proviso. In the first rule, the name `r` occurs twice, so it satisfies the proviso. The second rule is also OK because the `r` and `x` are distinct and occur twice in the rule. 
 
 For agents can work as constructors and de-constructors, it could be good to use strings start from a capital letter such as `Z`, `S` and `Tree`, and all small letters for de-constructors such as `inc`.
 
 Let's take the result of the increment operation for `S(S(Z))`:
 
 ```
->>> inc(r)~S(S(Z));         // This is also written as:  r << inc(S(S(Z)))
+>>> inc(r)~S(S(Z));
 (1 interactions, 0.01 sec)
 >>> r;
 S(S(S(Z))
@@ -442,7 +455,7 @@ In interaction rules, attributes are recognised by using variables with a modifi
   
   
 
-**We have to be careful for operations of two attributes on distinct agents**. For instance, we take the following rule of an `add` agent:
+**We should be careful for operations of two attributes on distinct agents**. For instance, we take the following rule of an `add` agent:
 
 ```
 >>> add(result, int b) >< (int a) => result~(a+b);
@@ -471,7 +484,7 @@ If the `add(r, b)~3` is operated first, it causes the runtime error because the 
 >>> add(result, b) >< (int a) => addn(result, a) ~ b;
 >>> addn(result, int a) >< (int b) => r~(a+b);
 ```
-Do not worry about it. Some built-in rules are prepared as follows:
+Do not worry about it. Some built-in rules for arithmetic computations are prepared as follows:
 
 
 ### Built-in rules of attributes in the anonymous agents
@@ -486,7 +499,7 @@ _Add(result, int x)><(int y) => result~(x+y);
 * Example:
 
   ```
-  >>> Add(r,3)~5;   // Add is already defined as built-in.
+  >>> Add(r,3)~5;    // Add is already defined as built-in.
   >>> r;
   8
   >>> Sub(r1, r)~2;  // It is also written as an abbreviation form: r1<<Sub(r,2);
@@ -498,7 +511,7 @@ _Add(result, int x)><(int y) => result~(x+y);
   
 
 ### Interaction rules with conditions on attributes
-In interaction rules, conditional rewritings on attributes are available. The following is a general form:  
+Conditional rewritings on attributes are available. The following is a general form:  
 
 ```
 <rule-with-conditions> ::= 
@@ -610,3 +623,94 @@ Inpla has the following macro:
 * The option ```-t``` is available for the multi-thread version that is compiled by ```make thread```. The default value is setting for the number of cores, so execution will be automatically scaled without specifying this. 
 
 
+## Advanced topics
+
+### Reuse annotations
+In interaction rule definitions, we can specify how active pair agents are reused by putting annotations `(*L)` and `(*R)` before agents in the right-hand side net. This annotations promote in-place computing, and as a result performance can be improved well  in parallel execution.
+
+* For instance, in the rule `gcd(ret) >< (int a, int b)`, we can reuse the `gcd` and `Tuple2` in nets as follows:
+
+  ```
+  gcd(ret) >< (int a, int b)
+  | b==0 => ret ~ a
+  | _ => (*L)gcd(ret) ~ (*R)(b, a%b);
+  ```
+
+
+### Built-in agents more
+* **Merger agent** `Marger`: 
+it merges two lists into one. Merger agent has two principal ports that can take the two distinct lists. Interactions with the lists are performed as soon as one of the principal ports is connected one of the lists. So, the merged result is non-deterministically decided, especially in multi-threaded execution.
+  
+  ![merger](pic/merger.png)
+  
+  We overload `<<` in order to use the Merger agent naturally as follows:
+
+  ```
+  ret << Merger(alist, blist)
+  ```
+
+  The following is an execution example (the count of interactions is not supported yet):
+  ```
+  >>> r << Merger([0,0,0,0,0,0,0,0,0,0], [1,1,1,1,1,1,1,1,1,1]); 
+  (1 interactions by 4 threads, 0.10 sec)
+  >>> ifce;
+  r 
+  
+  Connections:
+  r ->[0,0,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0]
+  
+  >>> 
+  ```
+
+### Weak reduction strategy
+
+In this reduction strategy, only connections that have interface names (thus, live and occur once) are evaluated. This is taken for non-terminate computation such as fixed point combinator and process networks.
+
+* Example: We have a sample net in `sample/processnet1.in` that keep producing natural numbers from 1 and output these to the port `r`:
+
+  ```
+  // Rules
+  dup(a1,a2) >< (int i):xs => a1~(i:xs1), a2~(i:xs2), dup(xs1,xs2)~xs;
+  dup(a1,a2) >< []         => a1~[], a2~[];
+  
+  inc(r) >< (int i):xs => r~(i+1):w, inc(w)~xs;
+  inc(r) >< []         => r~[];
+  
+  // Nets
+  dup(r,w)~r1, inc(r1) ~ 0:w;
+  
+  //       +-----+       +-----+        +---+
+  // r ----|     |  r1   |     |        |   |
+  //       | dup |--->---| inc |---><---| 0 |----+
+  //   +---|     |       |     |        |   |    |
+  //   |   +-----+       +-----+        +---+    |
+  //   |                                         |
+  //   +-----------------------------------------+
+  //             w
+  ```
+
+  This reduction strategy is available by invoking with `-w` option as follows:
+
+  ```
+  $ ./inpla -w
+  Inpla 0.5.0 (Weak Strategy) : Interaction nets as a programming language [28 Oct. 2021]
+  >>> use "sample/processnet1.in";
+  (2 interactions, 0.00 sec)
+  >>> ifce;
+  r 
+  
+  Connections:
+  r ->[1,<a1>...    // this means a list of 1 and something.
+  
+  >>> a:b ~ r;
+  (2 interactions, 0.00 sec)
+  >>> ifce;
+  a b 
+  
+  Connections:
+  a ->1
+  b ->[2,<b1>...  
+  
+  >>>
+  ```
+  

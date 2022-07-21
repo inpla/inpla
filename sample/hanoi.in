@@ -1,42 +1,27 @@
 // Tower of Hanoi Puzzle
 
 // Rules
-hanoi(return, source, target, auxiliary) >< (int n)
-| n==0 => return~[], Eraser~source, Eraser~target, Eraser~auxiliary
-| _    => source ~ Dup(src1, Dup(src2, src3)),
-         target ~ Dup(tgt1, Dup(tgt2, tgt3)),
-         auxiliary ~ Dup(aux1, aux2),
-         hanoi(ret1, src1, aux1, tgt1)~(n-1),
-         hanoi(ret2, aux2, tgt2, src2)~(n-1),
-         Append(return, (n,src3,tgt3):ret2)~ret1;
-	 // This Append is a bulit-in agent.
+hanoi(return, source, target, aux) >< (int n)
+| n==0 => 
+          // Erase the source, target and aux
+          Eraser~source, Eraser~target, Eraser~aux,
+	  // result
+          return~[]
 
-// The Dup is defined as built-in:
-// Dup(a,b)><A => a~A, b~A;
-// Dup(a,b)><B => a~B, b~B;
-// Dup(a,b)><C => a~C, b~C;
+| _    => 
+          // Duplicate the source, target and aux
+	  source ~ Dup(src1, Dup(src2, src3)),
+          target ~ Dup(tgt1, Dup(tgt2, tgt3)),
+          aux ~ Dup(aux1, aux2),
 
-// The `Eraser' is defined as a built-in agent for any agents as follows:
-//Eraser >< Alpha(a1, ..., a5) => Eraser~a1, ..., Eraser~a5;
+          // recursive applications
+          hanoi(ret1, src1, aux1, tgt1)~(n-1),
+          hanoi(ret2, aux2, tgt2, src2)~(n-1),
+
+          // result
+          return << Append(ret1, (n,src3,tgt3):ret2);
 
 
 // Net
 hanoi(result, A, C, B) ~ 3;
 result; // should be [(1,A,C),(2,A,B),(1,C,B),(3,A,C),(1,B,A),(2,B,C),(1,A,C)]
-
-
-// These are also written using abbreviation as follows:
-//   hanoi(return, source, target, auxiliary) >< (int n)
-//   | n==0 => return~[],
-//             << Eraser(source), << Eraser(target), << Eraser(auxiliary)
-//   | _    => src1, Dup(src2, src3) << Dup(source),
-//            tgt1, Dup(tgt2, tgt3) << Dup(target),
-//            aux1, aux2 << Dup(auxiliary),
-//            ret1 << hanoi(src1, aux1, tgt1, n-1),
-//            ret2 << hanoi(aux2, tgt2, src2, n-1),
-//            return << Append(ret1, (n,src3,tgt3):ret2);
-//
-//   result << hanoi(A, C, B, 3);
-//   result;
-
-

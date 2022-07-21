@@ -1,23 +1,32 @@
 # Change log
+### v0.8.3-1 minor update (released on 21 July 2022)
+#### Polished
+* **Built-in agent** `Dup`: it can duplicate attributes also immediately. For instance, with respect to `Cons(int, xs)`, it performs as follows:
+  ```
+  Dup(a1,a2) >< (int i):xs => a1~i:w1, a2~i:w2, Dup(w1,w2)~xs;
+  ```
+
+
+
+
+
 ### v0.8.3 (released on 19 July 2022)
 #### New Features
 
-* **A built-in agent** `Dup`: it duplicates any nets gradually with the following rules:
-
+* **Built-in agent** `Dup`: it duplicates any nets gradually with the following rules:
 ![Eraser](pic/dup.png)
-
-```
->>> Dup(a1,a2) ~ [1,2,3];
-(7 interactions, 0.00 sec)
->>> ifce;
-a1 a2
-
-Connections:
-a1 ->[1,2,3]
-a2 ->[1,2,3]
-
->>>
-```
+  ```
+  >>> Dup(a1,a2) ~ [1,2,3];
+  (7 interactions, 0.00 sec)
+  >>> ifce;
+  a1 a2
+  
+  Connections:
+  a1 ->[1,2,3]
+  a2 ->[1,2,3]
+  
+  >>>
+  ```
 
 ### v0.8.2-2 minor update (released on 30 May 2022)
 
