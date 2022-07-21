@@ -6,7 +6,7 @@
 
 Inpla is a multi-threaded parallel interpreter of interaction nets. Once you write programs for sequential execution, it works also in multi-threaded parallel execution. Each thread is managed on each CPU-core with POSIX-thread library. 
 
-* The current version is 0.8.3, released on **19 July 2022**. (See [Changelog.md](Changelog.md) for details.) 
+* The current version is 0.8.3-1 (minor update), released on **21 July 2022**. (See [Changelog.md](Changelog.md) for details.) 
 * The below graph shows speed-up ratio to threads numbers for programs in the following benchmark table.
 
 ![speedup-ratio](pic/benchmark_reuse_v0.8.2-2.png)
@@ -30,7 +30,7 @@ Inpla is a multi-threaded parallel interpreter of interaction nets. Once you wri
   
   - The above table contains execution time in second on average of ten times execution by using Linux PC (Core i7-9700 (8 threads, no Hyper-threading), 16GB memory). The fastest one is shown with bold style.  Scripts for the comparison table are in the `comparison` directory.
   
-  - Inpla8  and Inpla8r mean 8 threads without/with [reuse-annotated](#Reuse-annotations) execution, respectively. 
+  - Inpla8  and Inpla8r mean 8 threads without/with [reuse-annotated](./Gentle_introduction_Inpla.md#reuse-annotations) execution, respectively. 
   
   - "ack(3,11)" is computation of Ackermann function.  Execution time of Python is a blank due to stack size limitation error. 
   
@@ -262,7 +262,7 @@ Inpla is a multi-threaded parallel interpreter of interaction nets. Once you wri
 
 
 ## How to write programs in Inpla
-[How_to_write_programs.md](How_to_write_programs.md) explains how to make programs in Inpla step by step. Please see it!
+[Gentle_introduction_Inpla.md](Gentle_introduction_Inpla.md) explains how to make programs in Inpla step by step. Please look it over!
 
 
 ## Updates

@@ -22,8 +22,8 @@
 
 // ----------------------------------------------
   
-#define VERSION "0.8.3"
-#define BUILT_DATE  "19 July 2022"  
+#define VERSION "0.8.3-1"
+#define BUILT_DATE  "21 July 2022"  
 
 // ------------------------------------------------------------------
 
@@ -9103,32 +9103,89 @@ loop_agent_a1_a2_this_order:
 		a1=a1p;
 		goto loop;
 	      }
+
 	      
+	      // a2p0 などが fixint の場合は即座に複製させる
 	    case 1:
 	      {
 		// Dup(p0,p1) >< A(a2p0) => p1~A(w2), p0~A(w1), 
-		//                          Dup(w1,w2)~a2p0;   	
+		//                          Dup(w1,w2)~a2p0;
+		// Dup(p0,p1) >< A(int a2p0) => p1~A(a2p0), p0~A(a2p0);
+
+		
 		VALUE a2p0 = AGENT(a2)->port[0];
+
 		int a2id = BASIC(a2)->id;
 
 		// p1
 		VALUE new_a2 = make_Agent(vm, a2id);
-		VALUE w = make_Name(vm);
-		AGENT(new_a2)->port[0] = w;
-		PUSH(vm, AGENT(a1)->port[1], new_a2);
-		AGENT(a1)->port[1] = w;
 
-		// p0
-		w = make_Name(vm);
-		AGENT(a2)->port[0] = w;
-		PUSH(vm, AGENT(a1)->port[0], a2);
-		AGENT(a1)->port[0] = w;
+		if (IS_FIXNUM(a2p0)) {
+		  AGENT(new_a2)->port[0] = a2p0;
+		  PUSH(vm, AGENT(a1)->port[1], new_a2);
+		  AGENT(a2)->port[0] = a2p0;
 
-		a2 = a2p0;
-		goto loop;
+		  VALUE a1p0 = AGENT(a1)->port[0];
+		  free_Agent(a1);
+
+		  //PUSH(vm, a1p0, a2);
+		  a1 = a1p0;
+		  goto loop;
+		  
+		} else {
+		  VALUE w = make_Name(vm);
+		  AGENT(new_a2)->port[0] = w;
+		  PUSH(vm, AGENT(a1)->port[1], new_a2);
+		  AGENT(a1)->port[1] = w; // for (*L)dup
+
+		  w = make_Name(vm);
+		  AGENT(a2)->port[0] = w;
+		  PUSH(vm, AGENT(a1)->port[0], a2);
+
+		  AGENT(a1)->port[0] = w; // for (*L)dup
+		  
+		  a2 = a2p0;
+		  goto loop;		  
+		}
+
 	      }
+	      break;
 	      
 
+	    case 2:
+	      {
+		// Dup(p0,p1) >< Cons(int i, a2p1) =>
+		//   p0~Cons(i,w), p1~(*R)Cons(i,ww), (*L)Dup(w,ww)~a2p1;
+
+		VALUE a2p0 = AGENT(a2)->port[0];
+		if (IS_FIXNUM(a2p0)) {
+		  int a2id = BASIC(a2)->id;
+		  VALUE new_a2 = make_Agent(vm, a2id);
+
+		  AGENT(new_a2)->port[0] = a2p0;
+
+		  VALUE w = make_Name(vm);
+		  AGENT(new_a2)->port[1] = w;
+
+		  PUSH(vm, AGENT(a1)->port[0], new_a2);
+		  AGENT(a1)->port[0] = w;
+		  
+		  VALUE a2p1 = AGENT(a2)->port[1];
+		  VALUE ww = make_Name(vm);
+		  AGENT(a2)->port[1] = ww;
+		  
+		  PUSH(vm, AGENT(a1)->port[1], a2);
+		  AGENT(a1)->port[1] = ww;
+
+		  a2 = a2p1;
+		  goto loop;
+		}
+
+		// otherwise: goto default
+		// So, DO NOT put break.
+	      }
+
+	      
 	    default:
 	      {
 		// Dup(p0,p1) >< A(a2p0, a2p1) =>
@@ -9146,56 +9203,98 @@ loop_agent_a1_a2_this_order:
 		//                                     Dup(w2,ww2)~a2p2,
 		//                                     Dup(w3,ww3)~a2p3;
 
+
+		// Dup(p0,p1) >< A(a2p0, int a2p1, a2p2 a2p3) =>
+		//      p0~A(w0,a2p1,w2,w3),         (*L)Dup(w0,ww0)~a2p0
+		//      p1~(*R)A(ww0,a2p1,ww2,ww3),     
+		//                                     Dup(w2,ww2)~a2p2,
+		//                                     Dup(w3,ww3)~a2p3;
+
+
 		// newA = mkAgent(A);
-		// for (i=0; i<arity; i++) { newA->p[i] = w_i; }
-		//
-		// for (i=1; i<arity; i++) {
-		//    newDup( newA->p[i], newWW_i) ~ a2[i]
-		//    a2[i] = newWW_i;
+		// for (i=0; i<arity; i++) {
+		//   if (!IS_FIXNUM(a2->p[i])) {
+		//      newA->p[i] = w_i;
+	        //   } else {
+		//      newA->p[i] = a2->p[i];
+		//   }
 		// }
-		// p0_preserve = p0;
-		// p1_preserve = p1;
-		// (*L)Dup(w0, newWW0) ~ a2[0] // this destroys the p0 and p1.
+		// for (i=1; i<arity; i++) {
+		//   if (!IS_FIXNUM(a2->p[i])) {
+		//     newDup( newA->p[i], newWW_i) ~ a2[i]
+		//     a2[i] = newWW_i;
+		//   }
+		// }
+		// if (!IS_FIXNUM(a2->p[0])) {
+		//   p0_preserve = p0;
+		//   p1_preserve = p1;
+		//   (*L)Dup(w0, newWW0) ~ a2[0] // this destroys the p0 and p1.
 		//
-		// p0_preserve ~ newA
-		// a2[0] = newWW0;
-
-		// p1_preserve ~ a2; <-- This will be `goto loop`.
-
+		//   p0_preserve ~ newA
+		//   a2[0] = newWW0;
+		//
+		//   p1_preserve ~ a2; <-- This will be `goto loop'.
+		// } else {
+		//   p0 ~ newA;
+		//   p1_preserve = p1;
+		//   free_Agent((*L)Dup);
+		//   p1_preserve ~ a2; >-- This will be `goto loop'.
+		// }
 		
 		int a2id = BASIC(a2)->id;
 		VALUE new_a2 = make_Agent(vm, a2id);
 		for (int i=0; i<arity; i++) {
-		  AGENT(new_a2)->port[i] = make_Name(vm);
+		  VALUE a2pi = AGENT(a2)->port[i];
+		  if (!IS_FIXNUM(a2pi)) {
+		    AGENT(new_a2)->port[i] = make_Name(vm);
+		  } else {
+		    AGENT(new_a2)->port[i] = a2pi;
+		  }		    
 		}
 
 		for (int i=1; i<arity; i++) {
-		  VALUE new_dup = make_Agent(vm, ID_DUP);
-		  AGENT(new_dup)->port[0] = AGENT(new_a2)->port[i];
+		  VALUE a2pi = AGENT(a2)->port[i];
 
-		  VALUE new_ww = make_Name(vm);
-		  AGENT(new_dup)->port[1] = new_ww;
-
-		  PUSH(vm, new_dup, AGENT(a2)->port[i]);
+		  if (!IS_FIXNUM(a2pi)) {
 		  
-		  AGENT(a2)->port[i] = new_ww;
+		    VALUE new_dup = make_Agent(vm, ID_DUP);
+		    AGENT(new_dup)->port[0] = AGENT(new_a2)->port[i];
+
+		    VALUE new_ww = make_Name(vm);
+		    AGENT(new_dup)->port[1] = new_ww;
+
+		    PUSH(vm, new_dup, a2pi);
+		  
+		    AGENT(a2)->port[i] = new_ww;
+		  }
 		}
-
-		VALUE a1p0 = AGENT(a1)->port[0];
-		VALUE a1p1 = AGENT(a1)->port[1];
-
-		AGENT(a1)->port[0] = AGENT(new_a2)->port[0];
-		VALUE new_ww = make_Name(vm);
-		AGENT(a1)->port[1] = new_ww;
-		PUSH(vm, a1, AGENT(a2)->port[0]);
-
-		PUSH(vm, a1p0, new_a2);
-
-		AGENT(a2)->port[0] = new_ww;
-
-		a1 = a1p1;
 		
-		goto loop;
+		VALUE a2p0 = AGENT(a2)->port[0];
+		if (!IS_FIXNUM(a2p0)) {
+
+		  VALUE a1p0 = AGENT(a1)->port[0];
+		  VALUE a1p1 = AGENT(a1)->port[1];
+
+		  AGENT(a1)->port[0] = AGENT(new_a2)->port[0];
+		  VALUE new_ww = make_Name(vm);
+		  AGENT(a1)->port[1] = new_ww;
+		  PUSH(vm, a1, a2p0);
+
+		  PUSH(vm, a1p0, new_a2);
+
+		  AGENT(a2)->port[0] = new_ww;
+
+		  a1 = a1p1;
+		
+		  goto loop;
+		} else {
+		  PUSH(vm, AGENT(a1)->port[0], new_a2);
+		  VALUE a1p1 = AGENT(a1)->port[1];
+		  free_Agent(a1);
+
+		  a1=a1p1;
+		  goto loop;
+		}
 	      }
 	      
 
