@@ -22,8 +22,8 @@
 
 // ----------------------------------------------
   
-#define VERSION "0.8.3-1"
-#define BUILT_DATE  "21 July 2022"  
+#define VERSION "0.9.0"
+#define BUILT_DATE  "25 July 2022"
 
 // ------------------------------------------------------------------
 
@@ -180,6 +180,7 @@ stm stmlist_nondelimiter
 stmlist 
 expr additive_expr equational_expr logical_expr relational_expr unary_expr
 multiplicative_expr primary_expr agent_tuple agent_list agent_cons
+agent_percent
 bodyguard bd_else bd_elif bd_compound
 if_sentence if_compound
 name_params
@@ -417,7 +418,15 @@ astterm_item
       | agent_list
       | agent_cons
       | val_declare
+      | agent_percent
       | expr %prec REDUCE
+;
+
+agent_percent
+: MOD AGENT
+{ $$=ast_makeAST(AST_PERCENT, ast_makeSymbol($2), NULL); }
+| MOD NAME
+{ $$=ast_makeAST(AST_PERCENT, ast_makeSymbol($2), NULL); }
 ;
 
 val_declare
@@ -1410,7 +1419,7 @@ void puts_name(VALUE ptr) {
 
   if (IS_GNAMEID(BASIC(ptr)->id)) {
       printf("%s", IdTable_get_name(BASIC(ptr)->id));
-  } else if (BASIC(ptr)->id == ID_NAME) {
+  } else if (IS_LOCAL_NAMEID(BASIC(ptr)->id)) {
       printf("<var%lu>", (unsigned long)(ptr));
   } else {
     puts_term(ptr);
@@ -1589,6 +1598,11 @@ void puts_term(VALUE ptr) {
       
     }
         
+  } else if (BASIC(ptr)->id == ID_PERCENT) {
+    printf("%%");
+    printf("%s", IdTable_get_name(FIX2INT(AGENT(ptr)->port[0])));
+    
+    
   } else {
     // Agent
     int i, arity;
@@ -1950,7 +1964,7 @@ VALUE make_Name(VirtualMachine * restrict vm) {
   VALUE ptr;
   
   ptr = myalloc_Name(&vm->nameHeap);
-  AGENT(ptr)->basic.id = ID_NAME;
+  SET_LOCAL_NAMEID(AGENT(ptr)->basic.id);
   NAME(ptr)->port = (VALUE)NULL;
 
   return ptr;
@@ -2026,7 +2040,7 @@ void free_Name(VALUE ptr) {
     NameTable_erase_id(IdTable_get_name(BASIC(ptr)->id));
     IdTable_set_heap(BASIC(ptr)->id, (VALUE)NULL);
     
-    SET_LOCAL_NAMEID(BASIC(ptr)->id); //    BASIC(ptr)->id = ID_NAME;
+    SET_LOCAL_NAMEID(BASIC(ptr)->id);
     myfree(ptr);
   }
 
@@ -2067,6 +2081,12 @@ void free_Agent_recursively(VALUE ptr) {
 	ptr = port1; goto loop;
       }
     }
+
+    if (BASIC(ptr)->id == ID_PERCENT) {
+      free_Agent(ptr);
+      return;
+    }
+    
 
 
     int arity;
@@ -6097,6 +6117,29 @@ int Compile_term_on_ast(Ast *ptr, int target) {
     return result;
     break;
 
+  case AST_PERCENT:
+    result = CmEnv_newvar();
+
+    {
+      int id = IdTable_getid_builtin_funcAgent(ptr);
+      
+      if (id == -1) {
+	char *sym = (char *)ptr->left->sym;
+	id = NameTable_get_id(sym);
+	if (id == -1) {
+	  printf("Warning: `%s' is given to %%, though it hasn't been defined yet.\n", sym);
+	  id=NameTable_get_set_id_with_IdTable_forAgent(sym);
+	}
+	
+      }
+      //      printf("id=%d\n", id);
+      alloc[0] = CmEnv_newvar();
+      IMCode_genCode2(OP_LOADI, id, alloc[0]);
+      IMCode_genCode3(OP_MKAGENT1, ID_PERCENT, alloc[0], result);
+    }
+    return result;
+    break;
+
     
     
   case AST_AGENT:
@@ -6196,11 +6239,11 @@ int Compile_term_on_ast(Ast *ptr, int target) {
   case AST_ANNOTATION_L:
   case AST_ANNOTATION_R:
     if (ptr->id == AST_ANNOTATION_L) {
-      CmEnv.annotateL = ANNOTATE_REUSE; // *L が出現したことを示す
-      result = CmEnv.reg_agentL; //VM_OFFSET_ANNOTATE_L;
+      CmEnv.annotateL = ANNOTATE_REUSE; // turn *L_occurrence flag on
+      result = CmEnv.reg_agentL;        // VM_OFFSET_ANNOTATE_L;
     } else {
-      CmEnv.annotateR = ANNOTATE_REUSE; // *L が出現したことを示す
-      result = CmEnv.reg_agentR; // VM_OFFSET_ANNOTATE_R;
+      CmEnv.annotateR = ANNOTATE_REUSE; // turn *R_occurrence flag on
+      result = CmEnv.reg_agentR;        // VM_OFFSET_ANNOTATE_R;
     }
 
     
@@ -6217,7 +6260,7 @@ int Compile_term_on_ast(Ast *ptr, int target) {
     if (compile_result != 0) {
       return result;
     } else {
-      puts("ERROR: something strange in Compile_term_on_ast.");
+      puts("Compilation ERROR: something strange in Compile_term_on_ast.");
       ast_puts(ptr);
       exit(1);      
     }
@@ -7039,38 +7082,60 @@ int get_arity_on_ast(Ast *ast) {
 // A(x1,x2) が ast に与えられれば、rule 内で x1, x2 が
 // VM のレジスタである VM_OFFSET_METAVAR_L(0)番、VM_OFFSET_METAVAR_L(1)番を
 // 参照できるようにする。
-void set_metaL(Ast *ast) {
+int set_metaL(Ast *ast) {
   Ast *ptr;
   NB_TYPE type;
   
   ptr = ast->right;
   for (int i=0; i<MAX_PORT; i++) {
     if (ptr == NULL) break;
+    
     if (ptr->left->id == AST_NAME) {
       type = NB_META_L;
-    } else {
+    } else if (ptr->left->id == AST_INTVAR) {
       type = NB_INTVAR;
-    }      
+    } else if (ptr->left->id == AST_AGENT) {
+      printf("Error: `%s' isn't a name in the left-hand side of this rule active pair.\n", ptr->left->left->sym);
+      return 0;
+    } else {
+      printf("Error: Something wrong at the argument %d in the left-hand side of this rule active pair. \n", i+1);
+      ast_puts(ptr->left); puts("");
+      return 0;
+    }
+    
     CmEnv_set_symbol_as_meta(ptr->left->left->sym, VM_OFFSET_METAVAR_L(i), type);
     
     ptr = ast_getTail(ptr);
   }
+  return 1;
 }
-void set_metaR(Ast *ast) {
+
+int set_metaR(Ast *ast) {
   Ast *ptr;
   NB_TYPE type;
   
   ptr = ast->right;
   for (int i=0; i<MAX_PORT; i++) {
     if (ptr == NULL) break;
+
     if (ptr->left->id == AST_NAME) {
       type = NB_META_R;
-    } else {
+    } else if (ptr->left->id == AST_INTVAR) {
       type = NB_INTVAR;
-    }      
+    } else if (ptr->left->id == AST_AGENT) {
+      printf("Error: `%s' isn't a name in the right-hand side of this rule active pair.\n", ptr->left->left->sym);
+      return 0;
+    } else {
+      printf("Error: Something wrong at the argument %d in the right-hand side of this rule active pair. \n", i+1);
+      ast_puts(ptr->left); puts("");
+      return 0;
+    }
+    
     CmEnv_set_symbol_as_meta(ptr->left->left->sym, VM_OFFSET_METAVAR_R(i), type);    
     ptr = ast_getTail(ptr);
   }
+
+  return 1;
 }
 
 void set_metaL_as_IntName(Ast *ast) {
@@ -7179,6 +7244,8 @@ int make_rule_oneway(Ast *ast) {
 #endif
 
 
+  // Check if every argument is a kind of names.
+  
 
   // Decide IDs for rule agents.
   // Note that agentR should be checked earlier
@@ -7272,14 +7339,18 @@ int make_rule_oneway(Ast *ast) {
     set_metaL_as_IntName(ruleAgent_L);
     CmEnv.annotateL = ANNOTATE_INT_MODIFIER; // to prevent putting Free_L
   } else {
-    set_metaL(ruleAgent_L);
+    if (!set_metaL(ruleAgent_L)) {
+      return 0;
+    }
   }
   
   if (idR == ID_INT) {
     set_metaR_as_IntName(ruleAgent_R);
     CmEnv.annotateR = ANNOTATE_INT_MODIFIER;  // to prevent putting Free_R
   } else {
-    set_metaR(ruleAgent_R);
+    if (!set_metaR(ruleAgent_R)) {
+      return 0;
+    }
   }
   
   CmEnv.idL = idL;
@@ -7633,7 +7704,7 @@ int Count_cnct_indirect_op = 0;
   if ((!IS_FIXNUM(a1)) && (IS_NAMEID(BASIC(a1)->id)) &&			\
       (NAME(a1)->port == (VALUE)NULL)) {				\
     NAME(a1)->port = a2;						\
-  } else if ((!IS_FIXNUM(a2)) && (BASIC(a2)->id == ID_NAME) &&		\
+  } else if ((!IS_FIXNUM(a2)) && (IS_LOCAL_NAMEID(BASIC(a2)->id)) &&	\
 	     (NAME(a2)->port == (VALUE)NULL)) {				\
     NAME(a2)->port = a1;						\
   } else {								\
@@ -9029,7 +9100,7 @@ loop_a2IsAgent:
 loop_agent_a1_a2_this_order:
 
 	
-	// suppose that a2 is a constructor
+	// suppose that a2 is a constructor (So, ID(a1) >= ID(a2))
 	switch (BASIC(a1)->id) {
 	  
 	case ID_ERASER:
@@ -9154,8 +9225,10 @@ loop_agent_a1_a2_this_order:
 
 	    case 2:
 	      {
-		// Dup(p0,p1) >< Cons(int i, a2p1) =>
-		//   p0~Cons(i,w), p1~(*R)Cons(i,ww), (*L)Dup(w,ww)~a2p1;
+		// Here we only manage the following rule,
+		// and the other will be done at the next case:
+		//   Dup(p0,p1) >< Cons(int i, a2p1) =>
+		//     p0~Cons(i,w), p1~(*R)Cons(i,ww), (*L)Dup(w,ww)~a2p1;
 
 		VALUE a2p0 = AGENT(a2)->port[0];
 		if (IS_FIXNUM(a2p0)) {
@@ -9607,8 +9680,105 @@ loop_agent_a1_a2_this_order:
 	    }
 	  }
 	  break; // end ID_MERGER_P
-	  
+
+	case ID_PERCENT:
+
+	  if (BASIC(a2)->id == ID_TUPLE2) {
 	    
+	    // %foo >< @(args, s)
+	    int percented_id = FIX2INT(AGENT(a1)->port[0]);
+	    int arity = IdTable_get_arity(percented_id);
+
+	    if (arity < 1) {
+	      printf("Rumtime error: `%s' has no arity.\n",
+		     IdTable_get_name(percented_id));
+	      puts_term(a1);
+	      printf("~");
+	      puts_term(a2);
+	      puts("");
+
+	      if (yyin != stdin) exit(-1);
+#ifndef THREAD
+	      mark_and_sweep();
+	      return;
+#else
+	      printf("Retrieve is not supported in the multi-threaded version.\n");
+	      exit(-1);
+#endif
+	    }
+
+	    COUNTUP_INTERACTION(vm);
+	    
+	    switch (arity) {
+	    case 1:
+	      {
+		BASIC(a2)->id = percented_id;
+		free_Agent(a1);
+		a1 = a2;
+		a2 = AGENT(a2)->port[1];
+		goto loop;
+	      }
+
+	    default:
+	      {
+		VALUE a2p0 = AGENT(a2)->port[0];
+		VALUE a2p0_id = BASIC(a2p0)->id;
+		if ((IS_AGENTID(a2p0_id))
+		    && (IS_TUPLEID(a2p0_id))
+		    && (GET_TUPLEARITY(a2p0_id) == arity)) {
+		  //    %foo2 ~ ((p1,p2),q) --> foo2(p1,p2)~q
+		  BASIC(a2p0)->id = percented_id;
+		  free_Agent(a1);
+		  VALUE preserved_q = AGENT(a2)->port[1];
+		  free_Agent(a2);
+
+		  a1 = a2p0;
+		  a2 = preserved_q;
+		  goto loop;
+		  
+		} else {
+		  //    %foo2 ~ (p,q) --> foo2(p1,p2)~q, (p1,p2)~p
+		  VALUE preserved_p = AGENT(a2)->port[0];
+		  VALUE preserved_q = AGENT(a2)->port[0];
+		  VALUE tuple = a2;
+		  BASIC(a1)->id = percented_id;
+		  for(int i=0; i<arity; i++) {
+		    VALUE new_name = make_Name(vm);
+		    AGENT(a1)->port[i] = new_name;
+		    AGENT(tuple)->port[i] = new_name;		    
+		  }
+		  PUSH(vm, tuple, preserved_p);
+
+		  a2 = preserved_q;
+		  goto loop;
+		}
+	      }
+	      
+	    }
+
+	    
+	  }
+	  break; // end ID_PERCENT
+
+	  /*	  
+	case ID_LAM:
+	  if (BASIC(a2)->id == ID_APP) {
+	    // Lam(x,t) ~ @(r,s) => r~t, x~s;
+	    
+	    COUNTUP_INTERACTION(vm);
+
+	    PUSH(vm, AGENT(a2)->port[0], AGENT(a1)->port[1]);
+	    VALUE a1p0 = AGENT(a1)->port[0];
+	    VALUE a2p1 = AGENT(a2)->port[1];
+	    free_Agent2(a1,a2);
+	    a1 = a1p0;
+	    a2 = a2p1;
+	    goto loop;
+	    
+	  }
+	  break; // end ID_LAM
+	  */
+	  
 	} // end switch(BASIC(a1)->id)
 
 
@@ -9630,6 +9800,8 @@ loop_agent_a1_a2_this_order:
 	puts_term(a2);
 	puts("");
 
+	//	printf("a1.id = %d, a2.id=%d\n", BASIC(a1)->id, BASIC(a2)->id);
+	
 	if (yyin != stdin) exit(-1);
 
 #ifndef THREAD
@@ -9943,13 +10115,13 @@ int exec(Ast *at) {
   CmEnv_retrieve_MKGNAME();
   CmEnv_generate_VMCode(code);
 
-  //    // for debug
-  //    CmEnv_retrieve_MKGNAME();
-  //    IMCode_puts(0); //exit(1);
-  //  
-  //    int codenum = CmEnv_generate_VMCode(code);
-  //    VMCode_puts(code, codenum-2); //exit(1);
-  //    // end for debug
+  //      // for debug
+  //      CmEnv_retrieve_MKGNAME();
+  //      IMCode_puts(0); //exit(1);
+  //    
+  //      int codenum = CmEnv_generate_VMCode(code);
+  //      VMCode_puts(code, codenum-2); //exit(1);
+  //      // end for debug
   
 #ifdef COUNT_MKAGENT
   NumberOfMkAgent=0;
@@ -10368,7 +10540,7 @@ int main(int argc, char *argv[])
 	printf("Inpla version %s\n", VERSION);	  
 	puts("Usage: inpla [options]\n");
 	puts("Options:");
-	printf(" -f <filename>    Set input file name                     (Defalut:      STDIN)\n");
+	printf(" -f <filename>    Set input file name                     (Default:      STDIN)\n");
 	printf(" -d <Name>=<val>  Bind <val> to <Name>\n");
 
 

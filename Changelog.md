@@ -1,4 +1,44 @@
 # Change log
+### v0.9.0 (released on 25 July 2022)
+#### New Features
+
+* **New abbreviation**:
+  An abbreviation of an agent `foo` with `%foo` will be re-written internally depending on the arity of the `foo`:
+  ```
+  The abbreviation form is decided according to the arity of a given agent to the %.
+  %foo1  === (r, foo1(r))
+  %foo2  === ((r,x), foo2(r,x))
+  %foo3  === ((r,x,y), foo3(r,x,y))
+  %foo4  === ((r,x,y,z), foo4(r,x,y,z))
+  %foo5  === ((r,x,y,z,zz), foo5(r,x,y,z,zz))
+    where r,x,y,z,zz are fresh names.
+  ```
+  For instance, when `foo` is an agent whose arity is 5, `%foo` can make the following computation simply:
+  ```
+  %foo ~ @((result,1,2,3,4), 5) -->* foo(result,1,2,3,4)~5.
+  ```
+
+* **Why we need those?**: Map and reduce computation can be realised easily because we can give the `%foo` to the map as a seed function operation. We suppose that an incrementor agent `inc` is defined as follows:
+  ```
+  inc(r)><(int i) => r~(i+1);
+  ```
+  By giving `%inc` to a `map` agent (explained later), each list element will be increased by 1:
+  ```
+  >>> map(result, %inc) ~ [1,2,3];
+  >>> result;
+  [2,3,4]
+  >>>
+  ```
+  The map is defined as follows. It looks complicated? No problem! It is OK if we can use the `map`:
+  ```
+  map(result, f) >< []   => result~[], Eraser~f;
+  map(result, f) >< x:xs => Dup(f1,f2)~f,
+                            result~w:ws,
+                            f1 ~ (w, x), map(ws, f2)~xs;
+  ```
+  In future, the map would be prepared as built-in as well. With respect to the reduce functions `foldr` and `foldl`, see [Gentle_introduction_Inpla.md](Gentle_introduction_Inpla.md)!
+
+
 ### v0.8.3-1 minor update (released on 21 July 2022)
 #### Polished
 * **Built-in agent** `Dup`: it can duplicate attributes also immediately. For instance, with respect to `Cons(int, xs)`, it performs as follows:

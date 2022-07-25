@@ -24,10 +24,11 @@ typedef enum {
   // for built-in lists
   AST_OPCONS, AST_NIL,
 
-  // for built-in agents
-  
+  // for built-in agents  
   AST_RAND, AST_SRAND,
 
+  // for PERCENT
+  AST_PERCENT,
 } AST_ID;
 
 

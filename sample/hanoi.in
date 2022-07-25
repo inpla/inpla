@@ -4,8 +4,11 @@
 hanoi(return, source, target, aux) >< (int n)
 | n==0 => 
           // Erase the source, target and aux
-          Eraser~source, Eraser~target, Eraser~aux,
-	  // result
+          source ~ Eraser,
+          target ~ Eraser,
+          aux ~ Eraser,
+
+          // result
           return~[]
 
 | _    => 

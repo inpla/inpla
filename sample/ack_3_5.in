@@ -20,9 +20,13 @@ ack(ret, int m) >< (int n)
 | n==0 => ack(ret, m-1)~1
 | _ => ack(cnt, m)~(n-1), ack(ret, m-1)~cnt;
 
-ackMain(ret)><(int m, int n) => ack(ret,n)~m;
+ackMain(ret)><(int m, int n) => ack(ret,m)~n;
 
-ackMain(ret)~(3,5);
+
+// main
+const M=3;
+const N=5;
+ackMain(ret)~(M,N);
 ret;
 free ret;
 
