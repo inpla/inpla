@@ -22,7 +22,7 @@
   ```
   inc(r)><(int i) => r~(i+1);
   ```
-  By giving `%inc` to a `map` agent (explained later), each element of a list will be counted up:
+  By giving `%inc` to a `map` agent (explained later), each list element will be increased by 1:
   ```
   >>> map(result, %inc) ~ [1,2,3];
   >>> result;
