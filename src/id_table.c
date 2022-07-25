@@ -11,16 +11,16 @@ static int NextAgentId, NextGnameId;
 void IdTable_init() {
 
   int i;
-  NextAgentId = START_ID_OF_AGENT -1;
+  NextAgentId = START_ID_OF_USER_AGENT -1;
   NextGnameId = START_ID_OF_GNAME -1;
   // 0 : ID_INT(used in expressions)
-  // 1 .. START_ID_OF_AGENT-1 : built-in agents
-  // START_IS_OF_AGENT .. NUM_AGENTS-1: user defined agents
+  // 1 .. START_ID_OF_USER_AGENT-1 : built-in agents
+  // START_ID_OF_USER_AGENT .. NUM_AGENTS-1: user defined agents
   // NUM_AGENTS(=ID_NAME) .. : names
 
   for (i=0; i<=END_ID_OF_AGENT; i++) {
     IdTable[i].name = NULL;
-    IdTable[i].aux.arity = -1;
+    IdTable[i].aux.arity = -1;   // means ERROR
   }
   for (i=START_ID_OF_GNAME; i<IDTABLE_SIZE; i++) {
     IdTable[i].name = NULL;
@@ -51,6 +51,8 @@ void IdTable_init() {
   IdTable[ID_DIV2].aux.arity = 2;
   IdTable[ID_MOD].aux.arity = 2;
   IdTable[ID_MOD2].aux.arity = 2;
+  IdTable[ID_PERCENT].aux.arity = 1;
+
   IdTable[ID_ERASER].aux.arity = 0;
   IdTable[ID_DUP].aux.arity = 2;
 
@@ -79,6 +81,7 @@ void IdTable_init() {
   IdTable[ID_DIV2].name = "_Div";
   IdTable[ID_MOD].name = "Mod";
   IdTable[ID_MOD2].name = "_Mod";
+  IdTable[ID_PERCENT].name = "%";
 
   IdTable[ID_ERASER].name = "Eraser";
   IdTable[ID_DUP].name = "Dup";
@@ -92,7 +95,7 @@ int IdTable_getid_builtin_funcAgent(Ast *agent) {
   //  puts("!!");
   int id = -1;
 
-  if (agent->id != AST_AGENT) {
+  if ((agent->id != AST_AGENT) && (agent->id != AST_PERCENT)) {
     return -1;
   }
   
@@ -175,9 +178,9 @@ VALUE IdTable_get_heap(int id)
 
 int IdTable_new_agentid() {
   NextAgentId++;
-  if (NextAgentId > ID_NAME) {
-    printf("ERROR: The number of agents exceeded the size (%d) for agents in IDTABLE\n",
-	 ID_NAME);
+  if (NextAgentId > END_ID_OF_USER_AGENT) {
+    printf("ERROR: The number of agents exceeded the limitation size (%d).\n",
+	 END_ID_OF_USER_AGENT);
     exit(-1);
   }
   return(NextAgentId);

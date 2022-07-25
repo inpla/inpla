@@ -270,7 +270,8 @@ void ast_puts(Ast *p) {
     
     "CONS", "NIL", 
     "RAND", "SRAND", 
-
+    "PERCENT",
+    
     // default
     "UNDEFINED",
   };

@@ -48,13 +48,21 @@
 #define ID_DIV2     25
 #define ID_MOD      26
 #define ID_MOD2     27
-#define ID_ERASER   28
-#define ID_DUP      29
-#define END_ID_OF_BUILTIN_OP_AGENT 29
+#define ID_PERCENT  28
+#define END_ID_OF_BUILTIN_OP_AGENT 28
 
- 
-#define START_ID_OF_AGENT END_ID_OF_BUILTIN_OP_AGENT+1
+// ID_ERASER and ID_DUP was put as 254, 255
+// because these IDs are wanted larger like ID_DUP > any_agent.id
+
+
+#define START_ID_OF_USER_AGENT END_ID_OF_BUILTIN_OP_AGENT+1
 #define END_ID_OF_AGENT 255
+
+#define END_ID_OF_USER_AGENT END_ID_OF_AGENT-2
+#define ID_ERASER END_ID_OF_AGENT-1
+#define ID_DUP END_ID_OF_AGENT
+
+
 #define NUM_AGENTS END_ID_OF_AGENT+1  // 256
 
 #define ID_NAME NUM_AGENTS // starts from 256 (NUM_AGENTS)
@@ -64,15 +72,15 @@
 #define NUM_GNAMES NUM_AGENTS // 256: the same as the size of AGENT
 
 
-//#define IS_AGENTID(a) (a < ID_NAME)
+//#define IS_AGENTID(a) (a <= ID_END_ID_OF_AGENT)
 #define IS_AGENTID(a) (!(a & 0x100)) // less than 256
 
 
-#define IS_NAMEID(a) (a >= ID_NAME)
-#define IS_GNAMEID(a) (a > ID_NAME)
-#define IS_LOCAL_NAMEID(a) (a == ID_NAME)
-#define IS_BUILTIN_AGENTID(a) (a <= END_ID_OF_BUILTIN_AGENT)
-#define SET_LOCAL_NAMEID(a) (a = ID_NAME)
+#define IS_NAMEID(a) ((a) >= ID_NAME)
+#define IS_GNAMEID(a) ((a) > ID_NAME)
+#define IS_LOCAL_NAMEID(a) ((a) == ID_NAME)
+//#define IS_BUILTIN_AGENTID(a) (a <= END_ID_OF_BUILTIN_AGENT)
+#define SET_LOCAL_NAMEID(a) ((a) = ID_NAME)
 
 /**************************************
  TABLE for SYMBOLS

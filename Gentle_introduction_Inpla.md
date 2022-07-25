@@ -15,6 +15,7 @@
 * [Advanced topics](#advanced-topics)
   - [Reuse annotations](#reuse-annotations)
   - [built-in agents more](#built-in-agents-more)
+  - [Map and reduce functions](#map-and-reduce-functions)
   - [Weak reduction strategy](#weak-reduction-strategy)
 
 
@@ -144,7 +145,7 @@ Here, constructors are agents `Z`, `S(x)`, and a destructor is `inc(r)` which ha
 * In the case of `S(x)`, the `r` is connected to `S(S(x))`. 
 
 
- This is written as the followint rules:
+ This is written as the following rules:
 ```
 inc(r) >< Z => r~S(Z);
 inc(r) >< S(x) => r~S(S(x));
@@ -605,10 +606,10 @@ Inpla has the following macro:
   Usage: inpla [options]
   
   Options:
-   -f <filename>    Set input file name                     (Defalut:      STDIN)
+   -f <filename>    Set input file name                     (Default:      STDIN)
    -d <Name>=<val>  Bind <val> to <Name>
-   -Xms <num>       Set initial heap size to 2^<num>        (Defalut: 12 (=4096))
-   -Xmt <num>       Set multiple heap increment to 2^<num>  (Defalut:  3 (=   8))
+   -Xms <num>       Set initial heap size to 2^<num>        (Default: 12 (=4096))
+   -Xmt <num>       Set multiple heap increment to 2^<num>  (Default:  3 (=   8))
                       0: the same size heap is inserted when it runs up.
                       1: the twice (=2^1) size heap is inserted.
    -Xes <num>       Set initial equation stack size         (Default:        256)
@@ -638,7 +639,7 @@ In interaction rule definitions, we can specify how active pair agents are reuse
 
 
 ### Built-in agents more
-* **Merger agent** `Marger`: 
+* **Merger agent** `Merger`: 
 it merges two lists into one. Merger agent has two principal ports that can take the two distinct lists. Interactions with the lists are performed as soon as one of the principal ports is connected one of the lists. So, the merged result is non-deterministically decided, especially in multi-threaded execution.
   
   ![merger](pic/merger.png)
@@ -661,6 +662,96 @@ it merges two lists into one. Merger agent has two principal ports that can take
   
   >>> 
   ```
+
+### Map and reduce functions
+* **Lambda and Application like computation**: We can leave an interaction later by using a couple of Tuple2 agents. For instance, an destructor agent `foo` whose arity is 1 can be abstracted as `(r, foo(r))`, and we can give a constructor `s` later:
+  ```
+  (r, foo(r)) >< (result, s) -->* foo(result)~s.
+
+  // where the following rule has been defined as a built-in:
+  // (a1,a2) ><> (b1,b2) => a1~b1, a2~b2.   
+  ```
+  So, the map function can be realised:
+  ```
+  map(result, f) >< []   => result~[], Eraser~f;
+  map(result, f) >< x:xs => Dup(f1,f2)~f, 
+                            result~w:ws, 
+                            f1 ~ (w, x), map(ws, f2)~xs;
+  ```
+  Actually, by using the incrementor `inc` we can add one to each list element:
+  ```
+  inc(r)><(int i) => r~(i+1);
+  map( result, (r,inc(r)) ) ~ [10,20,30]
+   -->   Dup(f1,f2)~(r,inc(r)), result~w:ws, f1~(w,10), map(ws,f2)~[20,30]
+   -->*  result~w:ws, (r1,inc(r1))~(w,10), map( ws, (r2,inc(r2)) )~[20,30]
+   -->*  result~w:ws, inc(w)~10, map( ws, (r2,inc(r2)) )~[20,30]
+   -->   result~w:ws, w~11, map(ws, (r2,inc(r2)) )~[20,30]
+   -->   result~11:ws, map(ws, (r2,inc(r2)) )~[20,30]
+   -->*  result~11:21:ws, map(ws, (r3,inc(r3)) )~[30]
+   -->*  result~11:21:31:ws, map(ws, (r4,inc(r4)) )~[]
+   -->*  result~[11,21,31];
+  ```
+  The Tuple2 agent seems a little complicated, so we prepare an abbreviation `%`. In the following, `foo1`, `foo2`, `foo3`, ... are any agents whose arity is 1, 2, 3, ..., respectively.
+  ```
+  The abbreviation form is decided according to the arity of a given agent to the %.
+  %foo1  === (r, foo1(r))
+  %foo2  === ((r,x), foo2(r,x))
+  %foo3  === ((r,x,y), foo3(r,x,y))
+  %foo4  === ((r,x,y,z), foo4(r,x,y,z))
+  %foo5  === ((r,x,y,z,zz), foo5(r,x,y,z,zz))
+    where r,x,y,z,zz are fresh names.
+  ```
+  For instance, by using %five we can write the following computation simply:
+  ```
+  %five ~ ((result,1,2,3,4), 5) -->* five(result,1,2,3,4)~5.
+  ```
+  This is quite useful for the map application. The `inc` application is written simply as follows:
+  ```
+  >>> map(result, %inc) ~ [1,2,3];
+  >>> result;
+  [2,3,4]
+  >>>
+  ```
+  Wonderful!
+
+  The same as the map operation, we can define foldr and foldl as follows (Do not worry if it looks complicated. It is OK if we can just use these!):
+  ```
+  // --------------------------------------------------------------------
+  // foldr f v [x0, x1, ..., xn] = f(x0, f(x1, ... f(xn-1, f(xn, v))...))
+  // --------------------------------------------------------------------
+  foldr(r, f, v) >< x:xs => foldr_Cons(r,f,v,x)~xs;
+  foldr_Cons(r,f,v,x) >< [] => f~((r,x),v);
+  foldr_Cons(r,f,v,x) >< y:ys => 
+           Dup(f1,f2)~f,
+           foldr(w, f2, v)~y:ys,
+           f1~((r,x),w);
+  
+  // --------------------------------------------------------------------
+  // foldl f v [x0, x1, ..., xn] = f( ... f(f(v,x0),x1) ..., xn)
+  // --------------------------------------------------------------------
+  foldl(r, f, v) >< x:xs => foldl_Cons(r,f,v,x)~xs;    
+  foldl_Cons(r,f,v,x) >< [] => f~((r,v),x);
+  foldl_Cons(r,f,v,x) >< y:ys => 
+           Dup(f1,f2)~f,
+           f1~((w,v),x),
+           foldl(r, f2, w)~y:ys;
+  ```
+  These can be used quite simply:
+  ```
+  >>> foldr(r, %Sub, 1) ~ [30,20,10];  // 30-(20-(10-1)) = 30-(20-9) = 30-11 = 19
+  (17 interactions, 0.00 sec)
+  >>> r; free r;
+  19
+  >>> foldl(r, %Sub, 10) ~ [1,2,3]; //  ((10-1)-2)-3 = 4
+  (17 interactions, 0.00 sec)
+  >>> r; free r;
+  4
+  >>>
+  ```
+
+
+
+
 
 ### Weak reduction strategy
 
