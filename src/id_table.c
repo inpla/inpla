@@ -39,6 +39,8 @@ void IdTable_init() {
   IdTable[ID_INTAGENT].aux.arity = 1;
 
   IdTable[ID_APPEND].aux.arity = 2;
+  IdTable[ID_ZIP].aux.arity = 2;
+  IdTable[ID_ZIPC].aux.arity = 2;
   IdTable[ID_MERGER].aux.arity = 1;
   IdTable[ID_MERGER_P].aux.arity = 1;
   IdTable[ID_ADD].aux.arity = 2;
@@ -69,6 +71,8 @@ void IdTable_init() {
   IdTable[ID_INTAGENT].name = "Int";
   
   IdTable[ID_APPEND].name = "Append";
+  IdTable[ID_ZIP].name = "Zip";
+  IdTable[ID_ZIPC].name = "ZipC";
   IdTable[ID_MERGER].name = "Merger";
   IdTable[ID_MERGER_P].name = "_MergerP";
   IdTable[ID_ADD].name = "Add";
@@ -111,6 +115,8 @@ int IdTable_getid_builtin_funcAgent(Ast *agent) {
     id = ID_MOD;      
   } else if (strcmp((char *)agent->left->sym, "Append") == 0) {
     id = ID_APPEND;      
+  } else if (strcmp((char *)agent->left->sym, "Zip") == 0) {
+    id = ID_ZIP;      
   } else if (strcmp((char *)agent->left->sym, "Int") == 0) {
     id = ID_INTAGENT;
   } else if (strcmp((char *)agent->left->sym, "Merger") == 0) {

@@ -36,20 +36,22 @@
 
 #define START_ID_OF_BUILTIN_OP_AGENT 15
 #define ID_APPEND   15
-#define ID_MERGER   16
-#define ID_MERGER_P 17
-#define ID_ADD      18
-#define ID_ADD2     19
-#define ID_SUB      20
-#define ID_SUB2     21
-#define ID_MUL      22
-#define ID_MUL2     23
-#define ID_DIV      24
-#define ID_DIV2     25
-#define ID_MOD      26
-#define ID_MOD2     27
-#define ID_PERCENT  28
-#define END_ID_OF_BUILTIN_OP_AGENT 28
+#define ID_ZIP      16
+#define ID_ZIPC     17
+#define ID_MERGER   18
+#define ID_MERGER_P 19
+#define ID_ADD      20
+#define ID_ADD2     21
+#define ID_SUB      22
+#define ID_SUB2     23
+#define ID_MUL      24
+#define ID_MUL2     25
+#define ID_DIV      26
+#define ID_DIV2     27
+#define ID_MOD      28
+#define ID_MOD2     29
+#define ID_PERCENT  30
+#define END_ID_OF_BUILTIN_OP_AGENT 30
 
 // ID_ERASER and ID_DUP was put as 254, 255
 // because these IDs are wanted larger like ID_DUP > any_agent.id

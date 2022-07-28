@@ -3,7 +3,11 @@
 * [Nets: terms and connections](#nets-terms-and-connections)
 * [Interaction rules: rewriting rules for nets](#interaction-rules-rewriting-rules-for-nets)
   - [Example: Operations on unary natural numbers](#example-operations-on-unary-natural-numbers)
+  - [Abbreviation notation `<<`](#abbreviation-notation-)
 * [Built-in Agents](#built-in-agents)
+  - [Tuples](#tuples)
+  - [Lists](#lists)
+  - [Built-in rules for tuples and lists](#built-in-rules-for-tuples-and-lists)
 * [Attributes (integers)](#attributes-integers)
   - [Built-in anonymous agent for attributes](#built-in-anonymous-agent-for-attributes)
   - [Arithmetic expressions on attributes](#arithmetic-expressions-on-attributes)
@@ -252,24 +256,13 @@ Inpla has built-in agents:
 * `Nil`, `Cons(x,xs)`, written as  `[]` and `x:xs`, respectively. 
 * A nested `Cons` terminated with `Nil` are written as a list notation using brackets `[` and `]`.  For instance,  `x1 : x2: x3 : Nil`  is written as  `[x1,x2,x3]` .  
 
-#### Built-in rules for tuples and lists
+### Built-in rules for tuples and lists
 
 There are built-in rules for the same built-in agents that each element is matched and connected such that:
 
 ```
 (x1,x2)><(y1,y2) => x1~y1, x2~y2 // This is already defined as a built-in rule.
 ```
-
-We also have a built-in agent `Append` to append two lists as shown in the following pseudo code:
-
-```
-Append(r, listB) ~ listA --> r ~ (listA ++ listB)  // pseudo code
-```
-The order `listB` and `listA` seems something strange, so a special abbreviation notation is prepared:
-```
-r << Append(listA, listB)   == for ==  Append(r, listB)~listA
-```
-
 
 * Examples of the built-in rules:
 
@@ -291,6 +284,20 @@ r << Append(listA, listB)   == for ==  Append(r, listB)~listA
   >>>
   ```
 
+#### Append a list to the end of another list
+We also have a built-in agent `Append` to append a list `listB` to the end of another list `listA` as shown in the following pseudo code:
+
+```
+Append(r, listB) ~ listA --> r ~ (listA ++ listB)  // pseudo code
+```
+The order `listB` and `listA` seems something strange, so a special abbreviation notation is prepared:
+```
+r << Append(listA, listB)   == for ==  Append(r, listB)~listA
+```
+
+
+
+
   ```
   >>> Append(r, [Z, S(Z)]) ~ [A,B,C];
   (4 interactions, 0.00 sec)
@@ -310,6 +317,23 @@ r << Append(listA, listB)   == for ==  Append(r, listB)~listA
   >>>
   ```
 
+#### `Zip`: It makes two lists into a list of pairs
+A built-in agent `Zip` takes two lists and returns a list whose elements are pairs of the given two lists elements such that:
+```
+Zip(r,[1,2,...])~[10,20,...] -->* r~[(1,10),(2,20),...].
+```
+The length of the result will be the same to the shorter one in the given lists:
+```
+Zip(r,[1,2])~[10,20,30,...] -->* r~[(1,10),(2,20)].
+```
+We can write it with the abbreviation as well:
+```
+>>> r << Zip([1,2,3], [10,20,30]);
+(8 interactions, 0.00 sec)
+>>> r; free r;
+[(1,10),(2,20),(3,30)]
+>>>
+```
 
 
 ### Eraser
