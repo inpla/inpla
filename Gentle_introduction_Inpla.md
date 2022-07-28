@@ -3,7 +3,11 @@
 * [Nets: terms and connections](#nets-terms-and-connections)
 * [Interaction rules: rewriting rules for nets](#interaction-rules-rewriting-rules-for-nets)
   - [Example: Operations on unary natural numbers](#example-operations-on-unary-natural-numbers)
+  - [Abbreviation notation `<<`](#abbreviation-notation-<<)
 * [Built-in Agents](#built-in-agents)
+  - [Tuples](#tuples)
+  - [Lists](#lists)
+  - [Built-in rules for tuples and lists](#built-in-rules-for-tuples-and-lists)
 * [Attributes (integers)](#attributes-integers)
   - [Built-in anonymous agent for attributes](#built-in-anonymous-agent-for-attributes)
   - [Arithmetic expressions on attributes](#arithmetic-expressions-on-attributes)
@@ -314,7 +318,7 @@ r << Append(listA, listB)   == for ==  Append(r, listB)~listA
   ```
 
 #### `Zip`: It makes two lists into a list of pairs
-A built-in agent `Zip` takes two lists and returns a list whose elements are pairs of the given two lists elements such as:
+A built-in agent `Zip` takes two lists and returns a list whose elements are pairs of the given two lists elements such that:
 ```
 Zip(r,[1,2,...])~[10,20,...] -->* r~[(1,10),(2,20),...].
 ```
