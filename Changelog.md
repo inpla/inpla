@@ -1,4 +1,24 @@
 # Change log
+
+### v0.9.1 (released on 28 July 2022)
+#### New Features
+* **A built-in agent** `Zip`: it takes two lists and returns a list whose elements are pairs of the given two lists such as:
+  ```
+  Zip(r,[1,2,...])~[10,20,...] -->* r~[(1,10),(2,20),...].
+  ```
+  The length of the result will be the same to the shorter one in the given lists:
+  ```
+  Zip(r,[1,2])~[10,20,30,...] -->* r~[(1,10),(2,20)].
+  ```
+  We can write it with the abbreviation as well:
+  ```
+  >>> r << Zip([1,2,3], [10,20,30]);
+  (8 interactions, 0.00 sec)
+  >>> r; free r;
+  [(1,10),(2,20),(3,30)]
+  >>>
+  ```
+
 ### v0.9.0 (released on 25 July 2022)
 #### New Features
 

@@ -22,8 +22,8 @@
 
 // ----------------------------------------------
   
-#define VERSION "0.9.0"
-#define BUILT_DATE  "25 July 2022"
+#define VERSION "0.9.1"
+#define BUILT_DATE  "28 July 2022"
 
 // ------------------------------------------------------------------
 
@@ -9526,7 +9526,7 @@ loop_agent_a1_a2_this_order:
 	    
 	  case ID_CONS:
 	    {
-	      // App(r,a) >< [x|xs] => r~(*R)[x|w], (*L)App(w,a)~xs;
+	      // App(r,a) >< x:xs => r~(*R)x:w, (*L)App(w,a)~xs;
 	      COUNTUP_INTERACTION(vm);
 	      
 	      VALUE a1p0 = AGENT(a1)->port[0];
@@ -9544,6 +9544,96 @@ loop_agent_a1_a2_this_order:
 	  }
 	  
 	  break; // end ID_APPEND
+	  
+
+	case ID_ZIP:
+	  switch (BASIC(a2)->id) {
+	  case ID_NIL:
+	    {
+	      // Zip(r, blist) >< [] => r~[], blist~Eraser;
+	      COUNTUP_INTERACTION(vm);
+	      
+	      VALUE a1p0 = AGENT(a1)->port[0];
+	      VALUE a1p1 = AGENT(a1)->port[1];
+
+	      // Eraser
+	      BASIC(a1)->id = ID_ERASER;
+	      PUSH(vm, a1p1, a1);
+	      
+	      a1=a1p0;
+	      goto loop;
+	    }
+	    
+	  case ID_CONS:
+	    {
+	      // Zip(r, blist) >< x:xs => Zip_Cons(r,x:xs)~blist;
+	      COUNTUP_INTERACTION(vm);
+	      
+	      VALUE a1p1 = AGENT(a1)->port[1];
+
+	      BASIC(a1)->id = ID_ZIPC;
+	      AGENT(a1)->port[1] = a2;
+	      a2 = a1p1;
+	      goto loop;
+	    }
+	  }
+	  
+	  break; // end ID_ZIP
+
+	case ID_ZIPC:
+	  switch (BASIC(a2)->id) {
+	  case ID_NIL:
+	    {
+	      // Zip_Cons(r, x:xs)><[] => r~[], x:xs~Eraser;
+	      COUNTUP_INTERACTION(vm);
+	      
+	      VALUE a1p0 = AGENT(a1)->port[0];
+	      VALUE a1p1 = AGENT(a1)->port[1];
+
+	      // Eraser
+	      BASIC(a1)->id = ID_ERASER;
+	      PUSH(vm, a1p1, a1);
+	      
+	      a1=a1p0;
+	      goto loop;
+	    }
+	    
+	  case ID_CONS:
+	    {
+	      // Zip_Cons(r, (*1)x:xs) >< y:ys =>
+	      //    r~(*R)((*1)(y,x):ws), (*L)Zip(ws,ys)~xs;
+	      COUNTUP_INTERACTION(vm);
+	      
+	      VALUE r = AGENT(a1)->port[0];
+	      VALUE inner_cons = AGENT(a1)->port[1];
+	      VALUE xs = AGENT(inner_cons)->port[1];
+	      VALUE ys = AGENT(a2)->port[1];
+	      
+	      // (*1)(y,x)
+	      BASIC(inner_cons)->id = ID_TUPLE2;
+	      VALUE x = AGENT(inner_cons)->port[0];
+	      VALUE y = AGENT(a2)->port[0];
+	      AGENT(inner_cons)->port[0] = y;
+	      AGENT(inner_cons)->port[1] = x;
+
+	      // (*R)((*1)(y,x):ws)
+	      VALUE ws = make_Name(vm);
+	      AGENT(a2)->port[0] = inner_cons;
+	      AGENT(a2)->port[1] = ws;
+
+	      PUSH(vm, r, a2);
+	      
+	      // (*L)Zip(ws,ys)~xs;
+	      BASIC(a1)->id = ID_ZIP;
+	      AGENT(a1)->port[0] = ws;
+	      AGENT(a1)->port[1] = ys;
+	      a2 = xs;
+	      goto loop;
+	    }
+	  }
+	  
+	  break; // end ID_ZIPC
+
 	  
 	  
 	case ID_MERGER:
