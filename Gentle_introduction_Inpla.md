@@ -3,7 +3,7 @@
 * [Nets: terms and connections](#nets-terms-and-connections)
 * [Interaction rules: rewriting rules for nets](#interaction-rules-rewriting-rules-for-nets)
   - [Example: Operations on unary natural numbers](#example-operations-on-unary-natural-numbers)
-  - [Abbreviation notation `<<`](#abbreviation-notation-<<)
+  - [Abbreviation notation `<<`](#abbreviation-notation-)
 * [Built-in Agents](#built-in-agents)
   - [Tuples](#tuples)
   - [Lists](#lists)
