@@ -313,8 +313,8 @@ r << Append(listA, listB)   == for ==  Append(r, listB)~listA
   >>>
   ```
 
-#### `Zip`: it makes two lists into a list of pairs
-A built-in agent `Zip` takes two lists and returns a list whose elements are pairs of the given two lists such as:
+#### `Zip`: It makes two lists into a list of pairs
+A built-in agent `Zip` takes two lists and returns a list whose elements are pairs of the given two lists elements such as:
 ```
 Zip(r,[1,2,...])~[10,20,...] -->* r~[(1,10),(2,20),...].
 ```

@@ -2,7 +2,7 @@
 
 ### v0.9.1 (released on 28 July 2022)
 #### New Features
-* **A built-in agent** `Zip`: it takes two lists and returns a list whose elements are pairs of the given two lists such as:
+* **A built-in agent** `Zip`: It takes two lists and returns a list whose elements are pairs of the given two lists elements such as:
   ```
   Zip(r,[1,2,...])~[10,20,...] -->* r~[(1,10),(2,20),...].
   ```
