@@ -3,7 +3,7 @@
 ### v0.9.2 (released on 30 July 2022)
 #### New Features
 * **A built-in agent** `Map`: Map function operation is realised by the following definition:
-e
+
   ```
   Map(result, f) >< []   => result~[], Eraser~f;
   Map(result, f) >< x:xs => Dup(f1,f2)~f, 
