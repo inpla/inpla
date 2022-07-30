@@ -51,7 +51,8 @@
 #define ID_MOD      28
 #define ID_MOD2     29
 #define ID_PERCENT  30
-#define END_ID_OF_BUILTIN_OP_AGENT 30
+#define ID_MAP      31
+#define END_ID_OF_BUILTIN_OP_AGENT 31
 
 // ID_ERASER and ID_DUP was put as 254, 255
 // because these IDs are wanted larger like ID_DUP > any_agent.id

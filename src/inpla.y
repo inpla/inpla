@@ -22,8 +22,8 @@
 
 // ----------------------------------------------
   
-#define VERSION "0.9.1"
-#define BUILT_DATE  "28 July 2022"
+#define VERSION "0.9.2"
+#define BUILT_DATE  "30 July 2022"
 
 // ------------------------------------------------------------------
 
@@ -9635,6 +9635,93 @@ loop_agent_a1_a2_this_order:
 	  break; // end ID_ZIPC
 
 	  
+	case ID_MAP:
+	  switch (BASIC(a2)->id) {
+	  case ID_NIL:
+	    {
+	      // Map(result, f) >< []   => result~[], Eraser~f;
+	      COUNTUP_INTERACTION(vm);
+	      
+	      VALUE a1p0 = AGENT(a1)->port[0];
+	      VALUE a1p1 = AGENT(a1)->port[1];
+
+	      // Eraser
+	      BASIC(a1)->id = ID_ERASER;
+	      PUSH(vm, a1, a1p1);
+	      
+	      a1=a1p0;
+	      goto loop;
+	    }
+	    
+	  case ID_CONS:
+	    {
+	      COUNTUP_INTERACTION(vm);
+	      
+	      VALUE a1p0 = AGENT(a1)->port[0];
+	      VALUE a1p1 = AGENT(a1)->port[1];
+
+	      VALUE a2p0 = AGENT(a2)->port[0];
+	      VALUE a2p1 = AGENT(a2)->port[1];
+	      VALUE w = make_Name(vm);
+	      VALUE ws = make_Name(vm);
+	      
+	      VALUE pair = make_Agent(vm, ID_TUPLE2);
+
+	      AGENT(a2)->port[0] = w;
+	      AGENT(a2)->port[1] = ws;
+	      PUSH(vm, a1p0, a2);
+	      
+	      /*
+	      if ((IS_NAMEID(BASIC(a1p1)->id))
+		  && (NAME(a1p1)->port != NULL)) {
+		    VALUE a1p1_agent = NAME(a1p1)->port;
+		    free_Name(a1p1);
+		    AGENT(a1)->port[1] = a1p1_agent;
+	      }
+	      */
+	      
+	      if (BASIC(a1p1)->id == ID_PERCENT) {
+		// special case
+		//Map(result, %f) >< x:xs => 
+		//		  result~w:ws, 
+		//		  %f ~ (w, x), Map(ws, %f)~xs;     
+
+		AGENT(pair)->port[0] = w;
+		AGENT(pair)->port[1] = a2p0;
+		VALUE new_percent = make_Agent(vm, ID_PERCENT);
+		AGENT(new_percent)->port[0] = AGENT(a1p1)->port[0];		
+		PUSH(vm, new_percent, pair);
+
+		AGENT(a1)->port[0] = ws;
+		a2 = a2p1;
+		goto loop;				
+	      }
+
+	      //     Map(result, f) >< x:xs => Dup(f1,f2)~f, 
+	      //                            result~w:ws, 
+	      //                            f1 ~ (w, x), map(ws, f2)~xs;     
+	      
+	      VALUE dup = make_Agent(vm, ID_DUP);
+	      VALUE f1 = make_Name(vm);
+	      VALUE f2 = make_Name(vm);
+	      AGENT(dup)->port[0] = f1;
+	      AGENT(dup)->port[1] = f2;
+	      PUSH(vm, dup, a1p1);
+	      
+	      AGENT(pair)->port[0] = w;
+	      AGENT(pair)->port[1] = a2p0;
+	      PUSH(vm, f1, pair);
+
+	      AGENT(a1)->port[0] = ws;
+	      AGENT(a1)->port[1] = f2;
+	      a2 = a2p1;
+	      goto loop;				
+	      
+	    }
+	  }
+	  
+	  break; // end ID_MAP
+
 	  
 	case ID_MERGER:
 	  switch (BASIC(a2)->id) {

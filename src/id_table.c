@@ -54,6 +54,7 @@ void IdTable_init() {
   IdTable[ID_MOD].aux.arity = 2;
   IdTable[ID_MOD2].aux.arity = 2;
   IdTable[ID_PERCENT].aux.arity = 1;
+  IdTable[ID_MAP].aux.arity = 2;
 
   IdTable[ID_ERASER].aux.arity = 0;
   IdTable[ID_DUP].aux.arity = 2;
@@ -86,6 +87,7 @@ void IdTable_init() {
   IdTable[ID_MOD].name = "Mod";
   IdTable[ID_MOD2].name = "_Mod";
   IdTable[ID_PERCENT].name = "%";
+  IdTable[ID_MAP].name = "Map";
 
   IdTable[ID_ERASER].name = "Eraser";
   IdTable[ID_DUP].name = "Dup";
@@ -117,6 +119,8 @@ int IdTable_getid_builtin_funcAgent(Ast *agent) {
     id = ID_APPEND;      
   } else if (strcmp((char *)agent->left->sym, "Zip") == 0) {
     id = ID_ZIP;      
+  } else if (strcmp((char *)agent->left->sym, "Map") == 0) {
+    id = ID_MAP;      
   } else if (strcmp((char *)agent->left->sym, "Int") == 0) {
     id = ID_INTAGENT;
   } else if (strcmp((char *)agent->left->sym, "Merger") == 0) {

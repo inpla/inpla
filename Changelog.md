@@ -1,5 +1,35 @@
 # Change log
 
+### v0.9.2 (released on 30 July 2022)
+#### New Features
+* **A built-in agent** `Map`: Map function operation is realised by the following definition:
+
+  ```
+  Map(result, f) >< []   => result~[], Eraser~f;
+  Map(result, f) >< x:xs => Dup(f1,f2)~f, 
+                            result~w:ws, 
+                            f1 ~ (w, x), Map(ws, f2)~xs;
+  ```
+  Now, the Map has been implemented as built-in.
+  ```
+  >>> inc(r)><(int i)=>r~i+1;
+  >>> Map(r1, (r, inc(r))) ~ [1,2,3];
+  (22 interactions, 0.00 sec)
+  >>> r1;
+  [2,3,4]
+  >>> Map(r2, (r, Add(r,10))) ~ [1,2,3];
+  (26 interactions, 0.00 sec)
+  >>> r2;
+  [11,12,13]
+  >>> Map(r3, %inc) ~ [1,2,3];
+  (12 interactions, 0.00 sec)
+  >>> r3;
+  [2,3,4]
+  >>>
+  ```
+
+
+
 ### v0.9.1 (released on 28 July 2022)
 #### New Features
 * **A built-in agent** `Zip`: It takes two lists and returns a list whose elements are pairs of the given two lists elements such that:
