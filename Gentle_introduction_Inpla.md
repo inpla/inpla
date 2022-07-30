@@ -688,31 +688,31 @@ it merges two lists into one. Merger agent has two principal ports that can take
   ```
 
 ### Map and reduce functions
-* **Lambda and Application like computation**: We can leave an interaction later by using a couple of Tuple2 agents. For instance, an destructor agent `foo` whose arity is 1 can be abstracted as `(r, foo(r))`, and we can give a constructor `s` later:
+* **Lambda-application-like computation**: We can leave an interaction later by using a couple of Tuple2 agents. For instance, an destructor agent `foo` whose arity is 1 can be abstracted as `(r, foo(r))`, and we can give a constructor `s` later:
   ```
   (r, foo(r)) >< (result, s) -->* foo(result)~s.
 
   // where the following rule has been defined as a built-in:
   // (a1,a2) ><> (b1,b2) => a1~b1, a2~b2.   
   ```
-  So, the map function can be realised:
+* **Map function operation**: So, the map function operation can be realised by a built-in `Map` agent with the following already defined rules:
   ```
-  map(result, f) >< []   => result~[], Eraser~f;
-  map(result, f) >< x:xs => Dup(f1,f2)~f, 
+  Map(result, f) >< []   => result~[], Eraser~f;
+  Map(result, f) >< x:xs => Dup(f1,f2)~f, 
                             result~w:ws, 
-                            f1 ~ (w, x), map(ws, f2)~xs;
+                            f1 ~ (w, x), Map(ws, f2)~xs;
   ```
   Actually, by using the incrementor `inc` we can add one to each list element:
   ```
   inc(r)><(int i) => r~(i+1);
-  map( result, (r,inc(r)) ) ~ [10,20,30]
-   -->   Dup(f1,f2)~(r,inc(r)), result~w:ws, f1~(w,10), map(ws,f2)~[20,30]
-   -->*  result~w:ws, (r1,inc(r1))~(w,10), map( ws, (r2,inc(r2)) )~[20,30]
-   -->*  result~w:ws, inc(w)~10, map( ws, (r2,inc(r2)) )~[20,30]
-   -->   result~w:ws, w~11, map(ws, (r2,inc(r2)) )~[20,30]
-   -->   result~11:ws, map(ws, (r2,inc(r2)) )~[20,30]
-   -->*  result~11:21:ws, map(ws, (r3,inc(r3)) )~[30]
-   -->*  result~11:21:31:ws, map(ws, (r4,inc(r4)) )~[]
+  Map( result, (r,inc(r)) ) ~ [10,20,30]
+   -->   Dup(f1,f2)~(r,inc(r)), result~w:ws, f1~(w,10), Map(ws,f2)~[20,30]
+   -->*  result~w:ws, (r1,inc(r1))~(w,10), Map( ws, (r2,inc(r2)) )~[20,30]
+   -->*  result~w:ws, inc(w)~10, Map( ws, (r2,inc(r2)) )~[20,30]
+   -->   result~w:ws, w~11, Map(ws, (r2,inc(r2)) )~[20,30]
+   -->   result~11:ws, Map(ws, (r2,inc(r2)) )~[20,30]
+   -->*  result~11:21:ws, Map(ws, (r3,inc(r3)) )~[30]
+   -->*  result~11:21:31:ws, Map(ws, (r4,inc(r4)) )~[]
    -->*  result~[11,21,31];
   ```
   The Tuple2 agent seems a little complicated, so we prepare an abbreviation `%`. In the following, `foo1`, `foo2`, `foo3`, ... are any agents whose arity is 1, 2, 3, ..., respectively.
@@ -731,14 +731,14 @@ it merges two lists into one. Merger agent has two principal ports that can take
   ```
   This is quite useful for the map application. The `inc` application is written simply as follows:
   ```
-  >>> map(result, %inc) ~ [1,2,3];
+  >>> Map(result, %inc) ~ [1,2,3];
   >>> result;
   [2,3,4]
   >>>
   ```
   Wonderful!
 
-  The same as the map operation, we can define foldr and foldl as follows (Do not worry if it looks complicated. It is OK if we can just use these!):
+* **Reduce function operation**: The same as the map operation, we can define foldr and foldl as follows (Do not worry if it looks complicated. It is OK if we can just use these!):
   ```
   // --------------------------------------------------------------------
   // foldr f v [x0, x1, ..., xn] = f(x0, f(x1, ... f(xn-1, f(xn, v))...))
