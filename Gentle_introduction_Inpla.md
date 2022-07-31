@@ -162,6 +162,8 @@ For agents can work as constructors and de-constructors, it could be good to use
 Let's take the result of the increment operation for `S(S(Z))`:
 
 ```
+>>> inc(r) >< Z => r~S(Z);
+>>> inc(r) >< S(x) => r~S(S(x));
 >>> inc(r)~S(S(Z));
 (1 interactions, 0.01 sec)
 >>> r;
@@ -205,6 +207,8 @@ Let's clean the result in case it could be used anywhere:
   ```
   The following is an execution example:
   ```
+  >>> add(ret, x) >< Z => ret~x;
+  >>> add(ret, x) >< S(y) => add(ret, S(x))~y;
   >>> add(r,S(Z))~S(S(Z));
   (3 interactions, 0.00 sec)
   >>> r;
