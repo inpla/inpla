@@ -1,5 +1,34 @@
 # Change log
 
+### v0.9.2-1 (released on 2 August 2022)
+#### Bux fix
+* `%` **for more than 1-arity agents was something wrong**: It was just an implementation error. Now, it works well:
+  ```
+  >>> %Add ~ ((r,100),20);     // The `%Add' can abstract arguments of `Add'
+  (3 interactions, 0.00 sec)
+  >>> ifce;                    // The above works as Add(r,100)~2.
+  r
+  
+  Connections:
+  r ->120
+  >>> free ifce;
+  >>>
+  ```
+  ```
+  >>> %Add ~ (arg_pair,20);     // We can also give concrete ones later by this bug fix.
+  (2 interactions, 0.00 sec)
+  >>> arg_pair~(r,100);
+  (2 interactions, 0.00 sec)
+  >>> ifce;
+  r
+  
+  Connections:
+  r ->120
+  
+  >>>
+  ```
+
+
 ### v0.9.2 (released on 30 July 2022)
 #### New Features
 * **A built-in agent** `Map`: Map function operation is realised by the following definition:

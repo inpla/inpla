@@ -22,8 +22,8 @@
 
 // ----------------------------------------------
   
-#define VERSION "0.9.2"
-#define BUILT_DATE  "30 July 2022"
+#define VERSION "0.9.2-1"
+#define BUILT_DATE  "2 August 2022"
 
 // ------------------------------------------------------------------
 
@@ -9916,7 +9916,7 @@ loop_agent_a1_a2_this_order:
 		} else {
 		  //    %foo2 ~ (p,q) --> foo2(p1,p2)~q, (p1,p2)~p
 		  VALUE preserved_p = AGENT(a2)->port[0];
-		  VALUE preserved_q = AGENT(a2)->port[0];
+		  VALUE preserved_q = AGENT(a2)->port[1];
 		  VALUE tuple = a2;
 		  BASIC(a1)->id = percented_id;
 		  for(int i=0; i<arity; i++) {
