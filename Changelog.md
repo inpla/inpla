@@ -82,9 +82,9 @@
 #### New Features
 
 * **New abbreviation**:
-  An abbreviation of an agent `foo` with `%foo` will be re-written internally depending on the arity of the `foo`:
+  An abbreviation `%foo` for an agent `foo` will be re-written internally depending on the arity of the `foo`:
   ```
-  The abbreviation form is decided according to the arity of a given agent to the %.
+  The abbreviation form is decided from the followings by the arity of a given agent to the %.
   %foo1  === (r, foo1(r))
   %foo2  === ((r,x), foo2(r,x))
   %foo3  === ((r,x,y), foo3(r,x,y))
@@ -94,10 +94,11 @@
   ```
   For instance, when `foo` is an agent whose arity is 5, `%foo` can make the following computation simply:
   ```
-  %foo ~ @((result,1,2,3,4), 5) -->* foo(result,1,2,3,4)~5.
+  %foo ~ ((result,1,2,3,4), 5)   ===  ((r,x,y,z,zz), foo5(r,x,y,z,zz)) ~ ((result,1,2,3,4), 5)
+    -->* foo(result,1,2,3,4)~5.
   ```
 
-* **Why we need those?**: Map and reduce computation can be realised easily because we can give the `%foo` to the map as a seed function operation. We suppose that an incrementor agent `inc` is defined as follows:
+* **Why do we need it?**: Map and reduce computation can be realised easily because we can give the `%foo` to the map as a seed function operation. We suppose that an incrementor agent `inc` is defined as follows:
   ```
   inc(r)><(int i) => r~(i+1);
   ```
