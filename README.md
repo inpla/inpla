@@ -19,7 +19,7 @@ Inpla is a multi-threaded parallel interpreter of interaction nets. Once you wri
 | -------------- | :------: | :------: | :----: | :----: | :------: | :------: |
 | ack(3,11)    |   [2.30](comparison/Haskell/ack3-11.hs)   | [0.46](comparison/OCaml/ack3_11.ml) | [**0.43**](comparison/SML/ack3-11.sml) |   [-](comparison/Python/ack3-11.py)    |  [0.86](comparison/Inpla/src/ack-stream_3-11.in)  |   [0.71](comparison/Inpla/src/ack-stream_3-11-reuse.in)   |
 | fib 38       |   [1.60](comparison/Haskell/fib38.hs)   | [**0.15**](comparison/OCaml/fib38.ml) | [0.27](comparison/SML/fib38.sml) |  [8.88](comparison/Python/fib38.py)  |  [0.40](comparison/Inpla/src/fib-38.in)  |   [0.43](comparison/Inpla/src/fib-38-reuse.in)   |
-| bsort 20000 |  [4.98](comparison/Haskell/bsort-40000.hs)  |  [6.78](comparison/OCaml/bsort40000.ml)  |  [2.38](comparison/SML/bsort-40000.sml)  | [19.91](comparison/Python/bsort-40000.py) |  [2.16](comparison/Inpla/src/bsort-40000.in)  | [**1.58**](comparison/Inpla/src/bsort-40000-reuse.in) |
+| bsort 20000 |  [4.98](comparison/Haskell/bsort-40000.hs)  |  [6.78](comparison/OCaml/bsort40000.ml)  |  [2.38](comparison/SML/bsort-40000.sml)  | [19.91](comparison/Python/bsort-40000.py) |  [2.16](comparison/Inpla/src/bsort-20000.in)  | [**1.58**](comparison/Inpla/src/bsort-20000-reuse.in) |
 | isort 20000 | [2.15](comparison/Haskell/isort-40000.hs) |   [1.52](comparison/OCaml/isort40000.ml)   |   [0.60](comparison/SML/isort-40000.sml)   | [9.58](comparison/Python/isort-40000.py) |  [**0.29**](comparison/Inpla/src/isort-40000.in)  |   [0.33](comparison/Inpla/src/isort-40000-reuse.in)   |
 | qsort 260000 | [0.34](comparison/Haskell/qsort-800000.hs) |   [0.25](comparison/OCaml/qsort800000.ml)   |   [0.27](comparison/SML/qsort-800000.sml)   | [10.40](comparison/Python/qsort-800000.py) |  [0.15](comparison/Inpla/src/qsort-800000.in)  |   [**0.11**](comparison/Inpla/src/qsort-800000-reuse.in)   |
 | msort 260000 | [0.39](comparison/Haskell/msort-800000.hs) |   [0.29](comparison/OCaml/msort800000.ml)   |   [0.26](comparison/SML/msort-800000.sml)   | [10.96](comparison/Python/msort-800000.py) |  [**0.15**](comparison/Inpla/src/msort-800000.in)  |   [**0.15**](comparison/Inpla/src/msort-800000-reuse.in)   |
@@ -27,7 +27,7 @@ Inpla is a multi-threaded parallel interpreter of interaction nets. Once you wri
 
 
 
-  
+
   - The above table contains execution time in second on average of ten times execution by using Linux PC (Core i7-9700 (8 threads, no Hyper-threading), 16GB memory). The fastest one is shown with bold style.  Scripts for the comparison table are in the `comparison` directory.
   
   - Inpla8  and Inpla8r mean 8 threads without/with [reuse-annotated](./Gentle_introduction_Inpla.md#reuse-annotations) execution, respectively. 
@@ -37,8 +37,8 @@ Inpla is a multi-threaded parallel interpreter of interaction nets. Once you wri
   - "fib 38" is computation to get the 38th Fibonacci number. 
   
   - "bsort *n*", "isort *n*", "qsort *n*" and "msort *n*" are computation of bubble sort, insertion sort, quick sort and merge sort for random *n*-element lists, respectively, followed by a validation check process.
-  In the graph quick sort and merge sort are for 800000 elements because the 260000 elements are too small for Inpla to show the performance in parallel. See the description of v0.8.2-1 in [Changelog.md](./Changelog.md) for details. 
-    
+    In the graph quick sort and merge sort are for 800000 elements because the 260000 elements are too small for Inpla to show the performance in parallel. See the description of v0.8.2-1 in [Changelog.md](./Changelog.md) for details. 
+
 
 ## Contents
 * [Getting Started](#getting-started)
