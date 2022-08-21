@@ -22,8 +22,8 @@
 
 // ----------------------------------------------
   
-#define VERSION "0.9.2-1"
-#define BUILT_DATE  "2 August 2022"
+#define VERSION "0.9.2-2"
+#define BUILT_DATE  "21 August 2022"
 
 // ------------------------------------------------------------------
 
@@ -1587,6 +1587,13 @@ void puts_term(VALUE ptr) {
 	break;
       }
 
+
+      if (!(IS_FIXNUM(ptr)) && (BASIC(ptr)->id != ID_CONS)) {
+	printf(":");
+	puts_term(ptr);
+	break;
+      }
+      
       printf(",");
 
       Puts_list_element++;

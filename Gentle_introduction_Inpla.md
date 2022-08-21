@@ -19,7 +19,7 @@
 * [Advanced topics](#advanced-topics)
   - [Reuse annotations](#reuse-annotations)
   - [built-in agents more](#built-in-agents-more)
-  - [Map and reduce functions](#map-and-reduce-functions)
+  - [Map and reduce functions (with Abbreviation notation `%`)](#map-and-reduce-functions)
   - [Weak reduction strategy](#weak-reduction-strategy)
 
 
@@ -141,7 +141,7 @@ Something complicated? No problem! Let's us learn how to define the rules with s
 Unary natural numbers are built by Z and S. For instance, 0, 1, 2, 3 are expressed as Z, S(Z), S(S(Z)), S(S(S(Z))). Here, let's think about an increment operation "inc" such that:
 ```
  inc(n) = S(n).
- ```
+```
 
 First, we will think about the relationship between constructors and deconstructors in  this computation.
 Here, constructors are agents `Z`, `S(x)`, and a destructor is `inc(r)` which has an argument for the output. The behaviour of `inc(r)` will be as follows:
@@ -241,7 +241,7 @@ Let's clean the result in case it could be used anywhere:
 An abbreviation notation `<<` is defined as follows:
 ```
 a,b,...,z << Agent(aa,bb,...,yy,zz)   == for ==  Agent(a,b,...,z,aa,bb,...,yy) ~ zz 
- ```
+```
 For instance, `r << add(S(Z),S(S(Z)))` is rewritten internally as `add(r,S(Z))~S(S(Z))`. It is handy to denote ports that take computation results.
 
 
@@ -666,9 +666,11 @@ In interaction rule definitions, we can specify how active pair agents are reuse
   ```
 
 
+
 ### Built-in agents more
+
 * **Merger agent** `Merger`: 
-it merges two lists into one. Merger agent has two principal ports that can take the two distinct lists. Interactions with the lists are performed as soon as one of the principal ports is connected one of the lists. So, the merged result is non-deterministically decided, especially in multi-threaded execution.
+  it merges two lists into one. Merger agent has two principal ports that can take the two distinct lists. Interactions with the lists are performed as soon as one of the principal ports is connected one of the lists. So, the merged result is non-deterministically decided, especially in multi-threaded execution.
   
   ![merger](pic/merger.png)
   
@@ -691,11 +693,14 @@ it merges two lists into one. Merger agent has two principal ports that can take
   >>> 
   ```
 
+
+
 ### Map and reduce functions
+
 * **Lambda-application-like computation**: We can leave an interaction later by using a couple of Tuple2 agents. For instance, an destructor agent `foo` whose arity is 1 can be abstracted as `(r, foo(r))`, and we can give a constructor `s` later:
   ```
   (r, foo(r)) >< (result, s) -->* foo(result)~s.
-
+  
   // where the following rule has been defined as a built-in:
   // (a1,a2) ><> (b1,b2) => a1~b1, a2~b2.   
   ```
@@ -779,8 +784,6 @@ it merges two lists into one. Merger agent has two principal ports that can take
 
 
 
-
-
 ### Weak reduction strategy
 
 In this reduction strategy, only connections that have interface names (thus, live and occur once) are evaluated. This is taken for non-terminate computation such as fixed point combinator and process networks.
@@ -832,4 +835,3 @@ In this reduction strategy, only connections that have interface names (thus, li
   
   >>>
   ```
-  

@@ -1,8 +1,40 @@
 # Change log
 
+### v0.9.2-2 (released on 21 August 2022)
+#### Bux fix
+* **Print out of lists that are not terminated at Nil**: Generally lists are written with `[` and `]` like `[1,2,3]`, but we can write it by using `:` like `1:2:3:Nil`. This means we can write a Cons agent chains that is not terminated at `Nil` like `1:anet(2)`, though it caused Segmentation fault:
+
+  ```
+  >>> a~1:aNet(2);
+  (0 interactions, 0.00 sec)
+  >>> ifce;
+  a
+  
+  Connections:
+  Segmentation fault
+  ```
+
+  Now we support to put out such chains:
+
+  ```
+  >>> ifce;
+  a
+  
+  Connections:
+  a ->[1:aNet(2)
+  
+  >>>
+  ```
+
+  
+
+  
+
+
 ### v0.9.2-1 (released on 2 August 2022)
 #### Bux fix
 * `%` **for more than 1-arity agents was something wrong**: It was just an implementation error. Now, it works well:
+  
   ```
   >>> %Add ~ ((r,100),20);     // The `%Add' can abstract arguments of `Add'
   (3 interactions, 0.00 sec)
@@ -134,7 +166,7 @@
 #### New Features
 
 * **Built-in agent** `Dup`: it duplicates any nets gradually with the following rules:
-![Eraser](pic/dup.png)
+  ![Eraser](pic/dup.png)
   ```
   >>> Dup(a1,a2) ~ [1,2,3];
   (7 interactions, 0.00 sec)
