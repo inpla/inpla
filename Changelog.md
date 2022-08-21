@@ -2,10 +2,10 @@
 
 ### v0.9.2-2 (released on 21 August 2022)
 #### Bux fix
-* **Output of lists that are not terminated at []**: Generally lists are written with `[` and `]` like `[1,2,3]`, but we can write it by using `:` as `1:2:3:[]`. This means we can write a Cons agent chain that is not terminated at Nil agent like `1:anet(2)`. However, it caused Segmentation fault:
+* **Output of lists that are not terminated at []**: Generally lists are written with `[` and `]` like `[1,2,3]`. It can be written by using `:` as `1:2:3:[]`. This means we can write a Cons agent chain that is not terminated at Nil agent like `1:anet(2)`. However, it caused Segmentation fault:
 
   ```
-  >>> a~1:aNet(2);
+  >>> a~1:2:3:aNet(4);
   (0 interactions, 0.00 sec)
   >>> ifce;
   a
@@ -14,14 +14,14 @@
   Segmentation fault
   ```
 
-  Now such chains are outputted correctly:
+  Now such chains are outputted without the error as follows:
 
   ```
   >>> ifce;
   a
   
   Connections:
-  a ->[1:aNet(2)
+  a ->[1,2,3:aNet(4)
   
   >>>
   ```
