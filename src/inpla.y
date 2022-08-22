@@ -22,8 +22,8 @@
 
 // ----------------------------------------------
   
-#define VERSION "0.9.2-2"
-#define BUILT_DATE  "21 August 2022"
+#define VERSION "0.9.2-3"
+#define BUILT_DATE  "22 August 2022"
 
 // ------------------------------------------------------------------
 
@@ -2337,7 +2337,7 @@ typedef enum {
 
   OP_RET, OP_RET_FREE_LR, OP_RET_FREE_L, OP_RET_FREE_R,
 
-  OP_LOADI, OP_LOAD, 
+  OP_LOADI, OP_LOAD, OP_LOADP,
 
   OP_ADD, OP_SUB, OP_ADDI, OP_SUBI, OP_MUL, OP_DIV, OP_MOD,
   OP_LT, OP_LE, OP_EQ, OP_EQI, OP_NE,
@@ -2476,7 +2476,7 @@ void IMCode_puts(int n) {
 
     "RET", "RET_FREE_LR", "RET_FREE_L", "RET_FREE_R", 
 
-    "LOADI", "LOAD",
+    "LOADI", "LOAD", "OP_LOADP",
 
     "ADD", "SUB", "ADDI", "SUBI", "MUL", "DIV", "MOD",
     "LT", "LE", "EQ", "EQI", "NE",
@@ -2664,6 +2664,11 @@ void IMCode_puts(int n) {
 	     imcode->operand1, imcode->operand2);
       break;
 
+    case OP_LOADP:
+      printf("%s var%ld $%ld var%ld\n", string_opcode[imcode->opcode],
+	     imcode->operand1, imcode->operand2, imcode->operand3);
+      break;
+      
 
       // arity is 2: opcode var1 $2
     case OP_PUSHI:
@@ -2938,6 +2943,13 @@ void VMCode_puts(void **code, int n) {
 	     FIX2INT((unsigned long)code[i+1]),
 	     (unsigned long)code[i+2]);
       i+=2;
+      
+    } else if (code[i] == CodeAddr[OP_LOADP]) {
+      printf("loadp reg%lu $%ld reg%lu\n",
+	     (unsigned long)code[i+1],
+	     (unsigned long)code[i+2],
+	     (unsigned long)code[i+3]);
+      i+=3;
       
     } else if (code[i] == CodeAddr[OP_LOOP]) {
       puts("loop");
@@ -3752,6 +3764,12 @@ int CmEnv_Optimise_check_occurence_in_block(int localvar,
       }
       break;
       
+    case OP_LOADP:
+      // OP src1 port dest
+      if (imcode->operand1 == localvar) {
+	return 1;
+      }
+      break;
       
     case OP_MKNAME:
     case OP_MKGNAME:
@@ -4123,7 +4141,15 @@ int CmEnv_Optimise_VMCode_CopyPropagation(int target_imcode_addr) {
       break;
 
 
-
+    case OP_LOADP:
+      // LOADP src port dest
+      if (imcode->operand1 == load_to) {
+	imcode->operand1 = load_from;
+	IMCode[target_imcode_addr].opcode = OP_DEAD_CODE;
+	return 1;
+      }
+      break;
+      
       
     case OP_PUSH:
     case OP_MYPUSH:
@@ -4800,6 +4826,29 @@ int CmEnv_generate_VMCode(void **code) {
       
       code[addr++] = CodeAddr[OP_LOAD];
       code[addr++] = (void *)(unsigned long)src1;      
+      code[addr++] = (void *)(unsigned long)dest;      
+      break;
+      
+    }
+
+
+    case OP_LOADP: {
+      // OP_LOADP src1 port dest
+      long src1 = imcode->operand1;
+      long port = imcode->operand2;
+      long dest = imcode->operand3;
+      
+#ifdef OPTIMISE_IMCODE      
+      src1 = CmEnv_using_reg(src1);
+      if (!CmEnv_Optimise_check_occurence_in_block(imcode->operand1, line_num))
+	CmEnv_free_reg(src1);
+      
+      dest = CmEnv_using_reg(dest);
+#endif
+      
+      code[addr++] = CodeAddr[imcode->opcode];
+      code[addr++] = (void *)(unsigned long)src1;      
+      code[addr++] = (void *)(unsigned long)port;      
       code[addr++] = (void *)(unsigned long)dest;      
       break;
       
@@ -6043,7 +6092,8 @@ int Compile_term_on_ast(Ast *ptr, int target) {
       alloc[0] = Compile_term_on_ast(ptr->left, target);      
       result = alloc[0];
       
-    } else {      
+    } else {
+      
       // normal case
       ptr=ptr->right;
       for (i=0; i< arity; i++) {
@@ -6092,7 +6142,7 @@ int Compile_term_on_ast(Ast *ptr, int target) {
 			  alloc[0], alloc[1], alloc[2]);
 	}
 	break;
-      
+
       case 4:
 	if (target == -1) {
 	  mkagent = OP_MKAGENT4;
@@ -6104,7 +6154,8 @@ int Compile_term_on_ast(Ast *ptr, int target) {
 			  alloc[0], alloc[1], alloc[2], alloc[3]);
 	}
 	break;
-      
+
+#if MAX_PORT > 4	
       default:
 	if (target == -1) {
 	  mkagent = OP_MKAGENT5;
@@ -6116,7 +6167,8 @@ int Compile_term_on_ast(Ast *ptr, int target) {
 	  IMCode_genCode7(mkagent, result, GET_TUPLEID(arity),
 			  alloc[0], alloc[1], alloc[2], alloc[3], alloc[4]);
 	}
-      
+#endif
+	
       }
       
     }
@@ -6225,18 +6277,28 @@ int Compile_term_on_ast(Ast *ptr, int target) {
 			alloc[3]);
       }
       break;
-      
+
+#if MAX_PORT > 4
     default:
       if (target == -1) {
 	mkagent = OP_MKAGENT5;
 	IMCode_genCode7(mkagent, id, alloc[0], alloc[1], alloc[2],
 			alloc[3], alloc[4], result);
+
+	for (i=5; i<arity; i++) {
+	  IMCode_genCode3(OP_LOADP, alloc[i], i, result);
+	}
+	
       } else {
 	mkagent = OP_REUSEAGENT5;
 	IMCode_genCode7(mkagent, result, id, alloc[0], alloc[1], alloc[2],
 			alloc[3], alloc[4]);
+	for (i=5; i<arity; i++) {
+	  IMCode_genCode3(OP_LOADP, alloc[i], i, result);
+	}
+	
       }
-      break;
+#endif      
     }
     
     return result;
@@ -6335,14 +6397,14 @@ int check_invalid_occurrence(Ast *ast) {
 	// already twice
 	printf("ERROR: '%s' occurs twice already. \n", ast->left->sym);
 	printf("        Use 'ifce' command to see the occurrence.\n");
-	return 1;	    
+	return 0;	    
       }	  
       
     }
   }
     
   
-  return 0;
+  return 1;
 }
 
 
@@ -6398,6 +6460,7 @@ int Compile_eqlist_on_ast(Ast *at) {
 
     
 #ifndef OPTIMISE_IMCODE_TRO
+    // Without Tail Rcursion Optimisation
     
     // 2021/9/6: It seems, always EnvAddCodePUSH is selected
     // because at is not NULL in this step. Should be (next == NULL)?
@@ -6423,6 +6486,7 @@ int Compile_eqlist_on_ast(Ast *at) {
 
     
 #else    
+    // WITH Tail Rcursion Optimisation
     
     if ((next != NULL) 
 	|| ((next == NULL) && (eq->id == AST_CNCT))) {
@@ -6435,9 +6499,9 @@ int Compile_eqlist_on_ast(Ast *at) {
      
 
       if (eq->id == AST_CNCT_TRO_INTVAR) {
+	// rule_left_agent ~ expression
 	
 	int var2 = Compile_term_on_ast(eq->right, -1);
-	IMCode_genCode2(OP_LOAD_META, var2, VM_OFFSET_ANNOTATE_R);
 
 	
 	int alloc[MAX_PORT];
@@ -6449,7 +6513,7 @@ int Compile_eqlist_on_ast(Ast *at) {
 	Ast *arg_list = deconst_term->right;   // arglist
 
 	
-	//	printf("TRO: %s><int\n", deconst_term->left->sym);
+	//		printf("TRO: %s><int\n", deconst_term->left->sym);
 
 	
 	for (int i=0; i<MAX_PORT; i++) {
@@ -6461,7 +6525,31 @@ int Compile_eqlist_on_ast(Ast *at) {
 	  alloc[i] = Compile_term_on_ast(arg_list->left, -1);
 	  arg_list = ast_getTail(arg_list);
 	}
+
+
 	for (int i=0; i<arity; i++) {
+	  if (alloc[i] == VM_OFFSET_ANNOTATE_R) {
+	      // VM_OFFSET_ANNOTATE_R should be preserved
+	      int newreg = CmEnv_newvar();
+	      IMCode_genCode2(OP_LOAD, VM_OFFSET_ANNOTATE_R, newreg);
+	      alloc[i] = newreg;
+	      break;
+	  }
+	}
+	IMCode_genCode2(OP_LOAD_META, var2, VM_OFFSET_ANNOTATE_R);
+	
+
+	for (int i=0; i<arity; i++) {
+	  for (int j=i+1; j<arity; j++) {
+	    if (alloc[j] == VM_OFFSET_METAVAR_L(i)) {
+	      // VM_OFFSET_METAVAR_L(i) should be preserved
+	      int newreg = CmEnv_newvar();
+	      IMCode_genCode2(OP_LOAD, VM_OFFSET_METAVAR_L(i), newreg);
+	      alloc[j] = newreg;
+	      break;
+	    }
+	  }
+	      
 	  IMCode_genCode2(OP_LOAD_META, alloc[i], VM_OFFSET_METAVAR_L(i));  
 	}
 	
@@ -6476,6 +6564,7 @@ int Compile_eqlist_on_ast(Ast *at) {
 
 	
       } else if (eq->id == AST_CNCT_TRO) {
+	// rule_left_agent ~ name   where the name is meta_R
 	
 	// Pealing (*L)
 	Ast *eq_lhs = eq->left;               // (*L)(AGENT(Fib, arglist))
@@ -7242,12 +7331,11 @@ int make_rule_oneway(Ast *ast) {
   ruleAgent_R = ast_remove_tuple1(ruleAgent_R);
   
   
-    //    #define MYDEBUG1
+  //        #define MYDEBUG1
 #ifdef MYDEBUG1
   ast_puts(ruleAgent_L); puts("");
   ast_puts(ruleAgent_R); puts("");
-  ast_puts(bodies);
-  exit(1);
+  //  ast_puts(bodies); exit(1);
 #endif
 
 
@@ -7324,6 +7412,11 @@ int make_rule_oneway(Ast *ast) {
   } else {
     arity = get_arity_on_ast(ruleAgent_L);
   }
+  if (arity >= MAX_PORT) {
+    printf("ERROR: Too many arguments of '%s'. It should be MAX_PORT(=%d) or less.\n",
+	   ruleAgent_L->left->sym, MAX_PORT);
+    return 0;
+  }
   IdTable_set_arity(idL, arity);
   code[0] = (void *)(unsigned long)arity;
   
@@ -7331,6 +7424,11 @@ int make_rule_oneway(Ast *ast) {
     arity = 0;
   } else {
     arity = get_arity_on_ast(ruleAgent_R);
+  }
+  if (arity >= MAX_PORT) {
+    printf("ERROR: Too many arguments of '%s'. It should be MAX_PORT(=%d) or less.\n",
+	   ruleAgent_R->left->sym, MAX_PORT);
+    return 0;
   }
   IdTable_set_arity(idR, arity);
   code[1] = (void *)(unsigned long)arity;
@@ -7363,7 +7461,7 @@ int make_rule_oneway(Ast *ast) {
   CmEnv.idL = idL;
   CmEnv.idR = idR;
 
-
+  
 #ifdef OPTIMISE_IMCODE_TRO
   int is_tro = Ast_make_annotation_TailRecursionOptimisation(rule_mainbody);
   //    if (is_tro) {
@@ -7391,7 +7489,7 @@ int make_rule_oneway(Ast *ast) {
 #endif
   
 
-  //      #define MKRULE_DEBUG  
+  //        #define MKRULE_DEBUG  
 #ifndef MKRULE_DEBUG  
   gencode_num += CmEnv_generate_VMCode(&code[2]);
 #else
@@ -7499,7 +7597,7 @@ int make_rule(Ast *ast) {
   
   ast->left->left = ruleAgent_R;
   ast->left->right = ruleAgent_L;;
-  set_annotation_LR(VM_OFFSET_ANNOTATE_R, VM_OFFSET_ANNOTATE_L);
+  //  set_annotation_LR(VM_OFFSET_ANNOTATE_R, VM_OFFSET_ANNOTATE_L);
 
   
   //  ast_puts(ast);puts("");
@@ -7749,7 +7847,7 @@ void *exec_code(int mode, VirtualMachine * restrict vm, void * restrict *code) {
     &&E_REUSEAGENT0 ,&&E_REUSEAGENT1, &&E_REUSEAGENT2,
     &&E_REUSEAGENT3, &&E_REUSEAGENT4, &&E_REUSEAGENT5,
     &&E_RET, &&E_RET_FREE_LR, &&E_RET_FREE_L, &&E_RET_FREE_R,
-    &&E_LOADI, &&E_LOAD,
+    &&E_LOADI, &&E_LOAD, &&E_LOADP,
     &&E_ADD, &&E_SUB, &&E_ADDI, &&E_SUBI, &&E_MUL, &&E_DIV, &&E_MOD, 
     &&E_LT, &&E_LE, &&E_EQ, &&E_EQI, &&E_NE, 
     &&E_UNM, &&E_RAND, &&E_INC, &&E_DEC,
@@ -7781,15 +7879,13 @@ void *exec_code(int mode, VirtualMachine * restrict vm, void * restrict *code) {
 
  E_MKNAME:
   //    puts("mkname dest");
-  pc++;
-  reg[(unsigned long)code[pc++]] = make_Name(vm);
-  goto *code[pc];
+  reg[(unsigned long)code[++pc]] = make_Name(vm);
+  goto *code[++pc];
 
  E_MKGNAME:
   //    puts("mkgname id dest");
-  pc++;
   
-  i = (unsigned long)code[pc++];
+  i = (unsigned long)code[++pc];
   a1 = IdTable_get_heap(i);
   if (a1 == (VALUE)NULL) {
     a1 = make_Name(vm);
@@ -7799,234 +7895,216 @@ void *exec_code(int mode, VirtualMachine * restrict vm, void * restrict *code) {
     IdTable_set_heap(i, a1);    
   }
 
-  reg[(unsigned long)code[pc++]] = a1;
-  goto *code[pc];
+  reg[(unsigned long)code[++pc]] = a1;
+  goto *code[++pc];
 
   
  E_MKAGENT0:
   //    puts("mkagent0 id dest");
-  pc++;
-  i = (unsigned long)code[pc++];
-  reg[(unsigned long)code[pc++]] = make_Agent(vm, i);
-  goto *code[pc];
+  i = (unsigned long)code[++pc];
+  reg[(unsigned long)code[++pc]] = make_Agent(vm, i);
+  goto *code[++pc];
 
  E_MKAGENT1:
 #if !defined(OPTIMISE_TWO_ADDRESS) || !defined(OPTIMISE_TWO_ADDRESS_MKAGENT1)
   //    puts("mkagent1 id src1 dest");
-  pc++;
-  a1 = make_Agent(vm, (unsigned long)code[pc++]);
-  AGENT(a1)->port[0] = reg[(unsigned long)code[pc++]];
-  reg[(unsigned long)code[pc++]] = a1;
+  a1 = make_Agent(vm, (unsigned long)code[++pc]);
+  AGENT(a1)->port[0] = reg[(unsigned long)code[++pc]];
+  reg[(unsigned long)code[++pc]] = a1;
 #else
   //    puts("mkagent1 id dest");
 
-  pc++;
-  a1 = make_Agent(vm, (unsigned long)code[pc++]);
-  AGENT(a1)->port[0] = reg[(unsigned long)code[pc]];
-  reg[(unsigned long)code[pc++]] = a1;
+  a1 = make_Agent(vm, (unsigned long)code[++pc]);
+  AGENT(a1)->port[0] = reg[(unsigned long)code[++pc]];
+  reg[(unsigned long)code[pc]] = a1;
 #endif  
   
-  goto *code[pc];
+  goto *code[++pc];
   
  E_MKAGENT2:
 #if !defined(OPTIMISE_TWO_ADDRESS) || !defined(OPTIMISE_TWO_ADDRESS_MKAGENT2)
   //      puts("mkagent2 id src1 src2 dest");
-  pc++;  
-  a1 = make_Agent(vm, (unsigned long)code[pc++]);
+  
+  a1 = make_Agent(vm, (unsigned long)code[++pc]);
   {
     volatile VALUE *a1port = AGENT(a1)->port;
-    a1port[0] = reg[(unsigned long)code[pc++]];
-    a1port[1] = reg[(unsigned long)code[pc++]];
+    a1port[0] = reg[(unsigned long)code[++pc]];
+    a1port[1] = reg[(unsigned long)code[++pc]];
   }
-  reg[(unsigned long)code[pc++]] = a1;
+  reg[(unsigned long)code[++pc]] = a1;
 #else
   //    puts("mkagent2 id src1 dest");
-  pc++;  
-  a1 = make_Agent(vm, (unsigned long)code[pc++]);
+  a1 = make_Agent(vm, (unsigned long)code[++pc]);
   {
     volatile VALUE *a1port = AGENT(a1)->port;
-    a1port[0] = reg[(unsigned long)code[pc++]];
-    a1port[1] = reg[(unsigned long)code[pc]];
+    a1port[0] = reg[(unsigned long)code[++pc]];
+    a1port[1] = reg[(unsigned long)code[++pc]];
   }
-  reg[(unsigned long)code[pc++]] = a1;
+  reg[(unsigned long)code[pc]] = a1;
 #endif
   
-  goto *code[pc];
+  goto *code[++pc];
 
 
  E_MKAGENT3:
 #if !defined(OPTIMISE_TWO_ADDRESS) || !defined(OPTIMISE_TWO_ADDRESS_MKAGENT3)
   //    puts("mkagent3 id src1 src2 src3 dest");
-  pc++;
-  a1 = make_Agent(vm, (unsigned long)code[pc++]);
+  
+  a1 = make_Agent(vm, (unsigned long)code[++pc]);
   {
     volatile VALUE *a1port = AGENT(a1)->port;
-    a1port[0] = reg[(unsigned long)code[pc++]];
-    a1port[1] = reg[(unsigned long)code[pc++]];
-    a1port[2] = reg[(unsigned long)code[pc++]];
+    a1port[0] = reg[(unsigned long)code[++pc]];
+    a1port[1] = reg[(unsigned long)code[++pc]];
+    a1port[2] = reg[(unsigned long)code[++pc]];
   }
-  reg[(unsigned long)code[pc++]] = a1;
+  reg[(unsigned long)code[++pc]] = a1;
 #else
   //    puts("mkagent3 id src1 src2 dest");
-  pc++;
-  a1 = make_Agent(vm, (unsigned long)code[pc++]);
+  a1 = make_Agent(vm, (unsigned long)code[++pc]);
   {
     volatile VALUE *a1port = AGENT(a1)->port;
-    a1port[0] = reg[(unsigned long)code[pc++]];
-    a1port[1] = reg[(unsigned long)code[pc++]];
-    a1port[2] = reg[(unsigned long)code[pc]];
+    a1port[0] = reg[(unsigned long)code[++pc]];
+    a1port[1] = reg[(unsigned long)code[++pc]];
+    a1port[2] = reg[(unsigned long)code[++pc]];
   }
-  reg[(unsigned long)code[pc++]] = a1;  
+  reg[(unsigned long)code[pc]] = a1;  
 #endif  
-  goto *code[pc];
+  goto *code[++pc];
 
  E_MKAGENT4:
   //    puts("mkagent4 id src1 src2 src3 src4 dest");
-  pc++;
-  a1 = make_Agent(vm, (unsigned long)code[pc++]);
+  a1 = make_Agent(vm, (unsigned long)code[++pc]);
   {
     volatile VALUE *a1port = AGENT(a1)->port;
-    a1port[0] = reg[(unsigned long)code[pc++]];
-    a1port[1] = reg[(unsigned long)code[pc++]];
-    a1port[2] = reg[(unsigned long)code[pc++]];
-    a1port[3] = reg[(unsigned long)code[pc++]];
+    a1port[0] = reg[(unsigned long)code[++pc]];
+    a1port[1] = reg[(unsigned long)code[++pc]];
+    a1port[2] = reg[(unsigned long)code[++pc]];
+    a1port[3] = reg[(unsigned long)code[++pc]];
   }
-  reg[(unsigned long)code[pc++]] = a1;
-  goto *code[pc];
+  reg[(unsigned long)code[++pc]] = a1;
+  goto *code[++pc];
 
  E_MKAGENT5:
   //    puts("mkagent5 id src1 src2 src3 src4 src5 dest");
-  pc++;
-  a1 = make_Agent(vm, (unsigned long)code[pc++]);
+  a1 = make_Agent(vm, (unsigned long)code[++pc]);
   {
     volatile VALUE *a1port = AGENT(a1)->port;
-    a1port[0] = reg[(unsigned long)code[pc++]];
-    a1port[1] = reg[(unsigned long)code[pc++]];
-    a1port[2] = reg[(unsigned long)code[pc++]];
-    a1port[3] = reg[(unsigned long)code[pc++]];
-    a1port[4] = reg[(unsigned long)code[pc++]];
+    a1port[0] = reg[(unsigned long)code[++pc]];
+    a1port[1] = reg[(unsigned long)code[++pc]];
+    a1port[2] = reg[(unsigned long)code[++pc]];
+    a1port[3] = reg[(unsigned long)code[++pc]];
+    a1port[4] = reg[(unsigned long)code[++pc]];
   }
-  reg[(unsigned long)code[pc++]] = a1;
-  goto *code[pc];
+  reg[(unsigned long)code[++pc]] = a1;
+  goto *code[++pc];
 
   
 
  E_REUSEAGENT0:
   //    puts("reuseagent target id");
-  pc++;
-  a1 = reg[(unsigned long)code[pc++]];
-  AGENT(a1)->basic.id = (unsigned long)code[pc++];  
-  goto *code[pc];
+  a1 = reg[(unsigned long)code[++pc]];
+  AGENT(a1)->basic.id = (unsigned long)code[++pc];  
+  goto *code[++pc];
 
  E_REUSEAGENT1:
  //    puts("reuseagent target id src1");
-  pc++;
-  a1 = reg[(unsigned long)code[pc++]];
-  AGENT(a1)->basic.id = (unsigned long)code[pc++];
-  AGENT(a1)->port[0] = reg[(unsigned long)code[pc++]];
+  a1 = reg[(unsigned long)code[++pc]];
+  AGENT(a1)->basic.id = (unsigned long)code[++pc];
+  AGENT(a1)->port[0] = reg[(unsigned long)code[++pc]];
   
-  goto *code[pc];
+  goto *code[++pc];
   
 
  E_REUSEAGENT2:
  //    puts("reuseagent target id src1 src2");
-  pc++;
-  a1 = reg[(unsigned long)code[pc++]];
-  AGENT(a1)->basic.id = (unsigned long)code[pc++];
+  a1 = reg[(unsigned long)code[++pc]];
+  AGENT(a1)->basic.id = (unsigned long)code[++pc];
   {
     volatile VALUE *a1port = AGENT(a1)->port;
-    a1port[0] = reg[(unsigned long)code[pc++]];
-    a1port[1] = reg[(unsigned long)code[pc++]];
+    a1port[0] = reg[(unsigned long)code[++pc]];
+    a1port[1] = reg[(unsigned long)code[++pc]];
   }    
-  goto *code[pc];
+  goto *code[++pc];
 
 
  E_REUSEAGENT3:
  //    puts("reuseagent target id src1 src2 src3");
-  pc++;
-  a1 = reg[(unsigned long)code[pc++]];
-  AGENT(a1)->basic.id = (unsigned long)code[pc++];
+  a1 = reg[(unsigned long)code[++pc]];
+  AGENT(a1)->basic.id = (unsigned long)code[++pc];
   {
     volatile VALUE *a1port = AGENT(a1)->port;
-    a1port[0] = reg[(unsigned long)code[pc++]];
-    a1port[1] = reg[(unsigned long)code[pc++]];
-    a1port[2] = reg[(unsigned long)code[pc++]];
+    a1port[0] = reg[(unsigned long)code[++pc]];
+    a1port[1] = reg[(unsigned long)code[++pc]];
+    a1port[2] = reg[(unsigned long)code[++pc]];
   }  
-  goto *code[pc];
+  goto *code[++pc];
 
  E_REUSEAGENT4:
  //    puts("reuseagent target id src1 src2 src3 src4");
-  pc++;
-  a1 = reg[(unsigned long)code[pc++]];
-  AGENT(a1)->basic.id = (unsigned long)code[pc++];
+  a1 = reg[(unsigned long)code[++pc]];
+  AGENT(a1)->basic.id = (unsigned long)code[++pc];
   {
     volatile VALUE *a1port = AGENT(a1)->port;
-    a1port[0] = reg[(unsigned long)code[pc++]];
-    a1port[1] = reg[(unsigned long)code[pc++]];
-    a1port[2] = reg[(unsigned long)code[pc++]];
-    a1port[3] = reg[(unsigned long)code[pc++]];
+    a1port[0] = reg[(unsigned long)code[++pc]];
+    a1port[1] = reg[(unsigned long)code[++pc]];
+    a1port[2] = reg[(unsigned long)code[++pc]];
+    a1port[3] = reg[(unsigned long)code[++pc]];
   }  
-  goto *code[pc];
+  goto *code[++pc];
 
  E_REUSEAGENT5:
  //    puts("reuseagent target id src1 src2 src3 src4 src5");
-  pc++;
-  a1 = reg[(unsigned long)code[pc++]];
-  AGENT(a1)->basic.id = (unsigned long)code[pc++];
+  a1 = reg[(unsigned long)code[++pc]];
+  AGENT(a1)->basic.id = (unsigned long)code[++pc];
   {
     volatile VALUE *a1port = AGENT(a1)->port;
-    a1port[0] = reg[(unsigned long)code[pc++]];
-    a1port[1] = reg[(unsigned long)code[pc++]];
-    a1port[2] = reg[(unsigned long)code[pc++]];
-    a1port[3] = reg[(unsigned long)code[pc++]];
-    a1port[4] = reg[(unsigned long)code[pc++]];
+    a1port[0] = reg[(unsigned long)code[++pc]];
+    a1port[1] = reg[(unsigned long)code[++pc]];
+    a1port[2] = reg[(unsigned long)code[++pc]];
+    a1port[3] = reg[(unsigned long)code[++pc]];
+    a1port[4] = reg[(unsigned long)code[++pc]];
   }  
-  goto *code[pc];
+  goto *code[++pc];
 
 
 
  E_PUSH:
   //    puts("push reg reg");
   {
-    pc++;
-    VALUE a1 = reg[(unsigned long)code[pc++]];
-    VALUE a2 = reg[(unsigned long)code[pc++]];    
+    VALUE a1 = reg[(unsigned long)code[++pc]];
+    VALUE a2 = reg[(unsigned long)code[++pc]];    
     PUSH(vm, a1, a2);
   }
-  goto *code[pc];
+  goto *code[++pc];
 
 
  E_PUSHI:
   //      puts("pushi reg fixint");
   {
-    pc++;
-    
-    VALUE a1 = reg[(unsigned long)code[pc++]];    
-    VALUE a2 = (unsigned long)code[pc++];
+    VALUE a1 = reg[(unsigned long)code[++pc]];    
+    VALUE a2 = (unsigned long)code[++pc];
     PUSH(vm, a1, a2);    
   }  
-  goto *code[pc];
+  goto *code[++pc];
 
 
 
  E_MYPUSH:
   //    puts("mypush reg reg");
   {
-    pc++;
-    VALUE a1 = reg[(unsigned long)code[pc++]];
-    VALUE a2 = reg[(unsigned long)code[pc++]];    
+    VALUE a1 = reg[(unsigned long)code[++pc]];
+    VALUE a2 = reg[(unsigned long)code[++pc]];    
     MYPUSH(vm, a1, a2);
   }
-  goto *code[pc];
+  goto *code[++pc];
 
   
   
  E_LOADI:
   //    puts("loadi num dest");
-  pc++;
-  i = (long)code[pc++];  
-  reg[(unsigned long)code[pc++]] = i;
-  goto *code[pc];
+  i = (long)code[++pc];  
+  reg[(unsigned long)code[++pc]] = i;
+  goto *code[++pc];
 
 
 
@@ -8115,185 +8193,179 @@ void *exec_code(int mode, VirtualMachine * restrict vm, void * restrict *code) {
   
  E_LOAD:
   //    puts("load src dest");
-  pc++;
-  a1 = reg[(unsigned long)code[pc++]];
-  reg[(unsigned long)code[pc++]] = a1;
-  goto *code[pc];
+  a1 = reg[(unsigned long)code[++pc]];
+  reg[(unsigned long)code[++pc]] = a1;
+  goto *code[++pc];
+
+  
+ E_LOADP:
+  //    puts("loadp src port dest");
+  a1 = reg[(unsigned long)code[++pc]];
+  i = (unsigned long)code[++pc];
+  AGENT(reg[(unsigned long)code[++pc]])->port[i] = a1;
+  goto *code[++pc];
 
 
   
  E_ADD:
   //    puts("ADD src1 src2 dest");
-  pc++;
   {
-    long i = FIX2INT(reg[(unsigned long)code[pc++]]);
-    long j = FIX2INT(reg[(unsigned long)code[pc++]]);
+    long i = FIX2INT(reg[(unsigned long)code[++pc]]);
+    long j = FIX2INT(reg[(unsigned long)code[++pc]]);
     
-    reg[(unsigned long)code[pc++]] = INT2FIX(i+j);
+    reg[(unsigned long)code[++pc]] = INT2FIX(i+j);
   }
-  goto *code[pc];
+  goto *code[++pc];
 
  E_SUB:
   //    puts("SUB src1 src2 dest");
-  pc++;
   {
-    long i = FIX2INT(reg[(unsigned long)code[pc++]]);
-    long j = FIX2INT(reg[(unsigned long)code[pc++]]);
+    long i = FIX2INT(reg[(unsigned long)code[++pc]]);
+    long j = FIX2INT(reg[(unsigned long)code[++pc]]);
     
-    reg[(unsigned long)code[pc++]] = INT2FIX(i-j);
+    reg[(unsigned long)code[++pc]] = INT2FIX(i-j);
   }
-  goto *code[pc];
+  goto *code[++pc];
 
   
  E_ADDI:
   //  puts("ADDI src int dest");
-  pc++;
   {
-    long i = FIX2INT(reg[(unsigned long)code[pc++]]);
-    long j = (unsigned long)code[pc++];
+    long i = FIX2INT(reg[(unsigned long)code[++pc]]);
+    long j = (unsigned long)code[++pc];
     
-    reg[(unsigned long)code[pc++]] = INT2FIX(i+j);
+    reg[(unsigned long)code[++pc]] = INT2FIX(i+j);
   }
-  goto *code[pc];
+  goto *code[++pc];
 
   
  E_SUBI:
   //  puts("SUBI src int dest");
-  pc++;
   {
-    long i = FIX2INT(reg[(unsigned long)code[pc++]]);
-    long j = (unsigned long)code[pc++];
+    long i = FIX2INT(reg[(unsigned long)code[++pc]]);
+    long j = (unsigned long)code[++pc];
     
-    reg[(unsigned long)code[pc++]] = INT2FIX(i-j);
+    reg[(unsigned long)code[++pc]] = INT2FIX(i-j);
   }
-  goto *code[pc];
+  goto *code[++pc];
 
   
  E_MUL:
   //    puts("MUL src1 src2 dest");
-  pc++;
   {
-    long i = FIX2INT(reg[(unsigned long)code[pc++]]);
-    long j = FIX2INT(reg[(unsigned long)code[pc++]]);
+    long i = FIX2INT(reg[(unsigned long)code[++pc]]);
+    long j = FIX2INT(reg[(unsigned long)code[++pc]]);
     
-    reg[(unsigned long)code[pc++]] = INT2FIX(i*j);
+    reg[(unsigned long)code[++pc]] = INT2FIX(i*j);
   }
-  goto *code[pc];
+  goto *code[++pc];
 
   
  E_DIV:
   //    puts("DIV src1 src2 dest");
-  pc++;
   {
-    long i = FIX2INT(reg[(unsigned long)code[pc++]]);
-    long j = FIX2INT(reg[(unsigned long)code[pc++]]);
+    long i = FIX2INT(reg[(unsigned long)code[++pc]]);
+    long j = FIX2INT(reg[(unsigned long)code[++pc]]);
     
-    reg[(unsigned long)code[pc++]] = INT2FIX(i/j);
+    reg[(unsigned long)code[++pc]] = INT2FIX(i/j);
   }
-  goto *code[pc];
+  goto *code[++pc];
 
  E_MOD:
   //    puts("MOD src1 src2 dest");
-  pc++;
   {
-    long i = FIX2INT(reg[(unsigned long)code[pc++]]);
-    long j = FIX2INT(reg[(unsigned long)code[pc++]]);
+    long i = FIX2INT(reg[(unsigned long)code[++pc]]);
+    long j = FIX2INT(reg[(unsigned long)code[++pc]]);
     
-    reg[(unsigned long)code[pc++]] = INT2FIX(i%j);
+    reg[(unsigned long)code[++pc]] = INT2FIX(i%j);
   }
-  goto *code[pc];
+  goto *code[++pc];
 
  E_LT:
   //    puts("LT src1 src2 dest");
-  pc++;
   {
     //    int i = FIX2INT(reg[(unsigned long)code[pc++]]);
     //    int j = FIX2INT(reg[(unsigned long)code[pc++]]);
-    long i = reg[(unsigned long)code[pc++]];
-    long j = reg[(unsigned long)code[pc++]];
+    long i = reg[(unsigned long)code[++pc]];
+    long j = reg[(unsigned long)code[++pc]];
 
     if (i<j) {
-      reg[(unsigned long)code[pc++]] = INT2FIX(1);
+      reg[(unsigned long)code[++pc]] = INT2FIX(1);
     } else {
-      reg[(unsigned long)code[pc++]] = INT2FIX(0);
+      reg[(unsigned long)code[++pc]] = INT2FIX(0);
     }
   }
-  goto *code[pc];
+  goto *code[++pc];
 
 
  E_LE:
   //    puts("LT src1 src2 dest");
-  pc++;
   {
-    long i = reg[(unsigned long)code[pc++]];
-    long j = reg[(unsigned long)code[pc++]];
+    long i = reg[(unsigned long)code[++pc]];
+    long j = reg[(unsigned long)code[++pc]];
 
     if (i<=j) {
-      reg[(unsigned long)code[pc++]] = INT2FIX(1);
+      reg[(unsigned long)code[++pc]] = INT2FIX(1);
     } else {
-      reg[(unsigned long)code[pc++]] = INT2FIX(0);
+      reg[(unsigned long)code[++pc]] = INT2FIX(0);
     }
   }
-  goto *code[pc];
+  goto *code[++pc];
 
 
  E_EQ:
   //    puts("EQ src1 src2 dest");
-  pc++;
   {
-    long i = reg[(unsigned long)code[pc++]];
-    long j = reg[(unsigned long)code[pc++]];
+    long i = reg[(unsigned long)code[++pc]];
+    long j = reg[(unsigned long)code[++pc]];
 
     if (i==j) {
-      reg[(unsigned long)code[pc++]] = INT2FIX(1);
+      reg[(unsigned long)code[++pc]] = INT2FIX(1);
     } else {
-      reg[(unsigned long)code[pc++]] = INT2FIX(0);
+      reg[(unsigned long)code[++pc]] = INT2FIX(0);
     }
   }
-  goto *code[pc];
+  goto *code[++pc];
 
 
 
  E_EQI:
   //    puts("EQI src1 fixint dest");
-  pc++;
   {
-    long i = reg[(unsigned long)code[pc++]];
-    long j = (unsigned long)code[pc++];
+    long i = reg[(unsigned long)code[++pc]];
+    long j = (unsigned long)code[++pc];
 
     if (i==j) {
-      reg[(unsigned long)code[pc++]] = INT2FIX(1);
+      reg[(unsigned long)code[++pc]] = INT2FIX(1);
     } else {
-      reg[(unsigned long)code[pc++]] = INT2FIX(0);
+      reg[(unsigned long)code[++pc]] = INT2FIX(0);
     }
   }
-  goto *code[pc];
+  goto *code[++pc];
 
 
   
  E_NE:
   //    puts("NE src1 src2 dest");
-  pc++;
   {
-    long i = reg[(unsigned long)code[pc++]];
-    long j = reg[(unsigned long)code[pc++]];
+    long i = reg[(unsigned long)code[++pc]];
+    long j = reg[(unsigned long)code[++pc]];
 
     if (i!=j) {
-      reg[(unsigned long)code[pc++]] = INT2FIX(1);
+      reg[(unsigned long)code[++pc]] = INT2FIX(1);
     } else {
-      reg[(unsigned long)code[pc++]] = INT2FIX(0);
+      reg[(unsigned long)code[++pc]] = INT2FIX(0);
     }
   }
-  goto *code[pc];
+  goto *code[++pc];
 
 
 
  E_LT_R0:
   //    puts("LT_R0 src1 src2");
-  pc++;
   {
-    long i = reg[(unsigned long)code[pc++]];
-    long j = reg[(unsigned long)code[pc++]];
+    long i = reg[(unsigned long)code[++pc]];
+    long j = reg[(unsigned long)code[++pc]];
 
     if (i<j) {
       reg[0] = 1;
@@ -8301,15 +8373,14 @@ void *exec_code(int mode, VirtualMachine * restrict vm, void * restrict *code) {
       reg[0] = 0;
     }
   }
-  goto *code[pc];
+  goto *code[++pc];
 
 
  E_LE_R0:
   //    puts("LE_R0 src1 src2");
-  pc++;
   {
-    long i = reg[(unsigned long)code[pc++]];
-    long j = reg[(unsigned long)code[pc++]];
+    long i = reg[(unsigned long)code[++pc]];
+    long j = reg[(unsigned long)code[++pc]];
 
     if (i<=j) {
       reg[0] = 1;
@@ -8317,15 +8388,14 @@ void *exec_code(int mode, VirtualMachine * restrict vm, void * restrict *code) {
       reg[0] = 0;
     }
   }
-  goto *code[pc];
+  goto *code[++pc];
 
   
  E_EQ_R0:
   //    puts("EQ_R0 src1 src2");
-  pc++;
   {
-    long i = reg[(unsigned long)code[pc++]];
-    long j = reg[(unsigned long)code[pc++]];
+    long i = reg[(unsigned long)code[++pc]];
+    long j = reg[(unsigned long)code[++pc]];
 
     if (i==j) {
       reg[0] = 1;
@@ -8333,15 +8403,14 @@ void *exec_code(int mode, VirtualMachine * restrict vm, void * restrict *code) {
       reg[0] = 0;
     }
   }
-  goto *code[pc];
+  goto *code[++pc];
 
 
  E_EQI_R0:
   //      puts("EQI_R0 src1 int");
-  pc++;
   {
-    long i = reg[(unsigned long)code[pc++]];
-    long j = (unsigned long)code[pc++];
+    long i = reg[(unsigned long)code[++pc]];
+    long j = (unsigned long)code[++pc];
 
     if (i==j) {
       reg[0] = 1;
@@ -8349,17 +8418,16 @@ void *exec_code(int mode, VirtualMachine * restrict vm, void * restrict *code) {
       reg[0] = 0;
     }
   }
-  goto *code[pc];
+  goto *code[++pc];
 
   
 
   
  E_NE_R0:
   //    puts("NE_R0 src1 src2");
-  pc++;
   {
-    long i = reg[(unsigned long)code[pc++]];
-    long j = reg[(unsigned long)code[pc++]];
+    long i = reg[(unsigned long)code[++pc]];
+    long j = reg[(unsigned long)code[++pc]];
 
     if (i!=j) {
       reg[0] = 1;
@@ -8367,7 +8435,7 @@ void *exec_code(int mode, VirtualMachine * restrict vm, void * restrict *code) {
       reg[0] = 0;
     }
   }
-  goto *code[pc];
+  goto *code[++pc];
   
 
 
@@ -8375,50 +8443,47 @@ void *exec_code(int mode, VirtualMachine * restrict vm, void * restrict *code) {
  E_JMPEQ0:
   //    puts("JMPEQ0 reg pc");
   //    the pc is a relative address, not absolute one!
-  pc++;
   {
-    long i = reg[(unsigned long)code[pc++]];
+    long i = reg[(unsigned long)code[++pc]];
     if (!FIX2INT(i)) {
-      int j = (unsigned long)code[pc++];
+      int j = (unsigned long)code[++pc];
       pc += j;
     } else {
-      pc++;
+      ++pc;
     }
   }
-  goto *code[pc];
+  goto *code[++pc];
 
 
  E_JMPEQ0_R0:
   //      puts("JMPEQ0_R0 pc");
-  pc++;
   {
     long i = reg[0];
     if (!i) {
-      int j = (unsigned long)code[pc++];
+      int j = (unsigned long)code[++pc];
       pc += j;
     } else {
-      pc++;
+      ++pc;
     }
   }
   
-  goto *code[pc];
+  goto *code[++pc];
 
 
 
  E_JMPNEQ0:
   //      puts("JMPNEQ0 reg pc");
-  pc++;
   {
-    long i = reg[(unsigned long)code[pc++]];
+    long i = reg[(unsigned long)code[++pc]];
     if (FIX2INT(i)) {
-      int j = (unsigned long)code[pc++];
+      int j = (unsigned long)code[++pc];
       pc += j;
     } else {
-      pc++;
+      ++pc;
     }
   }
   
-  goto *code[pc];
+  goto *code[++pc];
 
   
     
@@ -8527,78 +8592,70 @@ void *exec_code(int mode, VirtualMachine * restrict vm, void * restrict *code) {
  E_UNM:
 #if !defined(OPTIMISE_TWO_ADDRESS) || !defined(OPTIMISE_TWO_ADDRESS_UNARY)
   //    puts("UNM src dest");
-  pc++;
   {
-    long i = FIX2INT(reg[(unsigned long)code[pc++]]);    
-    reg[(unsigned long)code[pc++]] = INT2FIX(-1 * i);
+    long i = FIX2INT(reg[(unsigned long)code[++pc]]);    
+    reg[(unsigned long)code[++pc]] = INT2FIX(-1 * i);
   }
 #else
   //    puts("UNM dest");
-  pc++;
   {
-    long i = FIX2INT(reg[(unsigned long)code[pc]]);
-    reg[(unsigned long)code[pc++]] = INT2FIX(-1 * i);
+    long i = FIX2INT(reg[(unsigned long)code[++pc]]);
+    reg[(unsigned long)code[pc]] = INT2FIX(-1 * i);
   }
 #endif  
-  goto *code[pc];
+  goto *code[++pc];
   
 
  E_RAND:
 #if !defined(OPTIMISE_TWO_ADDRESS) || !defined(OPTIMISE_TWO_ADDRESS_UNARY)
   //    puts("RAND src dest");
-  pc++;
   {
-    long i = FIX2INT(reg[(unsigned long)code[pc++]]);    
-    reg[(unsigned long)code[pc++]] = INT2FIX(rand() % i);
+    long i = FIX2INT(reg[(unsigned long)code[++pc]]);    
+    reg[(unsigned long)code[++pc]] = INT2FIX(rand() % i);
   }
 #else
   //    puts("RAND dest");
-  pc++;
   {
-    long i = FIX2INT(reg[(unsigned long)code[pc]]);    
-    reg[(unsigned long)code[pc++]] = INT2FIX(rand() % i);
+    long i = FIX2INT(reg[(unsigned long)code[++pc]]);    
+    reg[(unsigned long)code[pc]] = INT2FIX(rand() % i);
   }  
 #endif  
-  goto *code[pc];
+  goto *code[++pc];
   
 
  E_INC:
 #if !defined(OPTIMISE_TWO_ADDRESS) || !defined(OPTIMISE_TWO_ADDRESS_UNARY)
   //    puts("INC src dest");
-  pc++;
   {
-    long i = FIX2INT(reg[(unsigned long)code[pc++]]);    
-    reg[(unsigned long)code[pc++]] = INT2FIX(++i);
+    long i = FIX2INT(reg[(unsigned long)code[++pc]]);    
+    reg[(unsigned long)code[++pc]] = INT2FIX(++i);
   }
 #else
   //    puts("INC src");
-  pc++;
   {
-    long i = FIX2INT(reg[(unsigned long)code[pc]]);    
-    reg[(unsigned long)code[pc++]] = INT2FIX(++i);
+    long i = FIX2INT(reg[(unsigned long)code[++pc]]);    
+    reg[(unsigned long)code[pc]] = INT2FIX(++i);
   }  
 #endif  
-  goto *code[pc];
+  goto *code[++pc];
 
   
  E_DEC:
 #if !defined(OPTIMISE_TWO_ADDRESS) || !defined(OPTIMISE_TWO_ADDRESS_UNARY)
   //    puts("DEC src dest");
-  pc++;
   {
-    long i = FIX2INT(reg[(unsigned long)code[pc++]]);    
-    reg[(unsigned long)code[pc++]] = INT2FIX(--i);
+    long i = FIX2INT(reg[(unsigned long)code[++pc]]);    
+    reg[(unsigned long)code[++pc]] = INT2FIX(--i);
   }
 #else
   //    puts("DEC dest");
-  pc++;
   {
-    long i = FIX2INT(reg[(unsigned long)code[pc]]);    
-    reg[(unsigned long)code[pc++]] = INT2FIX(--i);
+    long i = FIX2INT(reg[(unsigned long)code[++pc]]);    
+    reg[(unsigned long)code[pc]] = INT2FIX(--i);
   }
   
 #endif  
-  goto *code[pc];
+  goto *code[++pc];
   
 
   
@@ -8641,8 +8698,7 @@ void *exec_code(int mode, VirtualMachine * restrict vm, void * restrict *code) {
 
 
  E_NOP:
-  pc++;
-  goto *code[pc];
+  goto *code[++pc];
 
 
 
@@ -10158,6 +10214,51 @@ void select_kind_of_push(Ast *ast, int p1, int p2) {
 }
 
 
+int check_ast_arity(Ast *ast) {
+  int i;
+  Ast *ptr;
+  char *sym;
+  
+  if (ast == NULL) {
+    return 1;
+  }
+
+  if (ast->id == AST_AGENT) {
+    ptr = ast->right;
+    sym = ast->left->sym;
+    
+    for (i=0; i<MAX_PORT; i++) {
+      if (ptr == NULL) {
+	return 1;
+      }
+      if (!check_ast_arity(ptr->left)) {
+	return 0;
+      }
+      ptr = ast_getTail(ptr);
+    }
+
+    if (ptr != NULL)  {
+      printf("Error!: `%s' has too many arguments. It should be MAX_PORT(=%d) or less.\n", sym, MAX_PORT);
+      return 0;
+    }
+
+  } else if (ast->id == AST_TUPLE) {
+    if ((ast->intval <= MAX_PORT) && (ast->intval <= 5)) {
+      return 1;
+    } else {
+      if (MAX_PORT <= 5) {
+	printf("Error: A tuple has too many arguments. It should be MAX_PORT(=%d) or less.\n",
+	   MAX_PORT);
+      } else {
+	printf("Error: A tuple has too many arguments. It should be 5 or less.\n");
+      }
+      return 0;
+    }
+  }
+
+  return 1;
+}  
+
 
 
 #ifndef THREAD
@@ -10248,9 +10349,13 @@ int exec(Ast *at) {
   {
     Ast *tmp_at=at;
     while (tmp_at != NULL) {
-      if ((check_invalid_occurrence(tmp_at->left->left))
-	  && (check_invalid_occurrence(tmp_at->left->right))) {
-	// both ara invalid
+
+      if (!(check_ast_arity(tmp_at->left->left))
+	  || !(check_ast_arity(tmp_at->left->right))
+	  || !(check_invalid_occurrence(tmp_at->left->left))
+	  || !(check_invalid_occurrence(tmp_at->left->right))) {
+
+	// invalid case
 	if (yyin != stdin) exit(-1);
 	return 0;
       }
@@ -10299,13 +10404,15 @@ int exec(Ast *at) {
   CmEnv_retrieve_MKGNAME();
   CmEnv_generate_VMCode(code);
 
-  //      // for debug
-  //      CmEnv_retrieve_MKGNAME();
-  //      IMCode_puts(0); //exit(1);
-  //    
-  //      int codenum = CmEnv_generate_VMCode(code);
-  //      VMCode_puts(code, codenum-2); //exit(1);
-  //      // end for debug
+  //          // for debug
+  //          CmEnv_retrieve_MKGNAME();
+  //          IMCode_puts(0); //exit(1);
+  //        
+  //          int codenum = CmEnv_generate_VMCode(code);
+  //          VMCode_puts(code, codenum-2); //exit(1);
+  //          // end for debug
+
+
   
 #ifdef COUNT_MKAGENT
   NumberOfMkAgent=0;
@@ -10536,9 +10643,13 @@ int exec(Ast *at) {
   {
     Ast *tmp_at=at;
     while (tmp_at != NULL) {
-      if ((check_invalid_occurrence(tmp_at->left->left))
-	  && (check_invalid_occurrence(tmp_at->left->right))) {
-	// both ara invalid
+
+      if (!(check_ast_arity(tmp_at->left->left))
+	  || !(check_ast_arity(tmp_at->left->right))
+	  || !(check_invalid_occurrence(tmp_at->left->left))
+	  || !(check_invalid_occurrence(tmp_at->left->right))) {
+      
+	// invalid case
 	if (yyin != stdin) exit(-1);
 	return 0;
       }
@@ -10751,7 +10862,7 @@ int main(int argc, char *argv[])
 	printf(" -t <num>         Set the number of threads               (Default: %10d)\n", MaxThreadsNum);
 
 #else
-	printf(" -w               Enable Weak Reduction strategy          (Default:      false)\n");
+	printf(" -w               Enable Weak Reduction strategy          (Default:    disable)\n");
 #endif
 
 
@@ -10963,8 +11074,15 @@ int main(int argc, char *argv[])
     
   } else {
     if (!(yyin = fopen(fname, "r"))) {
-      printf("Error: The file '%s' can not be opened.\n", fname);
-      exit(-1);
+
+      char *fname_in = malloc(sizeof(char*) * 256);
+      snprintf(fname_in, 256, "%s.in", fname);
+      if (!(yyin = fopen(fname_in, "r"))) {
+	printf("Error: The file '%s' cannot be opened.\n", fname);
+	exit(-1);
+      }
+      
+      free(fname_in);
     }
   }
 

@@ -1,6 +1,8 @@
 #ifndef _TYPE_
 #define _TYPE_
 
+#include "config.h"
+
 typedef unsigned int IDTYPE;
 typedef unsigned long VALUE;
 
@@ -10,7 +12,7 @@ typedef struct {
 } Basic;
 
 
-#define MAX_PORT 5
+//#define MAX_PORT 5
 
 #ifndef THREAD
 typedef struct {
