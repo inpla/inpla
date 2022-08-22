@@ -1,4 +1,29 @@
 # Change log
+### v0.9.2-3 (released on 22 August 2022)
+#### Bux fix
+
+* **Invalid register allocation**: When a rule `A(x1,...)><B(y1,...)` is given, Inpla also defines the symmetry version `B(y1,...)><A(x1,...)`. The symmetry one had not been correctly compiled due to the invalid register allocation. For another invalid allocation issue, some tail recursive optimisation had not work correctly. These work well now!
+
+#### Polished
+* **Maximum port numbers**: The number of agent ports is defined as `5` in `config.h` as follows:
+
+  ```
+  // ------------------------------------------------
+  // Number of Agent Ports 
+  // ------------------------------------------------
+  // MAX_PORT defines a number of ports of agents.
+  // Default is 5 and should be 2 or more.
+  
+  #define MAX_PORT 5
+  ```
+
+  Change it when more ports are required. Typically, less port numbers, faster execusion.
+
+* **Filename given by `-f` option**: Inpla can be invoked with `-f` option to specify an input script file. When a given filename is not found, Inpla in this version looks for a filename adding `.in` file extension.
+
+
+
+
 
 ### v0.9.2-2 (released on 21 August 2022)
 #### Bux fix

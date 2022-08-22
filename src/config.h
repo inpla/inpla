@@ -5,6 +5,16 @@
 
 
 // ------------------------------------------------
+// Number of Agent Ports 
+// ------------------------------------------------
+// MAX_PORT defines a number of ports of agents.
+// Default is 5 and should be 2 or more.
+
+#define MAX_PORT 5
+
+
+
+// ------------------------------------------------
 // Heaps 
 // ------------------------------------------------
 // There are three methods for agents and names heaps:
