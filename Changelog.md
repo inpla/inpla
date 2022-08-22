@@ -2,7 +2,7 @@
 ### v0.9.2-3 (released on 22 August 2022)
 #### Bux fix
 
-* **Invalid register allocation**: When a rule `A(x1,...)><B(y1,...)` is given, Inpla also define the symmetry version `B(y1,...)><A(x1,...)`. The symmetry version had not been correctly compiled due to the invalid register allocation. For another invalid allocation issue, some tail recursive optimisation had not work correctly. These work well now!
+* **Invalid register allocation**: When a rule `A(x1,...)><B(y1,...)` is given, Inpla also defines the symmetry version `B(y1,...)><A(x1,...)`. The symmetry one had not been correctly compiled due to the invalid register allocation. For another invalid allocation issue, some tail recursive optimisation had not work correctly. These work well now!
 
 #### Polished
 * **Maximum port numbers**: The number of agent ports is defined as `5` in `config.h` as follows:
