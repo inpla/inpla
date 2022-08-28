@@ -1,5 +1,8 @@
 #!/bin/bash
 
+bash ./sptestInpla.sh src/nqueen-12.in '-Xmt 6'
+bash ./sptestInpla.sh src/nqueen-12-reuse.in '-Xmt 6'
+
 bash ./sptestInpla.sh src/fib-38.in
 bash ./sptestInpla.sh src/fib-38-reuse.in
 
@@ -17,3 +20,9 @@ bash ./sptestInpla.sh src/qsort-260000-reuse.in '-Xms 17 -Xmt 0'
 
 bash ./sptestInpla.sh src/msort-260000.in
 bash ./sptestInpla.sh src/msort-260000-reuse.in '-Xms 18 -Xmt 0'
+
+bash ./sptestInpla.sh src/qsort-800000.in
+bash ./sptestInpla.sh src/qsort-800000-reuse.in '-Xms 18 -Xmt 0'
+
+bash ./sptestInpla.sh src/msort-800000.in
+bash ./sptestInpla.sh src/msort-800000-reuse.in '-Xms 18 -Xmt 0'

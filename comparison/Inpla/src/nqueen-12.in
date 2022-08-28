@@ -1,0 +1,141 @@
+// N-Queen
+//
+// The original is written as a Lisp program in the following file:
+// https://www.istc.kobe-u.ac.jp/activity/mage/m27/27_Lisp.pdf
+
+
+/** 
+ * member
+ *   r, done << member(m, list)
+ *   return
+ *     r: 1 if m occurs in list
+ *     done: the same to `list'
+ */
+// fun member x [] = false
+//  | member x (y::ys) = if x=y then true else (member x ys);
+
+member(r, list, int x) >< [] =>
+        r~0, list~[];
+member(r, list, int x) >< (int y):ys
+| x==y =>
+        r~1, list~y:ys
+| _ =>
+        list~y:cnt, member(r, cnt, x)~ys;
+
+
+/** 
+ * len_list (stream version)
+ *   len, done << len_list(list)
+ *   return
+ *     len: length of `list'
+ *     done: the same to `list'
+ */
+ 
+len_list(len, done) >< [] =>
+        len~0, done~[];
+len_list(len, done) >< x:xs => 
+        done~x:cnt, 
+        len_list_(len, cnt, 1)~xs;
+
+len_list_(len, done, int ct) >< [] =>
+        len~ct, done~[];
+len_list_(len, done, int ct) >< x:xs => 
+        done~x:cnt, 
+        len_list_(len, cnt, ct+1) ~ xs; 
+
+/** 
+ * len (non-stream version)
+ *   ret << len(list)
+ *   return
+ *     ret: length of `list'
+ */
+ 
+len(ret) >< [] =>
+        ret~0;
+len(ret) >< x:xs =>
+        len_list(ret, Eraser)~x:xs;
+
+
+
+/** 
+ * threat (stream version)
+ * check for (0,q) and (k, qpos[col=k]) where k=1...
+ * http://www.nct9.ne.jp/m_hiroi/func/haskell06.html
+     0 1 2    --> 
+    +-------------
+   1| . . . . . .
+   2| . . . -3. .  5 - 3 = 2
+   3| . . -2. . .  5 - 2 = 3
+   4| . -1. . . .  5 - 1 = 4
+   5| Q . . . . .  Q position is 5  
+   6| . +1. . . .  5 + 1 = 6
+   7| . . +2. . .  5 + 2 = 7
+   8| . . . +3. .  5 + 2 = 8
+    +-------------
+ *   r, done << threat(k,m, board)
+ *   return
+ *        r: 1 if threat conditions are satisfied
+ *     done: the same to `board'
+ */
+// fun threat k m [] = false
+//   | threat k m (x::xs) =
+//    if (k = x-m) orelse (k = x+m) then true
+//    else (threat (k+1) m xs);
+
+threat(r, done, int k, int q)><[] =>
+        r~0, done~[];
+threat(r, done, int k, int q)><(int x):xs
+| (k == x-q) or (k == q-x) =>
+        r~1, done~(x:xs)
+| _ =>
+        done~x:cnt, threat(r, cnt, k+1, q)~xs;
+
+
+
+// fun queen1 b n 0 = []
+//   | queen1 b n m =
+//     if (member m b) orelse (threat 1 m b) then (queen1 b n (m-1))
+//     else if (length b) = (n-1) then (m::b)::(queen1 b n (m-1))
+//         else (queen1 (m::b) n n) @ (queen1 b n (m-1));
+// fun queen n = queen1 n [] n;
+
+queen(ret) >< (int n) => queen_(ret, [], n)~n;
+
+queen_(r, b, int n) >< (int m)
+| m==0 =>
+        r~[], Eraser~b
+| _ =>
+        mem_ret, done_b << member(m,b), 
+        queen__chk_m_in_b(r, done_b, n, m)~mem_ret;
+
+queen__chk_m_in_b(r, b, int n, int m) >< (int mem_ret)
+| mem_ret == 1 =>
+        queen_(r, b, n)~(m-1)
+| _ =>
+        th_ret, done_b << threat(1, m, b), 
+	queen__chk_threat(r, done_b, n, m)~th_ret;
+
+queen__chk_threat(r, b, int n, int m) >< (int threat_ret)
+| threat_ret == 1 =>
+        queen_(r, b, n)~(m-1)
+| _ =>
+        len_ret, done_b << len_list(b), 
+	queen__chk_lastelem(r, done_b, n, m)~len_ret;
+
+queen__chk_lastelem(r, b, int n, int m) >< (int len_ret)
+| len_ret == n-1 =>
+        b1, b2 << Dup(b), 
+        r~(m:b1):cnt, queen_(cnt, b2, n)~(m-1)
+| _ =>
+        b1, b2 << Dup(b),
+        r << Append(cnt1, cnt2),
+        queen_(cnt1, m:b1, n)~n, queen_(cnt2, b2, n)~(m-1);
+
+
+
+// ----------------------------------------------------------
+// main
+// ----------------------------------------------------------
+const N=12;
+queen(ret)~N, len(count)~ret;
+count; // count ->14200
