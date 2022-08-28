@@ -121,14 +121,15 @@ Inpla is a multi-threaded parallel interpreter of interaction nets. Once you wri
 
     ```
     // Example program in Python
-    // def gcd(a: Int, b: Int): Int =
-    //   if (b==0) a else gcd(b, a%b)
+    // def gcd(a, b):
+    //   if b==0: return a 
+    //   else: return gcd(b, a%b)
     
     // Rules
     gcd(ret) >< (int a, int b)
     | b==0 => ret ~ a
     | _ => gcd(ret) ~ (b, a%b);
-    
+  
   // Nets
   gcd(r) ~ (14,21);
   r; // it should be 7
