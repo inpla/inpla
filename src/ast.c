@@ -280,7 +280,7 @@ void ast_puts(Ast *p) {
 
   switch(p->id) {
   case AST_INT:
-    printf("int %d", p->intval);
+    printf("int %ld", p->longval);
     break;
   case AST_SYM:
     printf("%s", p->sym);

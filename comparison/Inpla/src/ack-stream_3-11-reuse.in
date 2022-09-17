@@ -24,7 +24,7 @@ Ack(ret, n) >< (int m)
 | _ => (*L)Ackm(ret, m)~n;
 
 Ackm(ret, int m) >< (int n)
-| n==0 => Ack(ret,Inc(0)) ~ (m-1)
+| n==0 => (*L)Ack(ret,Inc(0)) ~ (m-1)
 | _ => (*L)Ack(cnt,n-1)~m, Ack(ret,cnt)~(m-1);
 
 Ackm(ret, int m) >< Inc(n)
@@ -34,8 +34,8 @@ Sumup(ret, int sum) >< Inc(x) => (*L)Sumup(ret, sum+1)~x;
 Sumup(ret, int sum) >< (int n) => ret~sum+n;
 
 
-//AckMain(ret)><(int m, int n) => (*L)Ack(cnt,n)~m, (*R)Sumup(ret,0)~cnt;
-AckMain(ret)><(int m, int n) => Ack(cnt,n)~m, Sumup(ret,0)~cnt;
+AckMain(ret)><(int m, int n) => (*L)Ack(cnt,n)~m, (*R)Sumup(ret,0)~cnt;
+//AckMain(ret)><(int m, int n) => Ack(cnt,n)~m, Sumup(ret,0)~cnt;
 
 AckMain(ret)~(3,11);
 ret;

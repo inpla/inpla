@@ -1,11 +1,11 @@
 // Insertion sort
-isort(ret) >< [] => ret~[];
-isort(ret) >< x:xs => (*L)I(ret, x)~cnt, (*R)isort(cnt)~xs;
+isort(ret) >< [] => ret~(*R)[];
+isort(ret) >< x:xs => (*R)I(ret, x)~cnt, (*L)isort(cnt)~xs;
 
 I(ret, int x) >< [] => ret~[x];
 I(ret, int x) >< (int y):ys
 | x<=y => ret~(*L)(x:(*R)(y:ys))
-| _    => ret~(*L)(y:cnt), (*R)I(cnt, x)~ys;
+| _    => (*L)I(cnt, x)~ys, ret~(*R)(y:cnt);
 
 
 // creates a random list

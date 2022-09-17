@@ -1,7 +1,7 @@
 // Configurations  ---------------------------------------------------
 
-// To show the computation process:
-//#define DEBUG
+//#define DEBUG   // Show the computation process.
+//#define DEBUG_MKRULE  // Show compilation codes of rules.
 
 
 // ------------------------------------------------
@@ -109,13 +109,27 @@
 // -------------------------------------------------
 
 
+// ------------------------------------------------
+// For developers
+// ------------------------------------------------
+//#define OLD_REUSEAGENT    // Use the old mechanism to reuse agents.
+//                          // Thus, `REUSEAGENT' is used
+//                          // instead of `CHID_L`, `LOADP_L` and so on.
+
+//#define DEBUG_MKRULE      // Show compiled codes for rules.
+//#define DEBUG_NETS        // Show compiled codes for nets.
+
+
+
+//#define VERBOSE_NODE_USE  // Put memory usage of agents and names.
+//#define VERBOSE_HOOP_EXPANSION  // Put messages when hoops are expanded.
+//#define VERBOSE_EQSTACK_EXPANSION  // Put messages when Eqstacks are expanded.
+//#define VERBOSE_TRO                // Put message when TRO is enable.
+
+
+
+
 
 
 #define COUNT_INTERACTION  // Count interaction.
 
-
-  
-  
-//#define VERBOSE_NODE_USE  // Put memory usage of agents and names.
-//#define VERBOSE_HOOP_EXPANSION  // Put messages when hoops are expanded.
-//#define VERBOSE_EQSTACK_EXPANSION  // Put messages when Eqstacks are expanded.

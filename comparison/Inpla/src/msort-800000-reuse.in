@@ -4,7 +4,7 @@ msort(ret) >< x:xs => (*L)msort_tail(ret, x)~xs;
 
 msort_tail(ret, int n) >< [] => ret~[n];
 msort_tail(ret, int n) >< x:xs => 
-	split(left,right) ~ (*R)(n:x:xs),
+	split(left,right) ~ n:(*R)(x:xs),
 	msort(a)~left, msort(b)~right, (*L)merge(ret,b)~a;
 
 merge(ret, snd) >< [] => ret~snd;
@@ -14,7 +14,6 @@ mergeCC(ret, int y, ys) >< [] => ret~(*R)(y:ys);
 mergeCC(ret, int y, ys) >< (int x):xs
 | x <= y => ret~(x:cnt), (*L)mergeCC(cnt, y, ys) ~ xs
 | _      => ret~(y:cnt), (*L)mergeCC(cnt, x, xs) ~ ys;
-
 
 split(right,left) >< [] => right~[], left~[];
 split(right,left) >< x:xs =>
@@ -29,7 +28,7 @@ make_RandList(ret) >< (int n)
 
 
 // validation checks
-valid(ret) >< [] => ret~False;
+valid(ret) >< [] => ret~True;
 valid(ret) >< x:xs => (*L)valid_Cons(ret,x)~xs;
 
 valid_Cons(ret, int x) >< [] => ret~True;

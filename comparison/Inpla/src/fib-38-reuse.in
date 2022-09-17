@@ -2,7 +2,7 @@
 Fib(r) >< (int n)
 | n == 0 => r~0
 | n == 1 => r~1
-| _ => Fib(cnt1)~(n-1), Fib(cnt2)~(n-2), (*L)Add(r,cnt2)~cnt1;
+| _ => (*L)Fib(cnt1)~(n-1), Fib(cnt2)~(n-2), Add(r,cnt2)~cnt1;
 
 
 Fib(r)~38;

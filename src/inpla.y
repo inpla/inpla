@@ -22,8 +22,8 @@
 
 // ----------------------------------------------
   
-#define VERSION "0.9.2-3"
-#define BUILT_DATE  "22 August 2022"
+#define VERSION "0.10.0"
+#define BUILT_DATE  "17 September 2022"
 
 // ------------------------------------------------------------------
 
@@ -2337,7 +2337,7 @@ typedef enum {
 
   OP_RET, OP_RET_FREE_LR, OP_RET_FREE_L, OP_RET_FREE_R,
 
-  OP_LOADI, OP_LOAD, OP_LOADP,
+  OP_LOADI, OP_LOAD, OP_LOADP, OP_LOADP_L, OP_LOADP_R, OP_CHID_L, OP_CHID_R,
 
   OP_ADD, OP_SUB, OP_ADDI, OP_SUBI, OP_MUL, OP_DIV, OP_MOD,
   OP_LT, OP_LE, OP_EQ, OP_EQI, OP_NE,
@@ -2476,7 +2476,7 @@ void IMCode_puts(int n) {
 
     "RET", "RET_FREE_LR", "RET_FREE_L", "RET_FREE_R", 
 
-    "LOADI", "LOAD", "OP_LOADP",
+    "LOADI", "LOAD", "LOADP", "LOADP_L", "LOADP_R", "CHID_L", "CHID_R",
 
     "ADD", "SUB", "ADDI", "SUBI", "MUL", "DIV", "MOD",
     "LT", "LE", "EQ", "EQI", "NE",
@@ -2667,6 +2667,23 @@ void IMCode_puts(int n) {
     case OP_LOADP:
       printf("%s var%ld $%ld var%ld\n", string_opcode[imcode->opcode],
 	     imcode->operand1, imcode->operand2, imcode->operand3);
+      break;
+      
+    case OP_LOADP_L:
+      printf("%s var%ld $%ld\n", string_opcode[imcode->opcode],
+	     imcode->operand1, imcode->operand2);
+      break;
+    case OP_LOADP_R:
+      printf("%s var%ld $%ld\n", string_opcode[imcode->opcode],
+	     imcode->operand1, imcode->operand2);
+      break;
+    case OP_CHID_L:
+      printf("%s $%ld\n", string_opcode[imcode->opcode],
+	     imcode->operand1);
+      break;
+    case OP_CHID_R:
+      printf("%s $%ld\n", string_opcode[imcode->opcode],
+	     imcode->operand1);
       break;
       
 
@@ -2950,6 +2967,28 @@ void VMCode_puts(void **code, int n) {
 	     (unsigned long)code[i+2],
 	     (unsigned long)code[i+3]);
       i+=3;
+      
+    } else if (code[i] == CodeAddr[OP_LOADP_L]) {
+      printf("loadpl reg%lu $%ld\n",
+	     (unsigned long)code[i+1],
+	     (unsigned long)code[i+2]);
+      i+=2;
+      
+    } else if (code[i] == CodeAddr[OP_LOADP_R]) {
+      printf("loadpr reg%lu $%ld\n",
+	     (unsigned long)code[i+1],
+	     (unsigned long)code[i+2]);
+      i+=2;
+      
+    } else if (code[i] == CodeAddr[OP_CHID_L]) {
+      printf("chidl $%ld\n",
+	     (unsigned long)code[i+1]);
+      i+=1;
+      
+    } else if (code[i] == CodeAddr[OP_CHID_R]) {
+      printf("chidr $%ld\n",
+	     (unsigned long)code[i+1]);
+      i+=1;
       
     } else if (code[i] == CodeAddr[OP_LOOP]) {
       puts("loop");
@@ -3770,6 +3809,16 @@ int CmEnv_Optimise_check_occurence_in_block(int localvar,
 	return 1;
       }
       break;
+
+    case OP_LOADP_L:
+    case OP_LOADP_R:
+      // OP src1 port
+      if (imcode->operand1 == localvar) {
+	return 1;
+      }
+      break;
+      
+
       
     case OP_MKNAME:
     case OP_MKGNAME:
@@ -4143,6 +4192,16 @@ int CmEnv_Optimise_VMCode_CopyPropagation(int target_imcode_addr) {
 
     case OP_LOADP:
       // LOADP src port dest
+      if (imcode->operand1 == load_to) {
+	imcode->operand1 = load_from;
+	IMCode[target_imcode_addr].opcode = OP_DEAD_CODE;
+	return 1;
+      }
+      break;
+      
+    case OP_LOADP_L:
+    case OP_LOADP_R:
+      // LOADP_L src port
       if (imcode->operand1 == load_to) {
 	imcode->operand1 = load_from;
 	IMCode[target_imcode_addr].opcode = OP_DEAD_CODE;
@@ -4854,6 +4913,33 @@ int CmEnv_generate_VMCode(void **code) {
       
     }
 
+    case OP_LOADP_L: 
+    case OP_LOADP_R: {
+      // OP_LOADP_L src port
+      long src1 = imcode->operand1;
+      long port = imcode->operand2;
+      
+#ifdef OPTIMISE_IMCODE      
+      src1 = CmEnv_using_reg(src1);
+      if (!CmEnv_Optimise_check_occurence_in_block(imcode->operand1, line_num))
+	CmEnv_free_reg(src1);
+      //      dest = CmEnv_using_reg(dest);
+#endif
+      
+      code[addr++] = CodeAddr[imcode->opcode];
+      code[addr++] = (void *)(unsigned long)src1;      
+      code[addr++] = (void *)(unsigned long)port;      
+      break;      
+    }
+      
+    case OP_CHID_L: 
+    case OP_CHID_R: {
+      // OP_CHID_L id
+      code[addr++] = CodeAddr[imcode->opcode];
+      code[addr++] = (void *)(unsigned long)imcode->operand1;      
+      break;      
+    }
+      
       
     case OP_LOADI: {
       // OP_LOADI int1 dest
@@ -5374,6 +5460,47 @@ int Ast_eqs_has_agentID(Ast *eqs, IDTYPE id) {
 
 }
 
+int Ast_mainbody_has_agentID(Ast *mainbody, IDTYPE id) {
+
+  if (mainbody == NULL)
+    return 0;
+
+
+  if (mainbody->id == AST_BODY) {
+    
+    Ast *body = mainbody;
+    Ast *eqs = body->right;
+    
+    if (eqs == NULL) {
+      return 0;
+    }
+    
+    if (Ast_eqs_has_agentID(eqs, id)) {
+      return 1;
+    }
+
+    return 0;
+    
+  } else {
+    // if_sentence
+    
+    Ast *if_sentence = mainbody;    
+    Ast *then_branch = if_sentence->right->left;
+    Ast *else_branch = if_sentence->right->right;
+
+    if ((Ast_mainbody_has_agentID(then_branch, id))
+	|| (Ast_mainbody_has_agentID(else_branch, id))) {
+      return 1;
+    }
+
+    return 0;          
+  }
+    
+
+}
+
+
+
 int Ast_is_agent(Ast *ptr) {
   if (ptr == NULL) {
     return 0;
@@ -5666,9 +5793,39 @@ void Ast_RewriteOptimisation_eqlist(Ast *eqlist) {
 }
 // END: Rewrite Optimisation  ------
 
+void Ast_remove_tuple1_in_mainbody(Ast *mainbody) {
+
+  if (mainbody == NULL)
+    return;
+
+  if (mainbody->id == AST_BODY) {
+    Ast *body = mainbody;
+    Ast *eqs = body->right;
+
+    while (eqs != NULL) {
+      Ast *eq = eqs->left;
+      eq->left = ast_remove_tuple1(eq->left);
+      eq->right = ast_remove_tuple1(eq->right);
+
+      eqs = ast_getTail(eqs);
+    }
+
+  } else {
+    Ast *if_sentence = mainbody;    
+    Ast *then_branch = if_sentence->right->left;
+    Ast *else_branch = if_sentence->right->right;
+
+    Ast_remove_tuple1_in_mainbody(then_branch);
+    Ast_remove_tuple1_in_mainbody(else_branch);
+  }
+}
 
 
 void Ast_undo_TRO_annotation(Ast *mainbody) {
+  // Make any kinds of CNCTs changed into just AST_CNCT
+  // in order to give it to compilation procedures safely.
+  
+  
   if (mainbody == NULL)
     return;
 
@@ -5693,6 +5850,8 @@ void Ast_undo_TRO_annotation(Ast *mainbody) {
       // (AST_ANNOTATE Foo NULL) => Foo
       eq->left = eq->left->left;
     }
+    
+    
   } else {
     Ast *if_sentence = mainbody;    
     Ast *then_branch = if_sentence->right->left;
@@ -5706,6 +5865,10 @@ void Ast_undo_TRO_annotation(Ast *mainbody) {
 
 int Ast_make_annotation_TailRecursionOptimisation(Ast *mainbody) {
   // Return 1 when annotated.
+  //
+  // When there is an equation for TRO, its ID is changed from AST_CNCT into
+  // AST_CNCT_TRO_INTVAR or AST_CNCT_TRO.
+
   
   if (mainbody == NULL)
     return 0;
@@ -5744,9 +5907,11 @@ int Ast_make_annotation_TailRecursionOptimisation(Ast *mainbody) {
 
     int available_TRO = 0;
     AST_ID astID_of_TRO; // = idL;  // idL is dummy
-    
+
     // --- recursion_agent ~ constructor_agent
-    if (idL == NameTable_get_id(recursion_agent->left->sym)) {
+    if ((recursion_agent->left->id == AST_SYM) &&
+	(idL == NameTable_get_id(recursion_agent->left->sym))) {
+
       
       if (Ast_is_expr(constructor_agent)) {
 	// --- CASE 1: rule_left_agent ~ expression
@@ -5792,7 +5957,7 @@ int Ast_make_annotation_TailRecursionOptimisation(Ast *mainbody) {
   } else {
     // if_sentence
     
-    Ast *if_sentence = mainbody;    
+    Ast *if_sentence = mainbody;
     Ast *then_branch = if_sentence->right->left;
     Ast *else_branch = if_sentence->right->right;
 
@@ -6073,8 +6238,36 @@ int Compile_term_on_ast(Ast *ptr, int target) {
       IMCode_genCode4(mkagent, ID_CONS, alloc[0], alloc[1], result);
     } else {
       result = target;
+
+      
+      // OLD Version with OP_REUSEAGENT2
+      //#definen OLD_REUSEAGENT
+#ifdef OLD_REUSEAGENT
       mkagent = OP_REUSEAGENT2;
       IMCode_genCode4(mkagent, result, ID_CONS, alloc[0], alloc[1]);
+#else
+      
+      if (target == VM_OFFSET_ANNOTATE_L) {      
+	if (CmEnv.idL != ID_CONS) {
+	  IMCode_genCode1(OP_CHID_L, ID_CONS);
+	}
+	for (i=0; i<2; i++) {
+	  if (alloc[i] != VM_OFFSET_METAVAR_L(i)) {	    
+	    IMCode_genCode2(OP_LOADP_L, alloc[i], i);
+	  }
+	}
+      } else {
+	if (CmEnv.idR != ID_CONS) {
+	  IMCode_genCode1(OP_CHID_R, ID_CONS);
+	}
+	for (i=0; i<2; i++) {
+	  if (alloc[i] != VM_OFFSET_METAVAR_R(i)) {	    
+	    IMCode_genCode2(OP_LOADP_R, alloc[i], i);
+	  }
+	}
+      }
+#endif
+      
     }
 
     return result;
@@ -6225,6 +6418,44 @@ int Compile_term_on_ast(Ast *ptr, int target) {
     
     IdTable_set_arity(id, arity);
 
+    
+    // OLD_REUSEAGENT: Old version with REUSEAGENTn
+#ifndef OLD_REUSEAGENT    
+    if (target != -1) {
+      // reuse agent by LOADP_L and LOADP_R
+      //      if (CmEnv.reg_agentL == VM_OFFSET_ANNOTATE_L) {
+      if (target == VM_OFFSET_ANNOTATE_L) {      
+	if (CmEnv.idL != id) {
+	  IMCode_genCode1(OP_CHID_L, id);
+	}
+	for (i=0; i<arity; i++) {
+	  
+	  //	  IMCode_genCode2(OP_LOADP_L, alloc[i], i);
+	  if (alloc[i] != VM_OFFSET_METAVAR_L(i)) {
+	    
+	    IMCode_genCode2(OP_LOADP_L, alloc[i], i);
+	  } else {
+	    IMCode_genCode0(OP_DEAD_CODE);
+	  }
+	}
+      } else {
+	
+	if (CmEnv.idR != id) {
+	  IMCode_genCode1(OP_CHID_R, id);
+	}
+	for (i=0; i<arity; i++) {
+	  if (alloc[i] != VM_OFFSET_METAVAR_R(i)) {
+	    IMCode_genCode2(OP_LOADP_R, alloc[i], i);
+	  } else {
+	    IMCode_genCode0(OP_DEAD_CODE);
+	  }
+	}
+      }
+      return result;
+    }
+#endif
+
+    
     switch (arity) {
     case 0:
       if (target == -1) {
@@ -6500,6 +6731,10 @@ int Compile_eqlist_on_ast(Ast *at) {
 
       if (eq->id == AST_CNCT_TRO_INTVAR) {
 	// rule_left_agent ~ expression
+
+	// It always becomes loop operation
+	// because of the form `(*L) ~ expression'.
+	
 	
 	int var2 = Compile_term_on_ast(eq->right, -1);
 
@@ -6507,6 +6742,10 @@ int Compile_eqlist_on_ast(Ast *at) {
 	int alloc[MAX_PORT];
 	int arity = 0;
 
+	// The `rule_left_aget' is annotated by (*L) manually
+	// in the function `Ast_make_annotation_TailRecursionOptimisation'.
+
+	// So, first
 	// Pealing (*L)
 	Ast *eq_lhs = eq->left;               // (*L)(AGENT(Fib, arglist))
 	Ast *deconst_term = eq_lhs->left;      // (AGENT(Fib, arglist))
@@ -6591,8 +6830,8 @@ int Compile_eqlist_on_ast(Ast *at) {
 	IMCode_genCode0(OP_BEGIN_JMPCNCT_BLOCK);
 #endif
 	
-	//	int var1 = Compile_term_on_ast(deconst_term, -1);
-	int var1 = Compile_term_on_ast(eq_lhs, -1);
+		int var1 = Compile_term_on_ast(deconst_term, -1);
+		//int var1 = Compile_term_on_ast(eq_lhs, -1);
 	IMCode_genCode2(OP_PUSH, var1, eq_rhs_name_reg);
 	Compile_gen_RET_for_rulebody();
 
@@ -7315,21 +7554,6 @@ int make_rule_oneway(Ast *ast) {
   ruleAgent_L = ast->left->left;
   ruleAgent_R = ast->left->right;
 
-  if (ruleAgent_L->id == AST_NAME) {
-    printf("ERROR: The name '%s' was specified as the left-hand side of rule agents. It should be an agent.\n", ruleAgent_L->left->sym);
-    return 0;
-  }
-  if (ruleAgent_R->id == AST_NAME) {
-    printf("ERROR: The name '%s' was specified as the right-hand side of rule agents. It should be an agent.\n", ruleAgent_R->left->sym);
-    return 0;
-  }
-  
-  
-  rule_mainbody = ast->right;
-
-  ruleAgent_L = ast_remove_tuple1(ruleAgent_L);
-  ruleAgent_R = ast_remove_tuple1(ruleAgent_R);
-  
   
   //        #define MYDEBUG1
 #ifdef MYDEBUG1
@@ -7364,7 +7588,6 @@ int make_rule_oneway(Ast *ast) {
   }
   
 
-  
   /*
   // Annotation (*L)、(*R) の処理があるため
   // 単純に ruleAgentL、ruleAgentR を入れ替えれば良いわけではない。
@@ -7461,15 +7684,35 @@ int make_rule_oneway(Ast *ast) {
   CmEnv.idL = idL;
   CmEnv.idR = idR;
 
-  
+  rule_mainbody = ast->right;
+
+  //puts("Before:"); ast_puts(rule_mainbody); puts("");
+
 #ifdef OPTIMISE_IMCODE_TRO
-  int is_tro = Ast_make_annotation_TailRecursionOptimisation(rule_mainbody);
-  //    if (is_tro) {
-  //      puts("=== TRO ============================");
-  //      printf("Rule: %s(id:%d) >< %s(id:%d).\n", 
-  //    	   IdTable_get_name(idL), idL,
-  //    	   IdTable_get_name(idR), idR);    
-  //    }
+
+  int is_tro;
+  if (!Ast_mainbody_has_agentID(rule_mainbody, AST_ANNOTATION_L)) {
+    
+    is_tro = Ast_make_annotation_TailRecursionOptimisation(rule_mainbody);
+
+  } else {
+
+    is_tro = 0;
+  }
+
+
+#ifdef VERBOSE_TRO
+    if (is_tro) {
+      printf("=== TRO is applied to ");
+      printf("Rule: %s(id:%d) >< %s(id:%d). ===\n", 
+	     IdTable_get_name(idL), idL,
+	     IdTable_get_name(idR), idR);
+    }
+#endif
+
+    
+    
+  
 #endif
     
   if (!Compile_rule_mainbody_on_ast(rule_mainbody)) return 0;
@@ -7489,15 +7732,15 @@ int make_rule_oneway(Ast *ast) {
 #endif
   
 
-  //        #define MKRULE_DEBUG  
-#ifndef MKRULE_DEBUG  
+  //          #define DEBUG_MKRULE  
+#ifndef DEBUG_MKRULE  
   gencode_num += CmEnv_generate_VMCode(&code[2]);
 #else
 
   //int here_flag = is_tro;
   int here_flag = 1;
   if (here_flag) {
-    puts("-----------------------------------");
+    puts("[1]. --- RAW codes --------------------------------");
     printf("Rule: %s(id:%d) >< %s(id:%d).\n", 
   	   IdTable_get_name(idL), idL,
   	   IdTable_get_name(idR), idR);
@@ -7508,7 +7751,9 @@ int make_rule_oneway(Ast *ast) {
 
   
   if (here_flag) {
+    puts("[2].--- OPTMISED codes --------------------------------");
     IMCode_puts(0);
+    puts("[3].---- Genarated bytecodes  -------------------------------");
     VMCode_puts(&code[2], gencode_num-2);
     puts("-----------------------------------");
   }
@@ -7587,17 +7832,41 @@ int make_rule(Ast *ast) {
 
   //  ast_puts(ast);puts("");
 
+  Ast *ruleAgent_L = ast->left->left;
+  Ast *ruleAgent_R = ast->left->right;
+
+  if (ruleAgent_L->id == AST_NAME) {
+    printf("ERROR: The name '%s' was specified as the left-hand side of rule agents. It should be an agent.\n", ruleAgent_L->left->sym);
+    return 0;
+  }
+  if (ruleAgent_R->id == AST_NAME) {
+    printf("ERROR: The name '%s' was specified as the right-hand side of rule agents. It should be an agent.\n", ruleAgent_R->left->sym);
+    return 0;
+  }
+  
+  
+  ast->left->left = ast_remove_tuple1(ruleAgent_L);
+  ast->left->right = ast_remove_tuple1(ruleAgent_R);
+
+  
+  Ast *rule_mainbody = ast->right;
+  Ast_remove_tuple1_in_mainbody(rule_mainbody);
+
+  
   set_annotation_LR(VM_OFFSET_ANNOTATE_L, VM_OFFSET_ANNOTATE_R);  
   if (!make_rule_oneway(ast)) {
     return 0;
   }
+
   
-  Ast *ruleAgent_L = ast->left->left;
-  Ast *ruleAgent_R = ast->left->right;
+  // another way
+  
+  ruleAgent_L = ast->left->left;
+  ruleAgent_R = ast->left->right;
   
   ast->left->left = ruleAgent_R;
   ast->left->right = ruleAgent_L;;
-  //  set_annotation_LR(VM_OFFSET_ANNOTATE_R, VM_OFFSET_ANNOTATE_L);
+  set_annotation_LR(VM_OFFSET_ANNOTATE_R, VM_OFFSET_ANNOTATE_L);
 
   
   //  ast_puts(ast);puts("");
@@ -7848,6 +8117,7 @@ void *exec_code(int mode, VirtualMachine * restrict vm, void * restrict *code) {
     &&E_REUSEAGENT3, &&E_REUSEAGENT4, &&E_REUSEAGENT5,
     &&E_RET, &&E_RET_FREE_LR, &&E_RET_FREE_L, &&E_RET_FREE_R,
     &&E_LOADI, &&E_LOAD, &&E_LOADP,
+    &&E_LOADP_L, &&E_LOADP_R, &&E_CHID_L, &&E_CHID_R, 
     &&E_ADD, &&E_SUB, &&E_ADDI, &&E_SUBI, &&E_MUL, &&E_DIV, &&E_MOD, 
     &&E_LT, &&E_LE, &&E_EQ, &&E_EQI, &&E_NE, 
     &&E_UNM, &&E_RAND, &&E_INC, &&E_DEC,
@@ -7905,6 +8175,7 @@ void *exec_code(int mode, VirtualMachine * restrict vm, void * restrict *code) {
   reg[(unsigned long)code[++pc]] = make_Agent(vm, i);
   goto *code[++pc];
 
+  
  E_MKAGENT1:
 #if !defined(OPTIMISE_TWO_ADDRESS) || !defined(OPTIMISE_TWO_ADDRESS_MKAGENT1)
   //    puts("mkagent1 id src1 dest");
@@ -7920,6 +8191,7 @@ void *exec_code(int mode, VirtualMachine * restrict vm, void * restrict *code) {
 #endif  
   
   goto *code[++pc];
+
   
  E_MKAGENT2:
 #if !defined(OPTIMISE_TWO_ADDRESS) || !defined(OPTIMISE_TWO_ADDRESS_MKAGENT2)
@@ -7971,6 +8243,7 @@ void *exec_code(int mode, VirtualMachine * restrict vm, void * restrict *code) {
 #endif  
   goto *code[++pc];
 
+  
  E_MKAGENT4:
   //    puts("mkagent4 id src1 src2 src3 src4 dest");
   a1 = make_Agent(vm, (unsigned long)code[++pc]);
@@ -8072,7 +8345,17 @@ void *exec_code(int mode, VirtualMachine * restrict vm, void * restrict *code) {
   //    puts("push reg reg");
   {
     VALUE a1 = reg[(unsigned long)code[++pc]];
-    VALUE a2 = reg[(unsigned long)code[++pc]];    
+    VALUE a2 = reg[(unsigned long)code[++pc]];
+
+#ifdef DEBUG
+    puts("");
+    puts("E_PUSH is operating:");
+    puts_term(a1); puts("");
+    puts_term(a2); puts("");
+    puts("");            
+#endif
+
+    
     PUSH(vm, a1, a2);
   }
   goto *code[++pc];
@@ -8159,7 +8442,7 @@ void *exec_code(int mode, VirtualMachine * restrict vm, void * restrict *code) {
   free_Agent(reg[VM_OFFSET_ANNOTATE_R]);
   
  E_LOOP_RREC1:
-  //      puts("looprrec reg ar");
+  //      puts("looprrec1 reg");
   
   a1 = reg[(unsigned long)code[pc+1]];
 
@@ -8175,7 +8458,11 @@ void *exec_code(int mode, VirtualMachine * restrict vm, void * restrict *code) {
   free_Agent(reg[VM_OFFSET_ANNOTATE_R]);
   
  E_LOOP_RREC2:
-  //      puts("looprrec reg ar");
+  //      puts("looprrec2 reg);
+
+#ifdef DEBUG
+  puts("E_LOOP_REC2 is operating");  
+#endif
   
   a1 = reg[(unsigned long)code[pc+1]];
 
@@ -8203,6 +8490,30 @@ void *exec_code(int mode, VirtualMachine * restrict vm, void * restrict *code) {
   a1 = reg[(unsigned long)code[++pc]];
   i = (unsigned long)code[++pc];
   AGENT(reg[(unsigned long)code[++pc]])->port[i] = a1;
+  goto *code[++pc];
+
+ E_LOADP_L:
+  //    puts("loadp_L src port");
+  a1 = reg[(unsigned long)code[++pc]];
+  i = (unsigned long)code[++pc];
+  AGENT(reg[VM_OFFSET_ANNOTATE_L])->port[i] = a1;
+  goto *code[++pc];
+
+ E_LOADP_R:
+  //    puts("loadp_R src port");
+  a1 = reg[(unsigned long)code[++pc]];
+  i = (unsigned long)code[++pc];
+  AGENT(reg[VM_OFFSET_ANNOTATE_R])->port[i] = a1;
+  goto *code[++pc];
+
+ E_CHID_L:
+  //    puts("chid_L id");
+  BASIC(reg[VM_OFFSET_ANNOTATE_L])->id = (unsigned long)code[++pc];
+  goto *code[++pc];
+
+ E_CHID_R:
+  //    puts("chid_R id");
+  BASIC(reg[VM_OFFSET_ANNOTATE_R])->id = (unsigned long)code[++pc];
   goto *code[++pc];
 
 
@@ -8493,6 +8804,9 @@ void *exec_code(int mode, VirtualMachine * restrict vm, void * restrict *code) {
   Count_cnct++;
 #endif
 
+
+
+  
 #ifdef THREAD  
   if (SleepingThreadsNum > 0) {
     pc +=3;
@@ -8501,6 +8815,14 @@ void *exec_code(int mode, VirtualMachine * restrict vm, void * restrict *code) {
 #endif
   
   a1 = reg[(unsigned long)code[pc+1]];
+
+#ifdef DEBUG
+    puts("");
+    printf("E_JMPCNCT_CONS is now operating for reg%lu:\n", (unsigned long)code[pc+1]);
+    puts_term(a1); puts("");
+    puts("");        
+#endif    
+  
   if (IS_FIXNUM(a1)) {
     pc +=3;
     goto *code[pc];
@@ -8518,17 +8840,36 @@ void *exec_code(int mode, VirtualMachine * restrict vm, void * restrict *code) {
       Count_cnct_indirect_op++;
 #endif      
     VALUE a2 = NAME(a1)->port;
+
     free_Name(a1);
     a1 = a2;
     reg[(unsigned long)code[pc+1]] = a2;
   }
 
+
+#ifdef DEBUG
+  puts("===> ");
+  puts_term(a1);
+  printf(" reg%lu\n", (unsigned long)code[pc+1]);
+  puts_term(reg[(unsigned long)code[pc+1]]);
+  puts("");
+#endif
+  
     
   if (BASIC(a1)->id == ID_CONS) {
 #ifdef COUNT_CNCT    
     Count_cnct_true++;
 #endif    
 
+
+#ifdef DEBUG
+    puts("");
+    printf("Success: E_JMPCNCT_CONS increased PC by %lu.\n", (unsigned long)code[pc+2]);
+    puts_term(reg[(unsigned long)code[pc+1]]); puts("");
+    puts("");        
+#endif    
+
+    
     pc += (unsigned long)code[pc+2];
     pc +=3;
     goto *code[pc];
@@ -10400,18 +10741,21 @@ int exec(Ast *at) {
     return 0;
   }
 
-
+#ifndef DEBUG_NETS
+  // for regular operation
   CmEnv_retrieve_MKGNAME();
   CmEnv_generate_VMCode(code);
 
-  //          // for debug
-  //          CmEnv_retrieve_MKGNAME();
-  //          IMCode_puts(0); //exit(1);
-  //        
-  //          int codenum = CmEnv_generate_VMCode(code);
-  //          VMCode_puts(code, codenum-2); //exit(1);
-  //          // end for debug
-
+#else  
+  // for debug
+  CmEnv_retrieve_MKGNAME();
+  IMCode_puts(0); //exit(1);
+  
+  int codenum = CmEnv_generate_VMCode(code);
+  VMCode_puts(code, codenum-2); //exit(1);
+  // end for debug
+#endif
+  
 
   
 #ifdef COUNT_MKAGENT
@@ -10689,10 +11033,12 @@ int exec(Ast *at) {
   }
 
 
+#ifndef DEBUG_NETS
+  // for regular
   CmEnv_retrieve_MKGNAME();
   CmEnv_generate_VMCode(code);
 
-  /*
+#else  
   // for debug
   CmEnv_retrieve_MKGNAME();
   IMCode_puts(0); //exit(1);
@@ -10700,7 +11046,7 @@ int exec(Ast *at) {
   int codenum = CmEnv_generate_VMCode(code);
   VMCode_puts(code, codenum-2); //exit(1);
   // end for debug
-  */
+#endif
   
       
   exec_code(1, VMs[0], code);
@@ -10944,6 +11290,7 @@ int main(int argc, char *argv[])
 	  }
 	  param = atoi(argv[i]);
 	  Hoop_increasing_magnitude = param;
+
 
 	}
 #endif

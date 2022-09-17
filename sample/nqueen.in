@@ -138,4 +138,4 @@ queen__chk_lastelem(r, b, int n, int m) >< (int len_ret)
 // ----------------------------------------------------------
 const N=8;
 queen(ret)~N, len(count)~ret;
-count;
+count;  // count ->92
