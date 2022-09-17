@@ -1,15 +1,5 @@
 // Bubble sort with the same algorithm as others
 
-/*
-// length
-length_(r,n) >< [] => r~n;
-length_(r,int n) >< (int x):xs => length_(r,n+1)~xs;
-
-length(r) >< [] => r~0;
-length(r) >< x:xs => length_(r,0) ~ x:xs;
-*/
-
-
 // stream length
 len_stream_(len, list, int ct) >< [] => len~ct, list~[];
 len_stream_(len, list, int ct) >< x:xs => 

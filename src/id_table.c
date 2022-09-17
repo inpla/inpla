@@ -60,7 +60,7 @@ void IdTable_init() {
   IdTable[ID_DUP].aux.arity = 2;
 
   
-  IdTable[ID_INT].name = "int";
+  IdTable[ID_INT].name = "Int";
   IdTable[ID_TUPLE0].name = "Tuple0";
   IdTable[ID_TUPLE1].name = "Tuple1";
   IdTable[ID_TUPLE2].name = "Tuple2";

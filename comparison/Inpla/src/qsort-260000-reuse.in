@@ -5,6 +5,7 @@ qsort(ret) >< (int x):xs =>
 	(*L)qsort(cntl)~left, qsort(cntr)~right,
 	Append(ret, x:cntl)~cntr;
 
+
 // Note: `Append' is implemented as built-in.
 
 
@@ -12,6 +13,10 @@ part(int x, a, b) >< [] => a~(*L)[], b~(*R)[];
 part(int x, a, b) >< (int y):ys
 | y<x => b~(*R)(y:cnt), (*L)part(x, a, cnt)~ys
 | _   => a~(*R)(y:cnt), (*L)part(x, cnt, b)~ys;
+//| y<x => (*L)part(x, a, cnt)~ys, b~(*R)(y:cnt)  // quite BAD!
+//| _   => (*L)part(x, cnt, b)~ys, a~(*R)(y:cnt); // quite BAD!
+
+
 
 
 // creates a random list
