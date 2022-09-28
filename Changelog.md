@@ -2,12 +2,12 @@
 
 ### v0.10.0 (released on 17 September 2022)
 #### Polished (inner)
-* **New instruction set for reuse active pairs**: Inpla supports annotations to reuse active active pairs by putting (\*L) and (\*R) in front of agents in rules as an experiment implementation. New instruction set is released to reuse active pairs. It was just to reuse only nodes for active pairs, but now we can specify the reuse method in the level of ports. For instance, we take the following rule:
+* **New instruction set for reuse active pairs**: Inpla supports annotations to reuse active active pairs by putting (\*L) and (\*R) in front of agents in rules as an experiment option. It was just to reuse only nodes for active pairs, but now we can specify the reuse method in the level of ports. As an example, we take the following rule:
   
   ```
   A(r) >< B(a,b,c) =>  (*L)C(r) ~ (*R)B(a,b,c);
   ```
-  This means that `C(r)` is created on the memory of `A(r)`, and `B(a,b,c)` is reused as it is. This compiled into the following result by the old instruction set. Actually, these active pair agents are reused, but the ID and all ports are specified again the same as MKAGENT.
+  This means that `C(r)` is created on the memory of `A(r)`, and `B(a,b,c)` is reused as it is. This compiled into the following codes by the old instruction set. Actually, these active pair agents are reused, but the ID and all ports are specified again the same as MKAGENT.
   
   ```
    0:     REUSEAGENT1 var11 id:34 var1
@@ -21,7 +21,9 @@
    1:     PUSH var11 var12
    2:     RET
 	```
-	There is no significant improvement in terms of execution speed than I expected, but it becomes useful to demonstrate the execution performance obtained by the theoretical analysis. To keep using the old version, make the following uncommented in `config.h`:
+	It becomes quite reasonable, but there is no significant improvement in terms of execution speed than I expected. It is useful to demonstrate the execution performance obtained by the theoretical analysis. 
+	
+	To keep using the old version, make the following uncommented in `config.h`:
 	
 	```
 	//#define OLD_REUSEAGENT
