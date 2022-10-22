@@ -12,7 +12,7 @@ Inpla is a multi-threaded parallel interpreter of interaction nets. Once you wri
 ![speedup-ratio](pic/benchmark_reuse_v0.10.0.png)
 
 
-- **Comparison in execution time** with other implementations: **Haskell** (GHC version 8.10.7), **OCaml** (ocamlopt, the native-code compiler, version 4.08.1), **Standard ML of New Jersey** v110.74 (interpreter mode) and **Python** 3.8.5 in execution time.
+- **Comparison in execution time** with other implementations: **Haskell** (GHC version 8.10.7), **OCaml** (ocamlopt, the native-code compiler, version 4.08.1), **Standard ML of New Jersey** v110.74 (interpreter mode) and **Python** 3.8.5 in execution time. These programs are written to have the same algorithms as much as possible, though only the Ackermann function in Inpla is optimised to interaction nets computing because it is not too competitive.
 
 
 |                | Haskell  |   OCaml   |   SML    | Python | Inpla8 | Inpla8r |
@@ -109,7 +109,7 @@ Inpla is a multi-threaded parallel interpreter of interaction nets. Once you wri
   ```
   $ ./inpla -t 4
   ```
-  The default value is setting for the number of cores, so **execution will be automatically scaled without specifying this**. This is useful to see the effect by number of threads. 
+  The default value is setting for the number of cores, so **execution will be automatically scaled without specifying this**. This option is useful to see the effect by number of threads. 
 
 
 ### Batch mode and sample files
@@ -293,6 +293,7 @@ Electronic Communications of the EASST, Volume 73: Graph Computation Models - Se
 ## Related Works
 
 * [HINet: Interaction Nets in Haskell](http://www.cas.mcmaster.ca/~kahl/Haskell/HINet/)
+* [High-order Virtual Machine (HVM)](https://github.com/Kindelia/HVM)
 
 
 
