@@ -27,7 +27,7 @@ Inpla is a multi-threaded parallel interpreter of interaction nets. Once you wri
 
 
 
-  - The above table contains execution time in second on average of ten times execution by using Linux PC (Core i7-9700 (8 threads, no Hyper-threading), 16GB memory). The fastest one is shown with bold style.   Scripts for the comparison table are in the `comparison` directory. These are written to have the same algorithms as much as possible, though only the Ackermann function in Inpla is optimised to interaction nets computing because it is not too competitive. 
+  - The above table contains execution time in second on average of ten times execution by using Linux PC (Core i7-9700 (8 threads, no Hyper-threading), 16GB memory). The fastest one is shown with bold style.   Scripts for the comparison table are in the `comparison` directory. These are written to have the same algorithms as much as possible, though only the Ackermann function in Inpla is a little optimised to interaction nets computing so that it can take advantage of the parallelism well.
   
   - Inpla8  and Inpla8r mean 8 threads without/with [reuse-annotated](./Gentle_introduction_Inpla.md#reuse-annotations) execution, respectively. 
   
