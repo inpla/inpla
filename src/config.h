@@ -73,7 +73,7 @@
 // 
 // Optimisation inspired by Tail Recursion Optimisation  
 //
-#define OPTIMISE_IMCODE_TRO   
+#define OPTIMISE_IMCODE_TCO   
 
 //  
 // Optimisation of the intermediate codes
@@ -124,7 +124,7 @@
 //#define VERBOSE_NODE_USE  // Put memory usage of agents and names.
 //#define VERBOSE_HOOP_EXPANSION  // Put messages when hoops are expanded.
 //#define VERBOSE_EQSTACK_EXPANSION  // Put messages when Eqstacks are expanded.
-//#define VERBOSE_TRO                // Put message when TRO is enable.
+//#define VERBOSE_TCO                // Put message when TCO is enable.
 
 
 
