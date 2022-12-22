@@ -22,8 +22,8 @@
 
 // ----------------------------------------------
   
-#define VERSION "0.10.0"
-#define BUILT_DATE  "17 September 2022"
+#define VERSION "0.10.1"
+#define BUILT_DATE  "22 December 2022"
 
 // ------------------------------------------------------------------
 
@@ -3297,6 +3297,10 @@ typedef struct {
   int jmpcnctBlockRegState[VM_REG_SIZE];
   int is_in_jmpcnctBlock;
 #endif  
+
+
+  // warning output for x:int~y:int and x:int~1
+  int put_warning_for_cnct_property;
   
 } CmEnvironment;
 
@@ -3305,9 +3309,12 @@ typedef struct {
 #define ANNOTATE_NOTHING      0 // The rule agent is not reused.
 #define ANNOTATE_REUSE        1 // Annotation (*L), (*R) is specified.
 #define ANNOTATE_INT_MODIFIER 2 // (int i), therefore it must not be freed.
-#define ANNOTATE_TRO          3 // Annotated and reused as TRO.
+#define ANNOTATE_TCO          3 // Annotated and reused as TCO.
 
-static CmEnvironment CmEnv;
+// Init for CmEnv
+static CmEnvironment CmEnv = {
+  .put_warning_for_cnct_property = 1, // with warning
+};
 
 
 static inline
@@ -3384,6 +3391,7 @@ void CmEnv_clear_all(void)
 
   // reset the register assignment table
   CmEnv_clear_register_assignment_table_all();
+
 }
 
 void CmEnv_clear_keeping_rule_properties(void) 
@@ -3497,11 +3505,11 @@ int CmEnv_find_var(char *key) {
   for (i=0; i<CmEnv.bindPtr; i++) {
     if (strcmp(key, CmEnv.bind[i].name) == 0) {
 
-#ifndef OPTIMISE_IMCODE_TRO
+#ifndef OPTIMISE_IMCODE_TCO
       CmEnv.bind[i].refnum++;
 #else
-      // During compilation on ANNOTATE_TRO, ignore counting up.
-      if (CmEnv.annotateL != ANNOTATE_TRO) {
+      // During compilation on ANNOTATE_TCO, ignore counting up.
+      if (CmEnv.annotateL != ANNOTATE_TCO) {
 	CmEnv.bind[i].refnum++;
       }	
 #endif
@@ -5821,7 +5829,7 @@ void Ast_remove_tuple1_in_mainbody(Ast *mainbody) {
 }
 
 
-void Ast_undo_TRO_annotation(Ast *mainbody) {
+void Ast_undo_TCO_annotation(Ast *mainbody) {
   // Make any kinds of CNCTs changed into just AST_CNCT
   // in order to give it to compilation procedures safely.
   
@@ -5857,17 +5865,17 @@ void Ast_undo_TRO_annotation(Ast *mainbody) {
     Ast *then_branch = if_sentence->right->left;
     Ast *else_branch = if_sentence->right->right;
 
-    Ast_undo_TRO_annotation(then_branch);
-    Ast_undo_TRO_annotation(else_branch);
+    Ast_undo_TCO_annotation(then_branch);
+    Ast_undo_TCO_annotation(else_branch);
   }
 }
 
 
-int Ast_make_annotation_TailRecursionOptimisation(Ast *mainbody) {
+int Ast_make_annotation_TailCallOptimisation(Ast *mainbody) {
   // Return 1 when annotated.
   //
-  // When there is an equation for TRO, its ID is changed from AST_CNCT into
-  // AST_CNCT_TRO_INTVAR or AST_CNCT_TRO.
+  // When there is an equation for TCO, its ID is changed from AST_CNCT into
+  // AST_CNCT_TCO_INTVAR or AST_CNCT_TCO.
 
   
   if (mainbody == NULL)
@@ -5905,8 +5913,8 @@ int Ast_make_annotation_TailRecursionOptimisation(Ast *mainbody) {
     int idL = CmEnv.idL;
   
 
-    int available_TRO = 0;
-    AST_ID astID_of_TRO; // = idL;  // idL is dummy
+    int available_TCO = 0;
+    AST_ID astID_of_TCO; // = idL;  // idL is dummy
 
     // --- recursion_agent ~ constructor_agent
     if ((recursion_agent->left->id == AST_SYM) &&
@@ -5915,8 +5923,8 @@ int Ast_make_annotation_TailRecursionOptimisation(Ast *mainbody) {
       
       if (Ast_is_expr(constructor_agent)) {
 	// --- CASE 1: rule_left_agent ~ expression
-	available_TRO = 1;	
-	astID_of_TRO = AST_CNCT_TRO_INTVAR;
+	available_TCO = 1;	
+	astID_of_TCO = AST_CNCT_TCO_INTVAR;
 	
       } else if (constructor_agent->id == AST_NAME) {
 	// --- CASE 2: rule_left_agent ~ name   where the name is meta_R
@@ -5926,8 +5934,8 @@ int Ast_make_annotation_TailRecursionOptimisation(Ast *mainbody) {
 	if ((exists_in_table)
 	    && ((type == NB_META_R) || (type == NB_META_L))) {
 
-	  available_TRO = 1;
-	  astID_of_TRO = AST_CNCT_TRO;
+	  available_TCO = 1;
+	  astID_of_TCO = AST_CNCT_TCO;
 	}
 	
       }
@@ -5936,11 +5944,11 @@ int Ast_make_annotation_TailRecursionOptimisation(Ast *mainbody) {
 
 
     
-    if (available_TRO) {
+    if (available_TCO) {
       //      puts("Target:");
-      //      ast_puts(eq_TRO); puts("");
+      //      ast_puts(eq_TCO); puts("");
 
-      eq->id = astID_of_TRO;
+      eq->id = astID_of_TCO;
 
       // Foo ==> (*L)Foo
       Ast *annotationL = ast_makeAST(AST_ANNOTATION_L, recursion_agent, NULL);
@@ -5962,8 +5970,8 @@ int Ast_make_annotation_TailRecursionOptimisation(Ast *mainbody) {
     Ast *else_branch = if_sentence->right->right;
 
     int ret_status = 0;
-    ret_status += Ast_make_annotation_TailRecursionOptimisation(then_branch);
-    ret_status += Ast_make_annotation_TailRecursionOptimisation(else_branch);
+    ret_status += Ast_make_annotation_TailCallOptimisation(then_branch);
+    ret_status += Ast_make_annotation_TailCallOptimisation(else_branch);
 
     if (ret_status == 0) {
       return 0;
@@ -5996,7 +6004,19 @@ int Compile_expr_on_ast(Ast *ptr, int target) {
 	     ptr->left->sym);
       return 0;
     }
-    
+
+    // Check for x:int
+    if (CmEnv.put_warning_for_cnct_property) {
+      NB_TYPE type;
+      int get_result;
+      get_result = CmEnv_gettype_forname((ptr)->left->sym, &type);
+      if ((get_result) && (type != NB_INTVAR)) {
+	printf("Warning: '%s' is used as a variable on properties, though it is not so...\n",
+		   (ptr)->left->sym);
+
+      }
+    }
+      
     IMCode_genCode2(OP_LOAD, result, target);
     return 1;
     break;
@@ -6642,7 +6662,7 @@ int check_invalid_occurrence(Ast *ast) {
 
 void Compile_gen_RET_for_rulebody(void) {
 
-  if (CmEnv.annotateL == ANNOTATE_TRO) {    
+  if (CmEnv.annotateL == ANNOTATE_TCO) {    
     return;
   }
   
@@ -6679,19 +6699,79 @@ void Compile_gen_RET_for_rulebody(void) {
 
 
 int Compile_eqlist_on_ast(Ast *at) {
-  
-  while (at!=NULL) {
-    Ast *eq = at->left;
-    if (!check_invalid_occurrence_as_rule(eq->left) ||
-	!check_invalid_occurrence_as_rule(eq->right)) {
-      return 0;
-    }
+  NB_TYPE type;
+  Ast *at_preserved = at;
 
+
+  // Occurrence check
+  if (CmEnv.put_warning_for_cnct_property) {
+    while (at!=NULL) {
+      Ast *eq = at->left;
+
+      // It does not work for now
+      if (!check_invalid_occurrence_as_rule(eq->left) ||
+	  !check_invalid_occurrence_as_rule(eq->right)) {
+	return 0;
+      }
+
+      // Check for: x:int~expr
+      if ((eq->left)->id == AST_NAME) {
+	int result = CmEnv_gettype_forname((eq->left)->left->sym, &type);
+	if ((result != 0) && (type == NB_INTVAR)) {
+	  // the left term is a variable on property
+	
+	  if (Ast_is_expr(eq->right)) {
+	    printf("Warning: The variable '%s' is connected to an expression. It may cause runtime error.\n",
+		   (eq->left)->left->sym);
+	  
+	  } else if ((eq->right)->id == AST_NAME) {
+	    result = CmEnv_gettype_forname((eq->right)->left->sym, &type);
+	    if ((result !=0) && (type == NB_INTVAR)) {
+	      printf("Warning: The variable '%s' is connected to a variable %s. It may cause runtime error.\n",
+		     (eq->left)->left->sym, (eq->right)->left->sym);	    
+	    }
+	  }
+	}
+      }
+    
+      // Check for: expr~x:int
+      if ((eq->right)->id == AST_NAME) {
+	int result = CmEnv_gettype_forname((eq->right)->left->sym, &type);
+	if ((result != 0) && (type == NB_INTVAR)) {
+	  // the right term is a variable on property
+	
+	  if (Ast_is_expr(eq->left)) {
+	  	    printf("Warning: The variable '%s' is connected to an expression. It may cause runtime error.\n",
+	  		   (eq->right)->left->sym);
+	  	  
+	  } else {
+	    if ((eq->left)->id == AST_NAME) {
+	      result = CmEnv_gettype_forname((eq->left)->left->sym, &type);
+	      if ((result !=0) && (type == NB_INTVAR)) {
+		printf("Warning: The variable '%s' is connected to a variable %s. It may cause runtime error.\n",
+		       (eq->right)->left->sym, (eq->left)->left->sym);	    
+		
+	      }
+	    }
+	  }
+	}
+      }
+      
+      at = ast_getTail(at);
+    }
+  }
+
+
+  at = at_preserved;
+  
+    
+  while (at!=NULL) {
+    Ast *eq = at->left;    
     Ast *next = ast_getTail(at);
 
     
-#ifndef OPTIMISE_IMCODE_TRO
-    // Without Tail Rcursion Optimisation
+#ifndef OPTIMISE_IMCODE_TCO
+    // Without Tail Call Recursion Optimisation
     
     // 2021/9/6: It seems, always EnvAddCodePUSH is selected
     // because at is not NULL in this step. Should be (next == NULL)?
@@ -6717,7 +6797,7 @@ int Compile_eqlist_on_ast(Ast *at) {
 
     
 #else    
-    // WITH Tail Rcursion Optimisation
+    // WITH Tail Call Optimisation
     
     if ((next != NULL) 
 	|| ((next == NULL) && (eq->id == AST_CNCT))) {
@@ -6729,7 +6809,7 @@ int Compile_eqlist_on_ast(Ast *at) {
       // operation for the last placed equation.
      
 
-      if (eq->id == AST_CNCT_TRO_INTVAR) {
+      if (eq->id == AST_CNCT_TCO_INTVAR) {
 	// rule_left_agent ~ expression
 
 	// It always becomes loop operation
@@ -6743,7 +6823,7 @@ int Compile_eqlist_on_ast(Ast *at) {
 	int arity = 0;
 
 	// The `rule_left_aget' is annotated by (*L) manually
-	// in the function `Ast_make_annotation_TailRecursionOptimisation'.
+	// in the function `Ast_make_annotation_TailCallOptimisation'.
 
 	// So, first
 	// Pealing (*L)
@@ -6752,7 +6832,7 @@ int Compile_eqlist_on_ast(Ast *at) {
 	Ast *arg_list = deconst_term->right;   // arglist
 
 	
-	//		printf("TRO: %s><int\n", deconst_term->left->sym);
+	//		printf("TCO: %s><int\n", deconst_term->left->sym);
 
 	
 	for (int i=0; i<MAX_PORT; i++) {
@@ -6795,14 +6875,14 @@ int Compile_eqlist_on_ast(Ast *at) {
 	IMCode_genCode0(OP_LOOP);
 
 	// prevent putting FREE_L, and ignore counting up for name ref
-	CmEnv.annotateL = ANNOTATE_TRO;   
+	CmEnv.annotateL = ANNOTATE_TCO;   
 	
 
 	//	IMCode_puts(0); exit(1);
 
 
 	
-      } else if (eq->id == AST_CNCT_TRO) {
+      } else if (eq->id == AST_CNCT_TCO) {
 	// rule_left_agent ~ name   where the name is meta_R
 	
 	// Pealing (*L)
@@ -6837,7 +6917,7 @@ int Compile_eqlist_on_ast(Ast *at) {
 
 	// From now on,
 	// prevent putting FREE_L, and ignore counting up for name ref
-	CmEnv.annotateL = ANNOTATE_TRO;
+	CmEnv.annotateL = ANNOTATE_TCO;
 	
 #ifdef OPTIMISE_TWO_ADDRESS
         IMCode_genCode0(OP_BEGIN_JMPCNCT_BLOCK);
@@ -7085,7 +7165,7 @@ int Compile_rule_mainbody_on_ast(Ast *mainbody) {
     
     // Compilation of Guard expressions
     int newreg = CmEnv_newvar();
-    if (!Compile_expr_on_ast(guard, newreg)) return -1;
+    if (!Compile_expr_on_ast(guard, newreg)) return 0;
 
 
 #ifdef OPTIMISE_IMCODE    
@@ -7661,8 +7741,8 @@ int make_rule_oneway(Ast *ast) {
 
 
   
-  CmEnv_clear_all();
-  
+  CmEnv_clear_all(); 
+ 
   if (idL == ID_INT) {
     set_metaL_as_IntName(ruleAgent_L);
     CmEnv.annotateL = ANNOTATE_INT_MODIFIER; // to prevent putting Free_L
@@ -7688,22 +7768,22 @@ int make_rule_oneway(Ast *ast) {
 
   //puts("Before:"); ast_puts(rule_mainbody); puts("");
 
-#ifdef OPTIMISE_IMCODE_TRO
+#ifdef OPTIMISE_IMCODE_TCO
 
-  int is_tro;
+  int is_tco;
   if (!Ast_mainbody_has_agentID(rule_mainbody, AST_ANNOTATION_L)) {
     
-    is_tro = Ast_make_annotation_TailRecursionOptimisation(rule_mainbody);
+    is_tco = Ast_make_annotation_TailCallOptimisation(rule_mainbody);
 
   } else {
 
-    is_tro = 0;
+    is_tco = 0;
   }
 
 
-#ifdef VERBOSE_TRO
-    if (is_tro) {
-      printf("=== TRO is applied to ");
+#ifdef VERBOSE_TCO
+    if (is_tco) {
+      printf("=== Tail Call Optimisation is applied to ");
       printf("Rule: %s(id:%d) >< %s(id:%d). ===\n", 
 	     IdTable_get_name(idL), idL,
 	     IdTable_get_name(idR), idR);
@@ -7719,12 +7799,12 @@ int make_rule_oneway(Ast *ast) {
 
 
 
-#ifdef OPTIMISE_IMCODE_TRO
-  if (is_tro) {
+#ifdef OPTIMISE_IMCODE_TCO
+  if (is_tco) {
     
     //    puts("Before:"); ast_puts(rule_mainbody); puts("");
     
-    Ast_undo_TRO_annotation(rule_mainbody);
+    Ast_undo_TCO_annotation(rule_mainbody);
 
     //    puts("After:"); ast_puts(rule_mainbody); puts("");
     
@@ -7737,7 +7817,7 @@ int make_rule_oneway(Ast *ast) {
   gencode_num += CmEnv_generate_VMCode(&code[2]);
 #else
 
-  //int here_flag = is_tro;
+  //int here_flag = is_tco;
   int here_flag = 1;
   if (here_flag) {
     puts("[1]. --- RAW codes --------------------------------");
@@ -7861,16 +7941,22 @@ int make_rule(Ast *ast) {
   
   // another way
   
+  CmEnv.put_warning_for_cnct_property = 0; // without warning
+
+  
   ruleAgent_L = ast->left->left;
   ruleAgent_R = ast->left->right;
   
   ast->left->left = ruleAgent_R;
   ast->left->right = ruleAgent_L;;
   set_annotation_LR(VM_OFFSET_ANNOTATE_R, VM_OFFSET_ANNOTATE_L);
-
   
   //  ast_puts(ast);puts("");
-  return make_rule_oneway(ast);
+  int result_make_rule = make_rule_oneway(ast);
+
+  CmEnv.put_warning_for_cnct_property = 1; // retrieve warning 
+  
+  return result_make_rule;
 }
 
 

@@ -1,5 +1,35 @@
 # Change log
 
+### v0.10.1 (released on 22 December 2022)
+#### Polished
+* **Warning messages**: Inpla puts warning messages when names are connected to expressions because Runtime Error can be caused. In addition, messages are put when names are included in expressions as well. In future, those will be detected by a type inference system, not such ad hoc finding, I hope.
+
+  ```
+  >>> A(r)><B(int x) => r~1, x~100;
+  Warning: The variable 'x' is connected to an expression. It may cause runtime error.
+  ```
+
+  ```
+  >>> A(r, y)><B(int x) => r~(x+y);
+  Warning: The agent 'A' has been already defined as whose arity is 1, but now used as the arity is 2.
+  Warning: 'y' is used as a variable on properties, though it is not so...
+  ```
+
+  ```
+  >>> A(r, y)><B(int x)
+  ... | y==0 => r~x, y~x
+  ... | _ => r~x+1, y~x;
+  Warning: 'y' is used as a variable on properties, though it is not so...
+  ```
+#### Minor change
+* **Messages of applying Tail Call Optimisation** : A message was put when the optimisation is applied, but now it turns off because this is for developers. To change it on, make the following line uncommented in `config.h`:
+
+  ```
+  //#define VERBOSE_TCO                // Put message when TCO is enable.
+  ```
+
+
+
 ### v0.10.0 (released on 17 September 2022)
 #### Polished (inner)
 * **New instruction set for reuse active pairs**: Inpla supports annotations to reuse active active pairs by putting (\*L) and (\*R) in front of agents in rules as an experiment option. It was just to reuse only nodes for active pairs, but now we can specify the reuse method in the level of ports. As an example, we take the following rule:
@@ -21,7 +51,7 @@
    1:     PUSH var11 var12
    2:     RET
 	```
-	It becomes quite reasonable, but there is no significant improvement in terms of execution speed than I expected. It is useful to demonstrate the execution performance obtained by the theoretical analysis. 
+	It becomes quite reasonable, but there is no significant improvement in terms of execution speed than I expected. It becomes useful to demonstrate the execution performance obtained by the theoretical analysis. 
 	
 	To keep using the old version, make the following uncommented in `config.h`:
 	
