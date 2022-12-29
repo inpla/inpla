@@ -37,3 +37,13 @@ r3;  // r3 ->[2,3,4]
 
 map(r4, %subPair) ~ [(10,2), (30,13)];
 r4; // r4 ->[8,17]
+
+
+// --- map application with `<<' abbriviation also
+// --- It seems the simplest to read.
+r5 << map(%inc, [100,200,300]);
+r5; // r5 ->[101,201,301]
+
+r6 << map(%subPair, [(10,2), (30,13)]);
+r6; // r6 ->[8,17]
+

@@ -1,0 +1,57 @@
+// foldr, foldl functions
+
+
+// target functions
+// Here, we use built-in agents Add and Sub
+
+
+// --------------------------------------------------------------------
+// foldr f v [x0, x1, ..., xn] = f(x0, f(x1, ... f(xn-1, f(xn, v))...))
+// --------------------------------------------------------------------
+foldr(r, f, v) >< x:xs => foldr_Cons(r,f,v,x)~xs;
+foldr_Cons(r,f,v,x) >< [] => f~((r,x),v);
+foldr_Cons(r,f,v,x) >< y:ys => 
+         Dup(f1,f2)~f,
+         foldr(w, f2, v)~y:ys,
+         f1~((r,x),w);
+
+// --------------------------------------------------------------------
+// foldl f v [x0, x1, ..., xn] = f( ... f(f(v,x0),x1) ..., xn)
+// --------------------------------------------------------------------
+foldl(r, f, v) >< x:xs => foldl_Cons(r,f,v,x)~xs;    
+foldl_Cons(r,f,v,x) >< [] => f~((r,v),x);
+foldl_Cons(r,f,v,x) >< y:ys => 
+         Dup(f1,f2)~f,
+         f1~((w,v),x),
+         foldl(r, f2, w)~y:ys;
+
+
+
+
+// ---------- main ---------- 
+
+// foldr f v [x0, x1, ..., xn] = f(x0, f(x1, ... f(xn-1, f(xn, v))...))
+// foldr plus 10 [1,2,3] = plus(1, plus(2, plus(3, 10))) = 16
+
+foldr(r, %Add, 10) ~ [1,2,3];
+r; free r; // r ->16
+
+
+// foldr subt 1 [30,20,10] = subt(30, subt(20, subt(10, 1)))
+//                       = 30-(20-(10-1)) = 30-(20-9) = 30-11 = 19
+
+foldr(r, %Sub, 1) ~ [30,20,10];
+r; free r; // r ->19
+
+
+
+// foldl f v [x0, x1, ..., xn] = f( ... f(f(v,x0),x1) ..., xn)
+// foldl plus 10 [1,2,3] = plus(3, plus(2, plus(1, 10))) = 16
+
+foldl(r, %Add, 10) ~ [1,2,3];
+r; free r; // r ->16
+
+
+// foldl subt 10 [1,2,3] = subt(subt(subt(10,1),2),3) = ((10-1)-2)-3 = 4
+foldl(r, %Sub, 10) ~ [1,2,3];
+r; free r; // r ->4
