@@ -1,25 +1,53 @@
 # Change log
 
-### v0.10.1 (released on 22 December 2022)
+### v0.10.2 minor update (released on 29 December 2022)
+#### Polished
+
+- **Avoiding suddenly crushing due to compilation errors**: The compilation process crushed and then the system aborted when property variables were referred to before the declaration, but it is now resolved. For instance, the system keeps working without avoiding for the following net where `x` is referred to before its declaration:
+
+  ```
+  >>> r~(x+10);
+  ERROR: `x' is referred to as a property variable in an expression, although it has not yet been declared (as so).
+  >>>
+  ```
+
+  So, even if we write the following rule having `r~(r1+r2) `, the system will not abort suddenly, although the compilation crushes:
+
+  ```
+  >>> fib(r) >< (int n)
+  ... | n == 0 => ret~0
+  ... | n == 1 => ret~1
+  ... | _ => r~(r1+r2), fib(r1)~(n-1), fib(r2)~(n-2);
+  ERROR: `r1' is referred to as a property variable in an expression, although it has not yet been declared (as so).
+  ERROR: Compilation failure for fib >< Int.
+  >>>
+  ```
+
+  
+
+
+
+
+### v0.10.1 minor update (released on 22 December 2022)
 #### Polished
 * **Warning messages**: Inpla puts warning messages when names are connected to expressions because Runtime Error can be caused. In addition, messages are put when names are included in expressions as well. In future, those will be detected by a type inference system, not such ad hoc finding, I hope.
 
   ```
   >>> A(r)><B(int x) => r~1, x~100;
-  Warning: The variable 'x' is connected to an expression. It may cause runtime error.
+  Warning: The variable `x' is connected to an expression. It may cause runtime error.
   ```
 
   ```
   >>> A(r, y)><B(int x) => r~(x+y);
-  Warning: The agent 'A' has been already defined as whose arity is 1, but now used as the arity is 2.
-  Warning: 'y' is used as a variable on properties, though it is not so...
+  Warning: The agent `A' has been previously defined of arity 1, but is now used of arity 2.
+  Warning: `y' is used as a property variable, although is is not declared as so.
   ```
 
   ```
   >>> A(r, y)><B(int x)
   ... | y==0 => r~x, y~x
   ... | _ => r~x+1, y~x;
-  Warning: 'y' is used as a variable on properties, though it is not so...
+  Warning: `y' is used as a property variable, although is is not declared as so.
   ```
 #### Minor change
 * **Messages of applying Tail Call Optimisation** : A message was put when the optimisation is applied, but now it turns off because this is for developers. To change it on, make the following line uncommented in `config.h`:

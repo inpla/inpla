@@ -157,7 +157,7 @@ void IdTable_set_arity(int id, int arity)
   if ((IdTable[id].aux.arity == -1) || (IdTable[id].aux.arity == arity)) {
     IdTable[id].aux.arity = arity;
   } else {
-    printf("Warning: The agent '%s' has been already defined as whose arity is %d, but now used as the arity is %d.\n",  
+    printf("Warning: The agent `%s' has been previously defined of arity %d, but is now used of arity %d.\n",  
 	   IdTable[id].name, IdTable[id].aux.arity, arity);
     IdTable[id].aux.arity = arity;
   } 

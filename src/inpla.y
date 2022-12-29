@@ -22,8 +22,8 @@
 
 // ----------------------------------------------
   
-#define VERSION "0.10.1"
-#define BUILT_DATE  "22 December 2022"
+#define VERSION "0.10.2"
+#define BUILT_DATE  "29 December 2022"
 
 // ------------------------------------------------------------------
 
@@ -325,7 +325,7 @@ command:
   // http://flex.sourceforge.net/manual/Multiple-Input-Buffers.html
   yyin = fopen($2, "r");
   if (!yyin) {
-    printf("Error: The file '%s' does not exist.\n", $2);
+    printf("Error: The file `%s' does not exist.\n", $2);
     free($2);
     yyin = stdin;
 
@@ -355,7 +355,7 @@ command:
   int entry=ast_recordConst($2,$4);
 
   if (!entry) {
-    printf("`%s' has been already bound to a value '%d' as immutable.\n\n",
+    printf("`%s' has been already bound to a value `%d' as immutable.\n\n",
 	   $2, ast_getRecordedVal(entry));
     fflush(stdout);
   }
@@ -562,14 +562,14 @@ int yyerror(char *s) {
 
 #ifdef MY_YYLINENO
   if (InfoLineno != NULL) {
-    sprintf(msg, "%s:%d: %s near token '%s'.\n", 
+    sprintf(msg, "%s:%d: %s near token `%s'.\n", 
 	  InfoLineno->fname, yylineno+1, s, yytext);
   } else {
-    sprintf(msg, "%d: %s near token '%s'.\n", 
+    sprintf(msg, "%d: %s near token `%s'.\n", 
 	  yylineno, s, yytext);
   }
 #else
-  sprintf(msg, "%d: %s near token '%s'.\n", yylineno, s, yytext);
+  sprintf(msg, "%d: %s near token `%s'.\n", yylineno, s, yytext);
 #endif
 
   Errormsg = strdup(msg);  
@@ -2130,7 +2130,7 @@ void flush_name_port0(VALUE ptr) {
   // JAPANESE: ptr の name nodes が他の場所で出現するなら flush しない。
   VALUE connected_from;
   if (keynode_exists_in_another_term(ptr, &connected_from) >= 1) {
-    printf("Error: '%s' cannot be freed because it is referred to by '%s'.\n", 
+    printf("Error: `%s' cannot be freed because it is referred to by `%s'.\n", 
 	   IdTable_get_name(BASIC(ptr)->id),
 	   IdTable_get_name(BASIC(connected_from)->id));
     
@@ -3298,6 +3298,8 @@ typedef struct {
   int is_in_jmpcnctBlock;
 #endif  
 
+  // the amount of compilation error
+  int count_compilation_errors;
 
   // warning output for x:int~y:int and x:int~1
   int put_warning_for_cnct_property;
@@ -3337,6 +3339,10 @@ void CmEnv_clear_bind(int preserve_idx) {
 
   // new name information will be stored from preserve_idx+1
   CmEnv.bindPtr = preserve_idx+1;
+
+  // Reset the number of compilation errors
+  CmEnv.count_compilation_errors = 0;
+  
 }
 
 #ifdef OPTIMISE_TWO_ADDRESS
@@ -3392,6 +3398,10 @@ void CmEnv_clear_all(void)
   // reset the register assignment table
   CmEnv_clear_register_assignment_table_all();
 
+  // reset the number of compilation erros
+  CmEnv.count_compilation_errors = 0;
+
+  
 }
 
 void CmEnv_clear_keeping_rule_properties(void) 
@@ -3555,7 +3565,7 @@ int CmEnv_check_meta_occur_once(void) {
 
     if ((CmEnv.bind[i].type == NB_META_L) || (CmEnv.bind[i].type == NB_META_R)) {
       if (CmEnv.bind[i].refnum != 1) { // Be just once!
-	printf("ERROR: '%s' is referred not once in the right-hand side of the rule definition", CmEnv.bind[i].name);
+	printf("ERROR: `%s' is referred not once in the right-hand side of the rule definition", CmEnv.bind[i].name);
 	return 0;
       }
       
@@ -3572,7 +3582,7 @@ int CmEnv_check_name_reference_times(void) {
   for (i=0; i<CmEnv.bindPtr; i++) {
     if (CmEnv.bind[i].type == NB_NAME) {
       if (CmEnv.bind[i].refnum > 2) {
-	printf("ERROR: The name '%s' occurs more than twice.\n", 
+	printf("ERROR: The name `%s' occurs more than twice.\n", 
 	       CmEnv.bind[i].name);
 	return 0;
       }
@@ -6000,7 +6010,11 @@ int Compile_expr_on_ast(Ast *ptr, int target) {
     int result = CmEnv_find_var(ptr->left->sym);
     if (result == -1) {
       //      result=CmEnv_set_as_INTVAR(ptr->left->sym);
-      printf("ERROR: '%s' has not been defined previously.\n",
+
+      // Increase the counter of compilation errors
+      CmEnv.count_compilation_errors++;
+      
+      printf("ERROR: `%s' is referred to as a property variable in an expression, although it has not yet been declared (as so).\n",
 	     ptr->left->sym);
       return 0;
     }
@@ -6011,7 +6025,7 @@ int Compile_expr_on_ast(Ast *ptr, int target) {
       int get_result;
       get_result = CmEnv_gettype_forname((ptr)->left->sym, &type);
       if ((get_result) && (type != NB_INTVAR)) {
-	printf("Warning: '%s' is used as a variable on properties, though it is not so...\n",
+	printf("Warning: `%s' is used as a property variable, although is is not declared as so.\n",
 		   (ptr)->left->sym);
 
       }
@@ -6187,7 +6201,7 @@ int Compile_expr_on_ast(Ast *ptr, int target) {
   }
     
   default:
-    puts("System ERROR: Wrong AST was given to CompileExpr.\n");
+    puts("ERROR: Wrong AST was given to CompileExpr.\n");
     return 0;
 
   }
@@ -6399,7 +6413,7 @@ int Compile_term_on_ast(Ast *ptr, int target) {
 	char *sym = (char *)ptr->left->sym;
 	id = NameTable_get_id(sym);
 	if (id == -1) {
-	  printf("Warning: `%s' is given to %%, though it hasn't been defined yet.\n", sym);
+	  printf("Warning: `%s' is given to %%, although it hasn't yet been defined.\n", sym);
 	  id=NameTable_get_set_id_with_IdTable_forAgent(sym);
 	}
 	
@@ -6575,15 +6589,20 @@ int Compile_term_on_ast(Ast *ptr, int target) {
 
   default:
     // expression case
-    result = CmEnv_newvar();    
-    int compile_result = Compile_expr_on_ast(ptr, result);
-    if (compile_result != 0) {
-      return result;
-    } else {
-      puts("Compilation ERROR: something strange in Compile_term_on_ast.");
-      ast_puts(ptr);
-      exit(1);      
+    result = CmEnv_newvar();
+
+#ifndef DEBUG_EXPR_COMPILE_ERROR
+    Compile_expr_on_ast(ptr, result);
+#else    
+    int compile_expr_result = Compile_expr_on_ast(ptr, result);
+    if (compile_expr_result == 0) {
+      puts("ERROR: Something strange in Compile_term_on_ast.");
+      ast_puts(ptr); puts("");
+      //      exit(1);      
     }
+#endif
+    
+    return result;
   }
 
 }
@@ -6646,8 +6665,8 @@ int check_invalid_occurrence(Ast *ast) {
       count = keynode_exists_in_another_term(aheap, NULL);
       if (count == 2) {
 	// already twice
-	printf("ERROR: '%s' occurs twice already. \n", ast->left->sym);
-	printf("        Use 'ifce' command to see the occurrence.\n");
+	printf("ERROR: `%s' occurs twice already. \n", ast->left->sym);
+	printf("        Use `ifce' command to see the occurrence.\n");
 	return 0;	    
       }	  
       
@@ -6698,7 +6717,7 @@ void Compile_gen_RET_for_rulebody(void) {
 }
 
 
-int Compile_eqlist_on_ast(Ast *at) {
+int Compile_eqlist_on_ast_in_rulebody(Ast *at) {
   NB_TYPE type;
   Ast *at_preserved = at;
 
@@ -6721,13 +6740,13 @@ int Compile_eqlist_on_ast(Ast *at) {
 	  // the left term is a variable on property
 	
 	  if (Ast_is_expr(eq->right)) {
-	    printf("Warning: The variable '%s' is connected to an expression. It may cause runtime error.\n",
+	    printf("Warning: The variable `%s' is connected to an expression. It may cause runtime error.\n",
 		   (eq->left)->left->sym);
 	  
 	  } else if ((eq->right)->id == AST_NAME) {
 	    result = CmEnv_gettype_forname((eq->right)->left->sym, &type);
 	    if ((result !=0) && (type == NB_INTVAR)) {
-	      printf("Warning: The variable '%s' is connected to a variable %s. It may cause runtime error.\n",
+	      printf("Warning: The variable `%s' is connected to a variable %s. It may cause runtime error.\n",
 		     (eq->left)->left->sym, (eq->right)->left->sym);	    
 	    }
 	  }
@@ -6741,14 +6760,14 @@ int Compile_eqlist_on_ast(Ast *at) {
 	  // the right term is a variable on property
 	
 	  if (Ast_is_expr(eq->left)) {
-	  	    printf("Warning: The variable '%s' is connected to an expression. It may cause runtime error.\n",
+	  	    printf("Warning: The variable `%s' is connected to an expression. It may cause runtime error.\n",
 	  		   (eq->right)->left->sym);
 	  	  
 	  } else {
 	    if ((eq->left)->id == AST_NAME) {
 	      result = CmEnv_gettype_forname((eq->left)->left->sym, &type);
 	      if ((result !=0) && (type == NB_INTVAR)) {
-		printf("Warning: The variable '%s' is connected to a variable %s. It may cause runtime error.\n",
+		printf("Warning: The variable `%s' is connected to a variable %s. It may cause runtime error.\n",
 		       (eq->right)->left->sym, (eq->left)->left->sym);	    
 		
 	      }
@@ -6763,6 +6782,10 @@ int Compile_eqlist_on_ast(Ast *at) {
 
 
   at = at_preserved;
+
+  
+  // Reset the counter of compilation errors
+  CmEnv.count_compilation_errors = 0;
   
     
   while (at!=NULL) {
@@ -6783,6 +6806,13 @@ int Compile_eqlist_on_ast(Ast *at) {
     int var1 = Compile_term_on_ast(eq->left, -1);
     int var2 = Compile_term_on_ast(eq->right, -1);
 
+    // Check whether compilation errors arise
+    if (CmEnv.count_compilation_errors != 0) {
+      return 0;
+    }
+
+
+    
     /*
     if (next == NULL) {
       IMCode_genCode2(OP_MYPUSH, var1, var2);
@@ -6803,7 +6833,14 @@ int Compile_eqlist_on_ast(Ast *at) {
 	|| ((next == NULL) && (eq->id == AST_CNCT))) {
       int var1 = Compile_term_on_ast(eq->left, -1);
       int var2 = Compile_term_on_ast(eq->right, -1);
+
+      // Check whether compilation errors arise
+      if (CmEnv.count_compilation_errors != 0) {
+	return 0;
+      }
+      
       IMCode_genCode2(OP_PUSH, var1, var2);
+
       
     } else {
       // operation for the last placed equation.
@@ -6817,7 +6854,12 @@ int Compile_eqlist_on_ast(Ast *at) {
 	
 	
 	int var2 = Compile_term_on_ast(eq->right, -1);
+	// Check whether compilation errors arise
+	if (CmEnv.count_compilation_errors != 0) {
+	  return 0;
+	}
 
+	
 	
 	int alloc[MAX_PORT];
 	int arity = 0;
@@ -6842,6 +6884,12 @@ int Compile_eqlist_on_ast(Ast *at) {
 	  //	  ast_puts(arg_list->left); puts("");
 	  
 	  alloc[i] = Compile_term_on_ast(arg_list->left, -1);
+	  
+	  // Check whether compilation errors arise
+	  if (CmEnv.count_compilation_errors != 0) {
+	    return 0;
+	  }
+	  
 	  arg_list = ast_getTail(arg_list);
 	}
 
@@ -6910,8 +6958,15 @@ int Compile_eqlist_on_ast(Ast *at) {
 	IMCode_genCode0(OP_BEGIN_JMPCNCT_BLOCK);
 #endif
 	
-		int var1 = Compile_term_on_ast(deconst_term, -1);
-		//int var1 = Compile_term_on_ast(eq_lhs, -1);
+	int var1 = Compile_term_on_ast(deconst_term, -1);
+	//int var1 = Compile_term_on_ast(eq_lhs, -1);
+
+	// Check whether compilation errors arise
+	if (CmEnv.count_compilation_errors != 0) {
+	  return 0;
+	}
+
+	
 	IMCode_genCode2(OP_PUSH, var1, eq_rhs_name_reg);
 	Compile_gen_RET_for_rulebody();
 
@@ -6935,8 +6990,14 @@ int Compile_eqlist_on_ast(Ast *at) {
 	  arity++;	  
 	  
 	  alloc[i] = Compile_term_on_ast(arg_list->left, -1);
+	  // Check whether compilation errors arise
+	  if (CmEnv.count_compilation_errors != 0) {
+	    return 0;
+	  }
+	  
 	  arg_list = ast_getTail(arg_list);
 	}
+	
 	for (int i=0; i<arity; i++) {
 	  if (alloc[i] == VM_OFFSET_METAVAR_L(i))
 	    continue;
@@ -7016,7 +7077,7 @@ int Compile_eqlist_on_ast(Ast *at) {
 	
       } else {
 	// unknown AST id
-	puts("!!!!!!!"); exit(1);
+	puts("Fatal ERROR in Compile_eqlist_on_ast_in_rulebody"); exit(1);
       }
       
     } 
@@ -7052,7 +7113,7 @@ int Compile_stmlist_on_ast(Ast *at) {
       // the sym is new
       toRegLeft = CmEnv_set_as_INTVAR(ptr->left->left->sym);
     } else {
-      printf("Warning: '%s' has been already defined.\n", ptr->left->left->sym);
+      printf("Warning: `%s' has been already defined.\n", ptr->left->left->sym);
     }
 
     // for the y
@@ -7100,8 +7161,8 @@ int Compile_body_on_ast(Ast *body) {
   Ast_RewriteOptimisation_eqlist(eqs);
 
   if (!Compile_stmlist_on_ast(stms)) return 0;
-  if (!Compile_eqlist_on_ast(eqs)) {
-    printf("in the rule:\n  %s >< %s\n",
+  if (!Compile_eqlist_on_ast_in_rulebody(eqs)) {
+    printf("ERROR: Compilation failure for %s >< %s.\n",
 	   IdTable_get_name(CmEnv.idL),
 	   IdTable_get_name(CmEnv.idR));
     return 0;
@@ -7716,7 +7777,7 @@ int make_rule_oneway(Ast *ast) {
     arity = get_arity_on_ast(ruleAgent_L);
   }
   if (arity >= MAX_PORT) {
-    printf("ERROR: Too many arguments of '%s'. It should be MAX_PORT(=%d) or less.\n",
+    printf("ERROR: Too many arguments of `%s'. It should be MAX_PORT(=%d) or less.\n",
 	   ruleAgent_L->left->sym, MAX_PORT);
     return 0;
   }
@@ -7729,7 +7790,7 @@ int make_rule_oneway(Ast *ast) {
     arity = get_arity_on_ast(ruleAgent_R);
   }
   if (arity >= MAX_PORT) {
-    printf("ERROR: Too many arguments of '%s'. It should be MAX_PORT(=%d) or less.\n",
+    printf("ERROR: Too many arguments of `%s'. It should be MAX_PORT(=%d) or less.\n",
 	   ruleAgent_R->left->sym, MAX_PORT);
     return 0;
   }
@@ -7916,11 +7977,11 @@ int make_rule(Ast *ast) {
   Ast *ruleAgent_R = ast->left->right;
 
   if (ruleAgent_L->id == AST_NAME) {
-    printf("ERROR: The name '%s' was specified as the left-hand side of rule agents. It should be an agent.\n", ruleAgent_L->left->sym);
+    printf("ERROR: The name `%s' was specified as the left-hand side of rule agents. It should be an agent.\n", ruleAgent_L->left->sym);
     return 0;
   }
   if (ruleAgent_R->id == AST_NAME) {
-    printf("ERROR: The name '%s' was specified as the right-hand side of rule agents. It should be an agent.\n", ruleAgent_R->left->sym);
+    printf("ERROR: The name `%s' was specified as the right-hand side of rule agents. It should be an agent.\n", ruleAgent_R->left->sym);
     return 0;
   }
   
@@ -10791,6 +10852,8 @@ int exec(Ast *at) {
     }
   }
 
+  // Reset the counter of compilation errors
+  CmEnv.count_compilation_errors = 0;
   
   while (at != NULL) {
     int p1,p2;
@@ -10801,7 +10864,13 @@ int exec(Ast *at) {
     p1 = Compile_term_on_ast(left, -1);
     p2 = Compile_term_on_ast(right, -1);
 
+    // Check whether compilation errors arise
+    if (CmEnv.count_compilation_errors != 0) {
+      return 0;
+    }
 
+
+    
     if (left->id == AST_NAME) {
       select_kind_of_push(left, p1, p2);
       
@@ -11088,6 +11157,9 @@ int exec(Ast *at) {
     }
   }
 
+  // Reset the counter of compilation errors
+  CmEnv.count_compilation_errors = 0;
+
   
   while (at!=NULL) {
     int p1,p2;
@@ -11097,6 +11169,12 @@ int exec(Ast *at) {
     p1 = Compile_term_on_ast(left, -1);
     p2 = Compile_term_on_ast(right, -1);
 
+    // Check whether compilation errors arise
+    if (CmEnv.count_compilation_errors != 0) {
+      return 0;
+    }
+
+    
     if (left->id == AST_NAME) {
       select_kind_of_push(left, p1, p2);
       
@@ -11310,11 +11388,11 @@ int main(int argc, char *argv[])
 	  if (i < argc) {
 	    param = atoi(argv[i]);
 	    if (param == 0) {
-	      printf("ERROR: '%s' is illegal parameter for -Xes\n", argv[i]);
+	      printf("ERROR: `%s' is illegal parameter for -Xes\n", argv[i]);
 	      exit(-1);
 	    }
 	  } else {
-	    printf("ERROR: The option '-Xes' needs a natural number.");
+	    printf("ERROR: The option `-Xes' needs a natural number.");
 	    exit(-1);
 	  }
 	  max_EQStack=param;
@@ -11335,17 +11413,17 @@ int main(int argc, char *argv[])
 	      }
 	    }
 	    if (!valid) {
-	      printf("ERROR: '%s' is illegal parameter for -Xms\n", argv[i]);
+	      printf("ERROR: `%s' is illegal parameter for -Xms\n", argv[i]);
 	      exit(-1);
 	    }
 	    	    
 	    param = atoi(argv[i]);
 	    if (param == 0) {
-	      printf("ERROR: '%s' is illegal parameter for -Xms\n", argv[i]);
+	      printf("ERROR: `%s' is illegal parameter for -Xms\n", argv[i]);
 	      exit(-1);
 	    }
 	  } else {
-	    printf("ERROR: The option '-Xms' needs a number.");
+	    printf("ERROR: The option `-Xms' needs a number.");
 	    exit(-1);
 	  }
 	  Hoop_init_size = param;
@@ -11366,12 +11444,12 @@ int main(int argc, char *argv[])
 	      }
 	    }
 	    if (!valid) {
-	      printf("ERROR: '%s' is illegal parameter for -Xmt\n", argv[i]);
+	      printf("ERROR: `%s' is illegal parameter for -Xmt\n", argv[i]);
 	      exit(-1);
 	    }
 	    	    	    
 	  } else {
-	    printf("ERROR: The option '-Xmt' needs a number.");
+	    printf("ERROR: The option `-Xmt' needs a number.");
 	    exit(-1);
 	  }
 	  param = atoi(argv[i]);
@@ -11394,7 +11472,7 @@ int main(int argc, char *argv[])
 	  // parsing for an identifier
 	  snprintf(varname, sizeof(varname)-1, "%s", tp);
 	  if ((varname == NULL) || (varname[0] < 'A') || (varname[0] > 'Z')) {
-      	    puts("ERROR: 'id' in the format 'id=value' must start from a capital letter.");
+      	    puts("ERROR: `id' in the format `id=value' must start from a capital letter.");
       	    exit(-1);
 	  }
 
@@ -11404,7 +11482,7 @@ int main(int argc, char *argv[])
 	  // parsing for a number
 	  snprintf(val, sizeof(val)-1, "%s", tp);
 	  if (val == NULL) {
-	    puts("ERROR: 'value' in the format 'id=value' must an integer value.");
+	    puts("ERROR: `value' in the format `id=value' must an integer value.");
 	    exit(-1);	      
 	  }
 
@@ -11421,14 +11499,14 @@ int main(int argc, char *argv[])
 	  }
 
 	  if (!valid) {
-	    puts("ERROR: 'value' in the format 'id=value' must an integer value.");
+	    puts("ERROR: `value' in the format `id=value' must an integer value.");
 	    exit(-1);	      	      
 	  }
 	  
 	  ast_recordConst(varname, atoi(val));
 
 	} else {
-	  puts("ERROR: The option '-d' needs a string such as VarName=value.");
+	  puts("ERROR: The option `-d' needs a string such as VarName=value.");
 	  exit(-1);
 	}
 	break;
@@ -11439,7 +11517,7 @@ int main(int argc, char *argv[])
 	  fname = argv[i];
 	  retrieve_flag = 0;
 	} else {
-	  printf("ERROR: The option '-f' needs a string of an input file name.");
+	  printf("ERROR: The option `-f' needs a string of an input file name.");
 	  exit(-1);
 	}
 	break;
@@ -11452,11 +11530,11 @@ int main(int argc, char *argv[])
         if (i < argc) {
           param = atoi(argv[i]);
           if (param == 0) {
-            printf("ERROR: '%s' is illegal parameter for -c\n", argv[i]);
+            printf("ERROR: `%s' is illegal parameter for -c\n", argv[i]);
             exit(-1);
           }
         } else {
-          printf("ERROR: The option '-c' needs a number as an argument.");
+          printf("ERROR: The option `-c' needs a number as an argument.");
           exit(-1);
         }
         heap_size=param;
@@ -11471,11 +11549,11 @@ int main(int argc, char *argv[])
         if (i < argc) {
           param = atoi(argv[i]);
           if (param == 0) {
-            printf("ERROR: '%s' is illegal parameter for -t\n", argv[i]);
+            printf("ERROR: `%s' is illegal parameter for -t\n", argv[i]);
             exit(-1);
           }
         } else {
-          printf("ERROR: The option '-t' needs a number of threads.");
+          printf("ERROR: The option `-t' needs a number of threads.");
           exit(-1);
         }
   
@@ -11511,7 +11589,7 @@ int main(int argc, char *argv[])
       char *fname_in = malloc(sizeof(char*) * 256);
       snprintf(fname_in, 256, "%s.in", fname);
       if (!(yyin = fopen(fname_in, "r"))) {
-	printf("Error: The file '%s' cannot be opened.\n", fname);
+	printf("Error: The file `%s' cannot be opened.\n", fname);
 	exit(-1);
       }
       
