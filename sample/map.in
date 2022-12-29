@@ -1,0 +1,44 @@
+// Map operation
+
+// target function
+inc(r)><(int i) => r~(i+1);
+subPair(r)><(int m, int n) => r~(m-n);
+
+
+// ----------- main (with the built-in Map and `%' notation) ----------- 
+Map(r, %inc) ~ [1,2,3];
+r;  // r ->[2,3,4]
+
+Map(rr, %subPair) ~ [(10,2), (30,13)];
+rr; // r4 ->[8,17]
+
+
+
+
+// ----------- main (without the built-in Map) ----------- 
+// map
+map(result, f) >< []   => result~[], Eraser~f;
+map(result, f) >< x:xs => Dup(f1,f2)~f, 
+                          result~w:ws, 
+                          f1 ~ (w, x), map(ws, f2)~xs;
+
+
+// --- map application without the `%' notation ---
+map(r1, (a, inc(a))) ~ [10,11,12];
+r1; // r1 ->[11,12,13]
+
+map(r2, (a, subPair(a))) ~ [(10,2), (30,13)];
+r2; // r2 ->[8,17]
+
+
+// --- map application with the `%' notation ---
+map(r3, %inc) ~ [1,2,3];
+r3;  // r3 ->[2,3,4]
+
+map(r4, %subPair) ~ [(10,2), (30,13)];
+r4; // r4 ->[8,17]
+
+
+
+
+
