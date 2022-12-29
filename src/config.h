@@ -1,9 +1,5 @@
 // Configurations  ---------------------------------------------------
 
-//#define DEBUG   // Show the computation process.
-//#define DEBUG_MKRULE  // Show compilation codes of rules.
-
-
 // ------------------------------------------------
 // Number of Agent Ports 
 // ------------------------------------------------
@@ -71,7 +67,7 @@
 // Comment out definitions if not needed.
 
 // 
-// Optimisation inspired by Tail Recursion Optimisation  
+// Optimisation inspired by Tail Call Optimisation  
 //
 #define OPTIMISE_IMCODE_TCO   
 
@@ -112,12 +108,15 @@
 // ------------------------------------------------
 // For developers
 // ------------------------------------------------
+//#define DEBUG             // Show the computation process.
+//#define DEBUG_MKRULE      // Show compiled codes for rules.
+//#define DEBUG_NETS        // Show compiled codes for nets.
+//#define DEBUG_EXPR_COMPILE_ERROR // Show AST of an expression
+                                     // comes with compile errors.
+
 //#define OLD_REUSEAGENT    // Use the old mechanism to reuse agents.
 //                          // Thus, `REUSEAGENT' is used
 //                          // instead of `CHID_L`, `LOADP_L` and so on.
-
-//#define DEBUG_MKRULE      // Show compiled codes for rules.
-//#define DEBUG_NETS        // Show compiled codes for nets.
 
 
 
@@ -131,5 +130,5 @@
 
 
 
-#define COUNT_INTERACTION  // Count interaction.
+#define COUNT_INTERACTION  // Count the amount of interactions.
 
