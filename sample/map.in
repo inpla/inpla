@@ -40,7 +40,7 @@ r4; // r4 ->[8,17]
 
 
 // --- map application with `<<' abbriviation also
-// --- This seems most easily readable.
+// --- It seems the simplest to read.
 r5 << map(%inc, [100,200,300]);
 r5; // r5 ->[101,201,301]
 
