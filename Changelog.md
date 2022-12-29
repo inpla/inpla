@@ -23,7 +23,11 @@
   >>>
   ```
 
-  
+- **New sample programs**: Two programs of *higher-order operations* are joined in sample programs:
+
+  - `map.in`: It explains how map operation can be performed with built-in and not built-in agent and `%` notation.
+  - `reduce.in`: Here, Foldr and Foldl are realised.
+
 
 
 
