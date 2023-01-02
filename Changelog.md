@@ -11,20 +11,30 @@
   >>>
   ```
 
-  So, even if we write the following rule having `r~(r1+r2) `, the system will not abort suddenly, although the compilation crushes:
+  So, even if we write the following rule having `r~(r1+r2) `, the system will not abort suddenly due to a compilation failure:
 
   ```
   >>> fib(r) >< (int n)
-  ... | n == 0 => ret~0
-  ... | n == 1 => ret~1
+  ... | n == 0 => r~0
+  ... | n == 1 => r~1
   ... | _ => r~(r1+r2), fib(r1)~(n-1), fib(r2)~(n-2);
   ERROR: `r1' is referred to as a property variable in an expression, although it has not yet been declared (as so).
   ERROR: Compilation failure for fib >< Int.
   >>>
   ```
+  Of course, the following is successfully compiled as well:
+
+  ```
+  >>> fib(r) >< (int n)
+  ... | n == 0 => r~0
+  ... | n == 1 => r~1
+  ... | _ => Add(r,r2)~r1, fib(r1)~(n-1), fib(r2)~(n-2);
+  >>>
+  ```
+
+  
 
 - **New sample programs**: Two programs of *higher-order operations* are joined in sample programs:
-
   - `map.in`: It explains how map operation can be performed with built-in and not built-in agent and `%` notation.
   - `reduce.in`: Here, Foldr and Foldl are realised.
 
