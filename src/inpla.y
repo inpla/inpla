@@ -22,8 +22,8 @@
 
 // ----------------------------------------------
   
-#define VERSION "0.10.2"
-#define BUILT_DATE  "29 December 2022"
+#define VERSION "0.10.3"
+#define BUILT_DATE  "12 January 2023"
 
 // ------------------------------------------------------------------
 
@@ -2969,24 +2969,24 @@ void VMCode_puts(void **code, int n) {
       i+=3;
       
     } else if (code[i] == CodeAddr[OP_LOADP_L]) {
-      printf("loadpl reg%lu $%ld\n",
+      printf("loadp_l reg%lu $%ld\n",
 	     (unsigned long)code[i+1],
 	     (unsigned long)code[i+2]);
       i+=2;
       
     } else if (code[i] == CodeAddr[OP_LOADP_R]) {
-      printf("loadpr reg%lu $%ld\n",
+      printf("loadp_r reg%lu $%ld\n",
 	     (unsigned long)code[i+1],
 	     (unsigned long)code[i+2]);
       i+=2;
       
     } else if (code[i] == CodeAddr[OP_CHID_L]) {
-      printf("chidl $%ld\n",
+      printf("chgid_l $%ld\n",
 	     (unsigned long)code[i+1]);
       i+=1;
       
     } else if (code[i] == CodeAddr[OP_CHID_R]) {
-      printf("chidr $%ld\n",
+      printf("chgid_r $%ld\n",
 	     (unsigned long)code[i+1]);
       i+=1;
       
@@ -7776,7 +7776,7 @@ int make_rule_oneway(Ast *ast) {
   } else {
     arity = get_arity_on_ast(ruleAgent_L);
   }
-  if (arity >= MAX_PORT) {
+  if (arity > MAX_PORT) {
     printf("ERROR: Too many arguments of `%s'. It should be MAX_PORT(=%d) or less.\n",
 	   ruleAgent_L->left->sym, MAX_PORT);
     return 0;
@@ -7789,7 +7789,7 @@ int make_rule_oneway(Ast *ast) {
   } else {
     arity = get_arity_on_ast(ruleAgent_R);
   }
-  if (arity >= MAX_PORT) {
+  if (arity > MAX_PORT) {
     printf("ERROR: Too many arguments of `%s'. It should be MAX_PORT(=%d) or less.\n",
 	   ruleAgent_R->left->sym, MAX_PORT);
     return 0;
