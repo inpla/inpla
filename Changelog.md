@@ -1,6 +1,15 @@
 # Change log
 
+### v0.10.3 quite minor update (released on 12 January 2023)
+
+#### Minor bug fix
+
+- **The maximum number of ports**: The number of ports in agents is defined by `MAX_PORT` in `config.h`, but it put an error when we used these ports out fully. Now we use these ports the same as the definition.
+
+
+
 ### v0.10.2 minor update (released on 29 December 2022)
+
 #### Polished
 
 - **Avoiding suddenly crushing due to compilation errors**: The compilation process crushed and then the system aborted when property variables were referred to before the declaration, but it is now resolved. For instance, the system keeps working without avoiding for the following net where `x` is referred to before its declaration:
@@ -11,30 +20,20 @@
   >>>
   ```
 
-  So, even if we write the following rule having `r~(r1+r2) `, the system will not abort suddenly due to a compilation failure:
+  So, even if we write the following rule having `r~(r1+r2) `, the system will not abort suddenly, although the compilation crushes:
 
   ```
   >>> fib(r) >< (int n)
-  ... | n == 0 => r~0
-  ... | n == 1 => r~1
+  ... | n == 0 => ret~0
+  ... | n == 1 => ret~1
   ... | _ => r~(r1+r2), fib(r1)~(n-1), fib(r2)~(n-2);
   ERROR: `r1' is referred to as a property variable in an expression, although it has not yet been declared (as so).
   ERROR: Compilation failure for fib >< Int.
   >>>
   ```
-  Of course, the following is successfully compiled as well:
-
-  ```
-  >>> fib(r) >< (int n)
-  ... | n == 0 => r~0
-  ... | n == 1 => r~1
-  ... | _ => Add(r,r2)~r1, fib(r1)~(n-1), fib(r2)~(n-2);
-  >>>
-  ```
-
-  
 
 - **New sample programs**: Two programs of *higher-order operations* are joined in sample programs:
+
   - `map.in`: It explains how map operation can be performed with built-in and not built-in agent and `%` notation.
   - `reduce.in`: Here, Foldr and Foldl are realised.
 
