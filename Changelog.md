@@ -1,5 +1,20 @@
 # Change log
 
+### v0.10.4 (released on 28 January 2023)
+
+#### Bug fix
+
+- **A reuse annotation with the abbreviation `<<`**: The abbreviation `<<` could not be parsed with a reuse annotation. It is now fixed, and we can write it as follows:
+
+  ```
+  foo(r) >< (int n)
+  | n == 0 => r~n
+  | _ => r << (*L)foo(n-1);  
+  //          ^ The (*L) setting caused an error in a previous version.
+  ```
+
+  
+
 ### v0.10.3 quite minor update (released on 12 January 2023)
 
 #### Minor bug fix

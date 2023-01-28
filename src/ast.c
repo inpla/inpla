@@ -309,7 +309,7 @@ void ast_puts(Ast *p) {
 }
 
 
-Ast *ast_unfoldABR(Ast *left_params, char *sym, Ast *paramlist) {
+Ast *ast_unfoldABR(Ast *left_params, char *sym, Ast *paramlist, Ast *annotate) {
   // input:
   // left_params << (AST_AGENT, sym, paramlist)
 
@@ -384,8 +384,13 @@ Ast *ast_unfoldABR(Ast *left_params, char *sym, Ast *paramlist) {
   }
   //  ast_puts(left);puts("");
 
-    
+
   Ast *agent_left = ast_makeAST(AST_AGENT, ast_makeSymbol(sym), left_params);
+  if (annotate != NULL) {
+    // replace (AST_ANNOTATE NULL NULL) with (AST_ANNOTATE agent_left NULL)
+    annotate->left = agent_left;
+    agent_left = annotate;
+  }    
   Ast *agent_right = param;
   Ast *cnct = ast_makeAST(AST_CNCT, agent_left, agent_right);
   

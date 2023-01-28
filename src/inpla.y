@@ -22,8 +22,8 @@
 
 // ----------------------------------------------
   
-#define VERSION "0.10.3"
-#define BUILT_DATE  "12 January 2023"
+#define VERSION "0.10.4"
+#define BUILT_DATE  "28 January 2023"
 
 // ------------------------------------------------------------------
 
@@ -184,6 +184,9 @@ agent_percent
 bodyguard bd_else bd_elif bd_compound
 if_sentence if_compound
 name_params
+abr_annotate
+
+%type <chval> abr_agent_name
  //body 
 
 %nonassoc REDUCE
@@ -471,17 +474,34 @@ astparams
 ap
 : astterm CNCT astterm { $$ = ast_makeAST(AST_CNCT, $1, $3); }
 //
-| astparams ABR AGENT LP astparams RP
-{ $$ = ast_unfoldABR($1, $3, $5); }
-| ABR AGENT LP astparams RP
-{ $$ = ast_unfoldABR(NULL, $2, $4); }
+// param << A(...)
+| astparams ABR abr_agent_name LP astparams RP
+{ $$ = ast_unfoldABR($1, $3, $5, NULL); }
+// << A(...)
+| ABR abr_agent_name LP astparams RP
+{ $$ = ast_unfoldABR(NULL, $2, $4, NULL); }
+// param << (*L)A(...)
+| astparams ABR abr_annotate abr_agent_name  LP astparams RP
+{ $$ = ast_unfoldABR($1, $4, $6, $3); }
+// << (*L)A(...)
+| ABR abr_annotate abr_agent_name LP astparams RP
+{ $$ = ast_unfoldABR(NULL, $3, $5, $2); }
 //
-| astparams ABR NAME LP astparams RP
-{ $$ = ast_unfoldABR($1, $3, $5); }
-| ABR NAME LP astparams RP
-{ $$ = ast_unfoldABR(NULL, $2, $4); }
+//| astparams ABR NAME LP astparams RP
+//{ $$ = ast_unfoldABR($1, $3, $5, NULL); }
+//| ABR NAME LP astparams RP
+//{ $$ = ast_unfoldABR(NULL, $2, $4, NULL); }
 ;
 
+abr_agent_name
+: AGENT { $$ = $1; }
+| NAME { $$ = $1; }
+;
+
+abr_annotate
+: LP ANNOTATE_L RP { $$ = ast_makeAST(AST_ANNOTATION_L, NULL, NULL); }
+| LP ANNOTATE_R RP { $$ = ast_makeAST(AST_ANNOTATION_R, NULL, NULL); }
+;
 
 
 aplist
@@ -10836,6 +10856,20 @@ int exec(Ast *at) {
   // Syntax error check
   {
     Ast *tmp_at=at;
+
+    if (Ast_eqs_has_agentID(tmp_at, AST_ANNOTATION_L)) {
+      puts("Error: Given nets contain `(*L)'.");
+      // invalid case
+      if (yyin != stdin) exit(-1);
+      return 0;
+    }
+    if (Ast_eqs_has_agentID(tmp_at, AST_ANNOTATION_R)) {
+      puts("Error: Given nets contain `(*R)'.");
+      // invalid case
+      if (yyin != stdin) exit(-1);
+      return 0;
+    }	  
+    
     while (tmp_at != NULL) {
 
       if (!(check_ast_arity(tmp_at->left->left))
