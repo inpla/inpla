@@ -10,7 +10,7 @@
   foo(r) >< (int n)
   | n == 0 => r~n
   | _ => r << (*L)foo(n-1);  
-  //          ^ The (*L) setting caused an error in a previous version.
+  //          ^ The (*L) setting caused a parse error in a previous version.
   ```
 
   
