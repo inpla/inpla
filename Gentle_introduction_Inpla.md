@@ -324,18 +324,18 @@ r << Append(listA, listB)   == for ==  Append(r, listB)~listA
 #### `Zip`: It makes two lists into a list of pairs
 A built-in agent `Zip` takes two lists and returns a list whose elements are pairs of the given two lists elements such that:
 ```
-Zip(r,[1,2,...])~[10,20,...] -->* r~[(1,10),(2,20),...].
+Zip(r,[A,B,...])~[AA,BB,...] -->* r~[(A,AA),(B,BB),...].
 ```
 The length of the result will be the same to the shorter one in the given lists:
 ```
-Zip(r,[1,2])~[10,20,30,...] -->* r~[(1,10),(2,20)].
+Zip(r,[A,B])~[AA,BB,CC,...] -->* r~[(A,AA),(B,BB)].
 ```
 We can write it with the abbreviation as well:
 ```
->>> r << Zip([1,2,3], [10,20,30]);
+>>> r << Zip([A,B,C], [AA,BB,CC]);
 (8 interactions, 0.00 sec)
 >>> r; free r;
-[(1,10),(2,20),(3,30)]
+[(A,AA),(B,BB),(C,CC)]
 >>>
 ```
 
@@ -501,13 +501,17 @@ Of course, it works as an addition operation on two attributes:
 >>>
 ```
 
-However, it causes runtime error if the `add` rule is invoked before an attribute value has been stored on the second argument of the `add`. For instance, we take the following computation:
+However, it will cause a runtime error if the `add` rule is invoked without an attribute value on the second argument.  For instance, we take the following computation:
 
 ```
->>> add(r, b)~3, add(b, 10)~20;
+>>> b~1;
+>>> add(r, b)~3;
+>>> r;
+47005050212003
+>>>
 ```
 
-If the `add(r, b)~3` is operated first, it causes the runtime error because the `b` has not been connected to any attribute, whereas it is OK if the `add(b, 10)~20` is operated first. To prevent this fragile situation, **we have to have extra rules to ensure that every port with the modifier `int` has been connected to an attribute**. For the rule of the `add`, the following is a **solution** to have the extra rule (the `addn` is introduced as the extra agent):
+This is because although it is not an attribute value, just a name, the `b` is recognised as an attribute value and the calculation is carried out.  To prevent this fragile situation, **we have to have extra rules to ensure that every port with the modifier `int` has been connected to an attribute**. For the rule of the `add`, the following is a **solution** to have the extra rule (the `addn` is introduced as the extra agent):
 
 ```
 >>> add(result, b) >< (int a) => addn(result, a) ~ b;
@@ -609,12 +613,20 @@ The sequence of `<condition-on-attributes>` must be finished with the otherwise 
 Inpla has the following commands:
 * `free` *name1* ... *name_n* `;`     
   The *name1* ... *name_n* and connected terms from these are disposed. To dispose all living names and connected terms, type `free ifce;`, where the `ifce` is an abbreviation of *interface* that is called for the set of names that live and occur once.
+  
 * *name1* ... *name_n* `;`  
-  Put terms connected from the *name1* ... *name_n*.  To put all terms connected from the interface, type `ifce;`.
+  Put terms connected from the *name1* ... *name_n*.
+  
+* `ifce;`
+
+  Put every term connected from the interface.
+
 * `prnat` *name*`;`    
   Put a term connected from the *name* as a natural number.
-* `use` `"`filename`";`  
-  Read the file whose name is "filename". 
+  
+* `use` `"`*filename*`";`  
+  Read the file whose name is *filename*. 
+  
 * `exit;`            
   Quit the system.
 
