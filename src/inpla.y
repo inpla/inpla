@@ -22,8 +22,8 @@
 
 // ----------------------------------------------
   
-#define VERSION "0.10.4"
-#define BUILT_DATE  "28 January 2023"
+#define VERSION "0.10.5"
+#define BUILT_DATE  "3 February 2023"
 
 // ------------------------------------------------------------------
 
@@ -4132,13 +4132,16 @@ int CmEnv_Optimise_VMCode_CopyPropagation(int target_imcode_addr) {
     IMCode[target_imcode_addr].opcode = OP_DEAD_CODE;
     return 1;
   }
+
+  /*
   // When the given line is: LOAD_META src1 src1
   if ((load_from == load_to) &&
       (IMCode[target_imcode_addr].opcode == OP_LOAD_META)) {
     IMCode[target_imcode_addr].opcode = OP_DEAD_CODE;
     return 1;
   }
-
+  */
+  
   
   for (int line_num=target_imcode_addr+1; line_num<IMCode_n; line_num++) {
     imcode = &IMCode[line_num];    

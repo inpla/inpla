@@ -1,10 +1,16 @@
 # Change log
 
+### v0.10.5 (released on 3 Feruary 2023)
+
+#### Bug fix
+
+- **Code generation for Tail Call Optimisation**: Tail Call Optimisation turns an active pair execution into a loop operation. When the loop is executed, each port information needs to be updated, but some were skipped if the names in the ports were the same, and some computation failed. This is now fixed.
+
 ### v0.10.4 (released on 28 January 2023)
 
 #### Bug fix
 
-- **A reuse annotation with the abbreviation `<<`**: The abbreviation `<<` could not be parsed with a reuse annotation. It is now fixed, and we can write it as follows:
+- **A reuse annotation with the abbreviation `<<`**: The abbreviation `<<` could not be parsed with a reuse annotation. This is now fixed, and we can write it as follows:
 
   ```
   foo(r) >< (int n)
