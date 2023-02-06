@@ -14,7 +14,7 @@
 
 #### Polished
 
-- **Two-addressing for mkagent4**: Two-addressing, which reduces the number of operands by one, is now available for `mkagent4` by default. To disable it, comment out the following line in `config.h`:
+- **Two-addressing for mkagent4**: Two-addressing, which reduces the number of operands by one, is now available by default for `mkagent4` as well. To disable it, comment out the following line in `config.h`:
 
   ```
   #define OPTIMISE_TWO_ADDRESS_MKAGENT4 // For MKAGENT4
