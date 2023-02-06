@@ -97,7 +97,10 @@
 #define OPTIMISE_TWO_ADDRESS_MKAGENT1 // For MKAGENT1
 #define OPTIMISE_TWO_ADDRESS_MKAGENT2 // For MKAGENT2
 #define OPTIMISE_TWO_ADDRESS_MKAGENT3 // For MKAGENT3
+#define OPTIMISE_TWO_ADDRESS_MKAGENT4 // For MKAGENT4
+
 //#define OPTIMISE_TWO_ADDRESS_UNARY // For Unary operator like INC, DEC
+                                     // (Unfinished)
 #endif  
 
 

@@ -22,8 +22,8 @@
 
 // ----------------------------------------------
   
-#define VERSION "0.10.5"
-#define BUILT_DATE  "3 February 2023"
+#define VERSION "0.10.6"
+#define BUILT_DATE  "6 February 2023"
 
 // ------------------------------------------------------------------
 
@@ -2868,6 +2868,7 @@ void VMCode_puts(void **code, int n) {
 #endif
       
     } else if (code[i] == CodeAddr[OP_MKAGENT4]) {
+#if !defined(OPTIMISE_TWO_ADDRESS) || !defined(OPTIMISE_TWO_ADDRESS_MKAGENT4)
       printf("mkagent4 id:%lu reg%lu reg%lu reg%lu reg%lu reg%lu\n", 
 	     (unsigned long)code[i+1],
 	     (unsigned long)code[i+2],
@@ -2876,7 +2877,15 @@ void VMCode_puts(void **code, int n) {
 	     (unsigned long)code[i+5],
 	     (unsigned long)code[i+6]);
       i+=6;
-
+#else
+      printf("mkagent4 id:%lu reg%lu reg%lu reg%lu reg%lu\n", 
+	     (unsigned long)code[i+1],
+	     (unsigned long)code[i+2],
+	     (unsigned long)code[i+3],
+	     (unsigned long)code[i+4],
+	     (unsigned long)code[i+5]);
+#endif
+      
     } else if (code[i] == CodeAddr[OP_MKAGENT5]) {
       printf("mkagent5 id:%lu reg%lu reg%lu reg%lu reg%lu reg%lu reg%lu\n", 
 	     (unsigned long)code[i+1],
@@ -4133,6 +4142,11 @@ int CmEnv_Optimise_VMCode_CopyPropagation(int target_imcode_addr) {
     return 1;
   }
 
+  // ------------------------------------------------------------
+  // This part was commented out at v0.10.5
+  // Even if LOAD_META reg_n reg_n occurs, the varn could be preserved
+  // to another reg_n during the execusion, so it must not be DEAD_CODE here.
+  // ------------------------------------------------------------
   /*
   // When the given line is: LOAD_META src1 src1
   if ((load_from == load_to) &&
@@ -4586,6 +4600,22 @@ int CmEnv_generate_VMCode(void **code) {
       long dest = imcode->operand6;
 
 #ifdef OPTIMISE_IMCODE
+      src4 = CmEnv_using_reg(src4);
+      if (!CmEnv_Optimise_check_occurence_in_block(imcode->operand5, line_num))
+	CmEnv_free_reg(src4);
+
+#if !defined(OPTIMISE_TWO_ADDRESS) || !defined(OPTIMISE_TWO_ADDRESS_MKAGENT4)
+      dest = CmEnv_get_newreg(dest);
+#else
+      int new_reg = CmEnv_assign_reg(dest, src4);
+      if (new_reg > 0) {
+	code[addr++] = CodeAddr[OP_LOAD];
+	code[addr++] = (void *)(unsigned long)src4;
+	code[addr++] = (void *)(unsigned long)new_reg;
+      }                  
+#endif
+
+      
       src1 = CmEnv_using_reg(src1);
       if ((!CmEnv_Optimise_check_occurence_in_block(imcode->operand2, line_num))
 	  && (imcode->operand2 != imcode->operand3)
@@ -4603,12 +4633,6 @@ int CmEnv_generate_VMCode(void **code) {
       if ((!CmEnv_Optimise_check_occurence_in_block(imcode->operand4, line_num))
 	  && (imcode->operand4 != imcode->operand5))
 	CmEnv_free_reg(src3);
-
-      src4 = CmEnv_using_reg(src4);
-      if (!CmEnv_Optimise_check_occurence_in_block(imcode->operand5, line_num))
-	CmEnv_free_reg(src4);
-
-      dest = CmEnv_get_newreg(dest);
 #endif
 
       
@@ -4618,7 +4642,9 @@ int CmEnv_generate_VMCode(void **code) {
       code[addr++] = (void *)(unsigned long)src2;            
       code[addr++] = (void *)(unsigned long)src3;      
       code[addr++] = (void *)(unsigned long)src4;      
+#if !defined(OPTIMISE_TWO_ADDRESS) || !defined(OPTIMISE_TWO_ADDRESS_MKAGENT4)
       code[addr++] = (void *)(unsigned long)dest;      
+#endif
       break;
     }      
     case OP_MKAGENT5: {
@@ -8415,6 +8441,7 @@ void *exec_code(int mode, VirtualMachine * restrict vm, void * restrict *code) {
 
   
  E_MKAGENT4:
+#if !defined(OPTIMISE_TWO_ADDRESS) || !defined(OPTIMISE_TWO_ADDRESS_MKAGENT4)
   //    puts("mkagent4 id src1 src2 src3 src4 dest");
   a1 = make_Agent(vm, (unsigned long)code[++pc]);
   {
@@ -8425,6 +8452,18 @@ void *exec_code(int mode, VirtualMachine * restrict vm, void * restrict *code) {
     a1port[3] = reg[(unsigned long)code[++pc]];
   }
   reg[(unsigned long)code[++pc]] = a1;
+#else
+  //    puts("mkagent4 id src1 src2 src3 src4 dest");
+  a1 = make_Agent(vm, (unsigned long)code[++pc]);
+  {
+    volatile VALUE *a1port = AGENT(a1)->port;
+    a1port[0] = reg[(unsigned long)code[++pc]];
+    a1port[1] = reg[(unsigned long)code[++pc]];
+    a1port[2] = reg[(unsigned long)code[++pc]];
+    a1port[3] = reg[(unsigned long)code[++pc]];
+  }
+  reg[(unsigned long)code[pc]] = a1;
+#endif
   goto *code[++pc];
 
  E_MKAGENT5:
@@ -10511,24 +10550,6 @@ loop_agent_a1_a2_this_order:
 	  }
 	  break; // end ID_PERCENT
 
-	  /*	  
-	case ID_LAM:
-	  if (BASIC(a2)->id == ID_APP) {
-	    // Lam(x,t) ~ @(r,s) => r~t, x~s;
-	    
-	    COUNTUP_INTERACTION(vm);
-
-	    PUSH(vm, AGENT(a2)->port[0], AGENT(a1)->port[1]);
-	    VALUE a1p0 = AGENT(a1)->port[0];
-	    VALUE a2p1 = AGENT(a2)->port[1];
-	    free_Agent2(a1,a2);
-	    a1 = a1p0;
-	    a2 = a2p1;
-	    goto loop;
-	    
-	  }
-	  break; // end ID_LAM
-	  */
 	  
 	} // end switch(BASIC(a1)->id)
 
@@ -11021,7 +11042,8 @@ int exec(Ast *at) {
 
 #else
 
-// CPU 数の設定用（sysconf(_SC_NPROSSEORS_CONF)) を使って求める）
+// For setting the number of CPUs.
+// it is calculated by using sysconf(_SC_NPROSSEORS_CONF) in tpool_init
 static int CpuNum=1; 
 
 static pthread_cond_t ActiveThread_all_sleep = PTHREAD_COND_INITIALIZER;
@@ -11222,7 +11244,7 @@ int exec(Ast *at) {
       IMCode_genCode2(OP_PUSH, p1, p2);
     }
         
-    eqsnum++;   //分散用
+    eqsnum++;   // for distrubution
     at = ast_getTail(at);
   }
   IMCode_genCode0(OP_RET);
