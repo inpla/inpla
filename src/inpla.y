@@ -22,8 +22,8 @@
 
 // ----------------------------------------------
   
-#define VERSION "0.10.6"
-#define BUILT_DATE  "6 February 2023"
+#define VERSION "0.10.7"
+#define BUILT_DATE  "11 March 2023"
 
 // ------------------------------------------------------------------
 
@@ -2884,6 +2884,7 @@ void VMCode_puts(void **code, int n) {
 	     (unsigned long)code[i+3],
 	     (unsigned long)code[i+4],
 	     (unsigned long)code[i+5]);
+      i+=5;
 #endif
       
     } else if (code[i] == CodeAddr[OP_MKAGENT5]) {
@@ -6317,8 +6318,18 @@ int Compile_term_on_ast(Ast *ptr, int target) {
     
     if (target == -1) {      
       result = CmEnv_newvar();
+
+#ifdef USE_MKAGENT_N
       mkagent = OP_MKAGENT2;
       IMCode_genCode4(mkagent, ID_CONS, alloc[0], alloc[1], result);
+
+#else
+      // expanded operations
+      IMCode_genCode2(OP_MKAGENT0, ID_CONS, result);
+      IMCode_genCode3(OP_LOADP, alloc[0], 0, result);
+      IMCode_genCode3(OP_LOADP, alloc[1], 1, result);
+#endif
+      
     } else {
       result = target;
 
@@ -6397,9 +6408,16 @@ int Compile_term_on_ast(Ast *ptr, int target) {
       
       case 2:
 	if (target == -1) {
+#ifdef USE_MKAGENT_N
 	  mkagent = OP_MKAGENT2;
 	  IMCode_genCode4(mkagent, GET_TUPLEID(arity),
 			  alloc[0], alloc[1], result);
+#else
+	  // expanded operations
+	  IMCode_genCode2(OP_MKAGENT0, GET_TUPLEID(arity), result);
+	  IMCode_genCode3(OP_LOADP, alloc[0], 0, result);
+	  IMCode_genCode3(OP_LOADP, alloc[1], 1, result);	  
+#endif	  
 	} else {
 	  mkagent = OP_REUSEAGENT2;
 	  IMCode_genCode4(mkagent, result, GET_TUPLEID(arity),
@@ -6409,9 +6427,17 @@ int Compile_term_on_ast(Ast *ptr, int target) {
       
       case 3:
 	if (target == -1) {
+#ifdef USE_MKAGENT_N
 	  mkagent = OP_MKAGENT3;
 	  IMCode_genCode5(mkagent, GET_TUPLEID(arity),
 			  alloc[0], alloc[1], alloc[2], result);
+#else
+	  // expanded operations
+	  IMCode_genCode2(OP_MKAGENT0, GET_TUPLEID(arity), result);
+	  IMCode_genCode3(OP_LOADP, alloc[0], 0, result);
+	  IMCode_genCode3(OP_LOADP, alloc[1], 1, result);
+	  IMCode_genCode3(OP_LOADP, alloc[2], 2, result);
+#endif	  
 	} else {
 	  mkagent = OP_REUSEAGENT3;
 	  IMCode_genCode5(mkagent, result, GET_TUPLEID(arity),
@@ -6421,9 +6447,18 @@ int Compile_term_on_ast(Ast *ptr, int target) {
 
       case 4:
 	if (target == -1) {
+#ifdef USE_MKAGENT_N
 	  mkagent = OP_MKAGENT4;
 	  IMCode_genCode6(mkagent, GET_TUPLEID(arity),
 			  alloc[0], alloc[1], alloc[2], alloc[3], result);
+#else
+	  // expanded operations
+	  IMCode_genCode2(OP_MKAGENT0, GET_TUPLEID(arity), result);
+	  IMCode_genCode3(OP_LOADP, alloc[0], 0, result);
+	  IMCode_genCode3(OP_LOADP, alloc[1], 1, result);
+	  IMCode_genCode3(OP_LOADP, alloc[2], 2, result);	  
+	  IMCode_genCode3(OP_LOADP, alloc[2], 3, result);	  
+#endif	  
 	} else {
 	  mkagent = OP_REUSEAGENT4;
 	  IMCode_genCode6(mkagent, result, GET_TUPLEID(arity),
@@ -6433,11 +6468,13 @@ int Compile_term_on_ast(Ast *ptr, int target) {
 
 #if MAX_PORT > 4	
       default:
+	// We support upto 5-tuples.
 	if (target == -1) {
 	  mkagent = OP_MKAGENT5;
 	  IMCode_genCode7(mkagent, GET_TUPLEID(arity),
 			  alloc[0], alloc[1], alloc[2], alloc[3], alloc[4],
 			  result);
+	  
 	} else {
 	  mkagent = OP_REUSEAGENT5;
 	  IMCode_genCode7(mkagent, result, GET_TUPLEID(arity),
@@ -6538,6 +6575,15 @@ int Compile_term_on_ast(Ast *ptr, int target) {
     }
 #endif
 
+#ifndef USE_MKAGENT_N
+    if (target == -1) {
+	IMCode_genCode2(OP_MKAGENT0, id, result);
+	for (i=0; i<arity; i++) {
+	  IMCode_genCode3(OP_LOADP, alloc[i], i, result);
+	}
+	return result;
+    }
+#endif    
     
     switch (arity) {
     case 0:
@@ -10775,12 +10821,12 @@ int check_ast_arity(Ast *ast) {
     }
 
   } else if (ast->id == AST_TUPLE) {
+    // We support upto 5-tuples.
     if ((ast->intval <= MAX_PORT) && (ast->intval <= 5)) {
       return 1;
     } else {
       if (MAX_PORT <= 5) {
-	printf("Error: A tuple has too many arguments. It should be MAX_PORT(=%d) or less.\n",
-	   MAX_PORT);
+	printf("Error: A tuple has too many arguments. It should be MAX_PORT(=%d) or less.\n", MAX_PORT);
       } else {
 	printf("Error: A tuple has too many arguments. It should be 5 or less.\n");
       }

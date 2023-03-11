@@ -1,16 +1,50 @@
 # Change log
 
+### v0.10.7 (released on 11 March 2023)
+
+|              |                       Inpla8                        |                        Inpla8r                         |
+| ------------ | :-------------------------------------------------: | :----------------------------------------------------: |
+| n-queens 12  |    [**0.54**](comparison/Inpla/src/nqueen-12.in)    |    [0.36](comparison/Inpla/src/nqueen-12-reuse.in)     |
+| ack(3,11)    | [**0.90**](comparison/Inpla/src/ack-stream_3-11.in) | [0.73](comparison/Inpla/src/ack-stream_3-11-reuse.in)  |
+| fib 38       |     [**0.43**](comparison/Inpla/src/fib-38.in)      |    [**0.45**](comparison/Inpla/src/fib-38-reuse.in)    |
+| bsort 20000  |   [**2.38**](comparison/Inpla/src/bsort-20000.in)   |   [1.48](comparison/Inpla/src/bsort-20000-reuse.in)    |
+| isort 20000  |   [**0.32**](comparison/Inpla/src/isort-20000.in)   | [**0.32**](comparison/Inpla/src/isort-20000-reuse.in)  |
+| qsort 260000 |    [0.15](comparison/Inpla/src/qsort-260000.in)     |   [0.12](comparison/Inpla/src/qsort-260000-reuse.in)   |
+| msort 260000 |    [0.14](comparison/Inpla/src/msort-260000.in)     | [**0.16**](comparison/Inpla/src/msort-260000-reuse.in) |
+
+#### Polished
+
+- **Stop using MKAGENTn**: Generally, To make an *n*-arity agent, we need the following operation:
+
+  - To get memory area for the agent,
+  - To assign ports information to the memory area.
+
+  So, to make 3-arity agent requires 1+3 steps. But, it can be 1 step if we provide a special operation to make 3-arity agents. The bytecode`makeagent3` is just that. This time I stopped using such folding operations in order to observe a more theoretical behaviour . Some become slower (shown in bold font in the table above), but in the case of the reused ones the change seems not to be so much. In the future, the reused one will be the default setting, so I would like to accept this change for now.
+
+  To enable `mkagentN` again, make the following line uncommented in `config.h`:
+
+  ```
+  // Use MKAGENTn codes
+  //#define USE_MKAGENT_N
+  ```
+
+
+
+
+
+
+
 ### v0.10.6 (released on 6 February 2023)
 
-|              |                   Haskell                   |                  OCaml                  |                   SML                   |                   Python                   |                     Inpla8                      |                        Inpla8r                         |
-| ------------ | :-----------------------------------------: | :-------------------------------------: | :-------------------------------------: | :----------------------------------------: | :---------------------------------------------: | :----------------------------------------------------: |
-| n-queens 12  | [**0.23**](comparison/Haskell/nqueen-12.hs) |  [0.44](comparison/OCaml/nqueen12.ml)   |   [0.60](comparison/SML/ack3-11.sml)    |   [3.79](comparison/Python/nqueen-12.py)   |    [0.53](comparison/Inpla/src/nqueen-12.in)    |    [0.36](comparison/Inpla/src/nqueen-12-reuse.in)     |
-| ack(3,11)    |    [2.37](comparison/Haskell/ack3-11.hs)    |   [0.57](comparison/OCaml/ack3_11.ml)   | [**0.42**](comparison/SML/ack3-11.sml)  |     [-](comparison/Python/ack3-11.py)      | [0.86](comparison/Inpla/src/ack-stream_3-11.in) | [0.75](comparison/Inpla/src/ack-stream_3-11-reuse.in)  |
-| fib 38       |    [1.61](comparison/Haskell/fib-38.hs)     |  [**0.15**](comparison/OCaml/fib38.ml)  |    [0.27](comparison/SML/fib-38.sml)    |    [9.27](comparison/Python/fib-38.py)     |     [0.41](comparison/Inpla/src/fib-38.in)      |      [0.43](comparison/Inpla/src/fib-38-reuse.in)      |
-| bsort 20000  |  [5.03](comparison/Haskell/bsort-20000.hs)  | [6.47](comparison/OCaml/bsort20000.ml)  | [2.39](comparison/SML/bsort-20000.sml)  | [20.02](comparison/Python/bsort-20000.py)  |   [2.23](comparison/Inpla/src/bsort-20000.in)   | [**1.48**](comparison/Inpla/src/bsort-20000-reuse.in)  |
-| isort 20000  |  [2.15](comparison/Haskell/isort-20000.hs)  | [1.48](comparison/OCaml/isort20000.ml)  | [0.60](comparison/SML/isort-20000.sml)  |  [8.83](comparison/Python/isort-20000.py)  | [**0.31**](comparison/Inpla/src/isort-20000.in) |   [0.33](comparison/Inpla/src/isort-20000-reuse.in)    |
-| qsort 260000 | [0.36](comparison/Haskell/qsort-800000.hs)  | [0.22](comparison/OCaml/qsort260000.ml) | [0.27](comparison/SML/qsort-260000.sml) | [10.33](comparison/Python/qsort-260000.py) |  [0.15](comparison/Inpla/src/qsort-260000.in)   | [**0.12**](comparison/Inpla/src/qsort-260000-reuse.in) |
-| msort 260000 | [0.38](comparison/Haskell/msort-800000.hs)  | [0.17](comparison/OCaml/msort260000.ml) | [0.29](comparison/SML/msort-260000.sml) | [11.09](comparison/Python/msort-260000.py) |  [0.15](comparison/Inpla/src/msort-260000.in)   | [**0.15**](comparison/Inpla/src/msort-260000-reuse.in) |
+|              |                     Inpla8                      |                        Inpla8r                         |
+| ------------ | :---------------------------------------------: | :----------------------------------------------------: |
+| n-queens 12  |    [0.53](comparison/Inpla/src/nqueen-12.in)    |    [0.36](comparison/Inpla/src/nqueen-12-reuse.in)     |
+| ack(3,11)    | [0.86](comparison/Inpla/src/ack-stream_3-11.in) | [0.75](comparison/Inpla/src/ack-stream_3-11-reuse.in)  |
+| fib 38       |     [0.41](comparison/Inpla/src/fib-38.in)      |      [0.43](comparison/Inpla/src/fib-38-reuse.in)      |
+| bsort 20000  |   [2.23](comparison/Inpla/src/bsort-20000.in)   | [**1.48**](comparison/Inpla/src/bsort-20000-reuse.in)  |
+| isort 20000  | [**0.31**](comparison/Inpla/src/isort-20000.in) |   [0.33](comparison/Inpla/src/isort-20000-reuse.in)    |
+| qsort 260000 |  [0.15](comparison/Inpla/src/qsort-260000.in)   | [**0.12**](comparison/Inpla/src/qsort-260000-reuse.in) |
+| msort 260000 |  [0.15](comparison/Inpla/src/msort-260000.in)   | [**0.15**](comparison/Inpla/src/msort-260000-reuse.in) |
 
 #### Polished
 
