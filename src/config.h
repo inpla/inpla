@@ -66,7 +66,10 @@
 // ------------------------------------------------
 // Comment out definitions if not needed.
 
-// 
+// Use MKAGENTn codes
+//#define USE_MKAGENT_N
+
+
 // Optimisation inspired by Tail Call Optimisation  
 //
 #define OPTIMISE_IMCODE_TCO   
@@ -118,8 +121,8 @@
                                      // comes with compile errors.
 
 //#define OLD_REUSEAGENT    // Use the old mechanism to reuse agents.
-//                          // Thus, `REUSEAGENT' is used
-//                          // instead of `CHID_L`, `LOADP_L` and so on.
+                            // Thus, `REUSEAGENTn' is used
+                            // instead of `CHID_L`, `LOADP_L` and so on.
 
 
 
