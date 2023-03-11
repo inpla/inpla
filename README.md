@@ -9,7 +9,7 @@ Inpla is a multi-threaded parallel interpreter of interaction nets. Once you wri
 * The current version is 0.10.7, released on **11 March 2023**. (See [Changelog.md](Changelog.md) for details.) 
 * The below graph shows speed-up ratio to threads numbers for programs in the following benchmark table.
 
-![speedup-ratio](pic/benchmark_reuse_v0.10.6.png)
+![speedup-ratio](pic/benchmark_reuse_v0.10.7.png)
 
 
 - **Comparison in execution time** with other implementations: **Haskell** (GHC version 8.10.7), **OCaml** (ocamlopt, the native-code compiler, version 4.13.1), **Standard ML of New Jersey** v110.74 (interpreter mode) and **Python** 3.10.6 in execution time.
