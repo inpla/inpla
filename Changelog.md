@@ -14,14 +14,14 @@
 
 #### Polished
 
-- **Stop using MKAGENTn**: Generally, To make an *n*-arity agent, we need the following operation:
+- **Stop using MKAGENTn**: In generally, to make an *n*-arity agent, we need the following operation:
 
-  - To get memory area for the agent,
-  - To assign ports information to the memory area.
+  - Get memory area for the agent,
+  - Assign ports information to the memory area.
 
-  So, to make 3-arity agent requires 1+3 steps. But, it can be 1 step if we provide a special operation to make 3-arity agents. The bytecode`makeagent3` is just that. This time I stopped using such folding operations in order to observe a more theoretical behaviour . Some become slower (shown in bold font in the table above), but in the case of the reused ones the change seems not to be so much. In the future, the reused one will be the default setting, so I would like to accept this change for now.
+  So, to make a 3-arity agent requires 1+3 steps. But, it can be one step if we provide a special operation to make 3-arity agents. The bytecode`makeagent3` does just so. This time I stopped using such folding operations in order to observe a more theoretical behaviour . Some become slower (shown in bold font in the table above), but in the case of the reused ones the change seems not to be so much. In the future, the reused one will be the default setting, so I would like to accept this change for now.
 
-  To enable `mkagentN` again, make the following line uncommented in `config.h`:
+  To enable `mkagentN` again, uncomment the following line in `config.h`:
 
   ```
   // Use MKAGENTn codes
