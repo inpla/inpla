@@ -176,7 +176,7 @@ Good! We get `S(S(S(Z)))` as the result of incrementation of  `S(S(Z))` .
 To show the result as a natural number, use `prnat` command:
 
 ```
->>> prnat result;
+>>> prnat r;
 3
 >>>
 ```
@@ -213,7 +213,7 @@ Let's clean the result in case it could be used anywhere:
   (3 interactions, 0.00 sec)
   >>> r;
   S(S(S(Z)))
-  >>> prnat result;
+  >>> prnat r;
   3
   >>> free r;
   >>>
