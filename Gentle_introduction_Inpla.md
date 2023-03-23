@@ -348,7 +348,7 @@ We can write it with the abbreviation as well:
   ```
   >>> Eraser ~ A(x1,x2);
   (1 interactions, 0.00 sec)
-  >>> x1 x2
+  >>> x1 x2;
   Eraser Eraser
   >>> free x1 x2;
   >>>
