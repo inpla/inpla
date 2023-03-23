@@ -577,10 +577,10 @@ The sequence of `<condition-on-attributes>` must be finished with the otherwise 
 - Example: Fibonacci number:
 
   ```
-  fib(result) >< (int n)
-  | n == 0 => result~0
-  | n == 1 => result~1
-  | _ => fib(r1)~(n-1), fib(r2)~(n-2), Add(result, r2)~r1;
+  fib(r) >< (int n)
+  | n == 0 => r~0
+  | n == 1 => r~1
+  | _ => fib(r1)~(n-1), fib(r2)~(n-2), Add(r, r2)~r1;
   
   // * We cannot write result~(r1+r2) for Add(result, r2)~r1
   // because r1, r2 may have not been connected to attributes in the anonymous agents,
