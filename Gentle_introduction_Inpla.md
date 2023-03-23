@@ -281,7 +281,7 @@ There are built-in rules for the same built-in agents that each element is match
 
   ```
   >>> [y1, y2, y3]~[Z, S(Z), S(S(Z))];
-  (1 interactions, 0.00 sec)
+  (4 interactions, 0.00 sec)
   >>> y1 y2 y3;
   Z S(Z) S(S(Z))
   >>> free y1 y2 y3;
