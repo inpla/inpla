@@ -210,7 +210,7 @@ Let's clean the result in case it could be used anywhere:
   >>> add(ret, x) >< Z => ret~x;
   >>> add(ret, x) >< S(y) => add(ret, S(x))~y;
   >>> add(r,S(Z))~S(S(Z));
-  (3 interactions, 0.00 sec)
+  (2 interactions, 0.00 sec)
   >>> r;
   S(S(S(Z)))
   >>> prnat r;
