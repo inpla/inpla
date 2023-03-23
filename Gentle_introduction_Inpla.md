@@ -360,8 +360,8 @@ We can write it with the abbreviation as well:
   ![Dup](pic/dup.png)
   ```
   >>> Dup(a1,a2) ~ [Z, S(Z), S(S(Z))];
-  (1 interactions, 0.00 sec)
-  >>> a1 a2
+  (10 interactions, 0.00 sec)
+  >>> a1 a2;
   [Z,S(Z),S(S(Z))] [Z,S(Z),S(S(Z))]
   >>> free a1 a2;
   >>>
@@ -475,7 +475,7 @@ In interaction rules, attributes are recognised by using variables with a modifi
   >>> dup(a1,a2) >< (int i):xs => a1~(i:xs1), a2~(i:xs2), dup(xs1,xs2)~xs;
   >>> dup(a1,a2) >< []         => a1~[], a2~[];
   >>> dup(a,b) ~ [1,2,3];    // This is also written as:   a,b << dup([1,2,3])
-  (4 interactions, 0.00 sec)
+  (2 interactions, 0.00 sec)
   >>> a b;
   [1,2,3] [1,2,3]
   >>> free a b;
@@ -484,15 +484,10 @@ In interaction rules, attributes are recognised by using variables with a modifi
   
   
 
-**We should be careful for operations of two attributes on distinct agents**. For instance, we take the following rule of an `add` agent:
+**We should be careful for operations of two attributes on distinct agents**. For instance, we take the following rule of an `add` agent, of course, it works as an addition operation on two attributes:
 
 ```
 >>> add(result, int b) >< (int a) => result~(a+b);
-```
-
-Of course, it works as an addition operation on two attributes:
-
-```
 >>> add(r, 3) ~ 5;
 (1 interactions, 0.00 sec)
 >>> r;
