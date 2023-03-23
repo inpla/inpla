@@ -157,7 +157,7 @@ inc(r) >< S(x) => r~S(S(x));
 
 Let's check the rule proviso. In the first rule, the name `r` occurs twice, so it satisfies the proviso. The second rule is also OK because the `r` and `x` are distinct and occur twice in the rule. 
 
-For agents can work as constructors and de-constructors, it could be good to use strings start from a capital letter such as `Z`, `S` and `Tree`, and all small letters for de-constructors such as `inc`.
+Since agents can work as both constructors and de-constructors, we should use capitalized strings such as `Z`, `S` and `Tree` for constructors, and lowercases for de-constructors such as `inc`.
 
 Let's take the result of the increment operation for `S(S(Z))`:
 
