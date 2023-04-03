@@ -157,7 +157,7 @@ inc(r) >< S(x) => r~S(S(x));
 
 Let's check the rule proviso. In the first rule, the name `r` occurs twice, so it satisfies the proviso. The second rule is also OK because the `r` and `x` are distinct and occur twice in the rule. 
 
-For agents can work as constructors and de-constructors, it could be good to use strings start from a capital letter such as `Z`, `S` and `Tree`, and all small letters for de-constructors such as `inc`.
+Since agents can work as both constructors and de-constructors, we should use capitalized strings such as `Z`, `S` and `Tree` for constructors, and lowercases for de-constructors such as `inc`.
 
 Let's take the result of the increment operation for `S(S(Z))`:
 
@@ -176,7 +176,7 @@ Good! We get `S(S(S(Z)))` as the result of incrementation of  `S(S(Z))` .
 To show the result as a natural number, use `prnat` command:
 
 ```
->>> prnat result;
+>>> prnat r;
 3
 >>>
 ```
@@ -210,10 +210,10 @@ Let's clean the result in case it could be used anywhere:
   >>> add(ret, x) >< Z => ret~x;
   >>> add(ret, x) >< S(y) => add(ret, S(x))~y;
   >>> add(r,S(Z))~S(S(Z));
-  (3 interactions, 0.00 sec)
+  (2 interactions, 0.00 sec)
   >>> r;
   S(S(S(Z)))
-  >>> prnat result;
+  >>> prnat r;
   3
   >>> free r;
   >>>
@@ -281,7 +281,7 @@ There are built-in rules for the same built-in agents that each element is match
 
   ```
   >>> [y1, y2, y3]~[Z, S(Z), S(S(Z))];
-  (1 interactions, 0.00 sec)
+  (4 interactions, 0.00 sec)
   >>> y1 y2 y3;
   Z S(Z) S(S(Z))
   >>> free y1 y2 y3;
@@ -348,7 +348,7 @@ We can write it with the abbreviation as well:
   ```
   >>> Eraser ~ A(x1,x2);
   (1 interactions, 0.00 sec)
-  >>> x1 x2
+  >>> x1 x2;
   Eraser Eraser
   >>> free x1 x2;
   >>>
@@ -360,8 +360,8 @@ We can write it with the abbreviation as well:
   ![Dup](pic/dup.png)
   ```
   >>> Dup(a1,a2) ~ [Z, S(Z), S(S(Z))];
-  (1 interactions, 0.00 sec)
-  >>> a1 a2
+  (10 interactions, 0.00 sec)
+  >>> a1 a2;
   [Z,S(Z),S(S(Z))] [Z,S(Z),S(S(Z))]
   >>> free a1 a2;
   >>>
@@ -475,7 +475,7 @@ In interaction rules, attributes are recognised by using variables with a modifi
   >>> dup(a1,a2) >< (int i):xs => a1~(i:xs1), a2~(i:xs2), dup(xs1,xs2)~xs;
   >>> dup(a1,a2) >< []         => a1~[], a2~[];
   >>> dup(a,b) ~ [1,2,3];    // This is also written as:   a,b << dup([1,2,3])
-  (4 interactions, 0.00 sec)
+  (2 interactions, 0.00 sec)
   >>> a b;
   [1,2,3] [1,2,3]
   >>> free a b;
@@ -484,15 +484,10 @@ In interaction rules, attributes are recognised by using variables with a modifi
   
   
 
-**We should be careful for operations of two attributes on distinct agents**. For instance, we take the following rule of an `add` agent:
+**We should be careful for operations of two attributes on distinct agents**. For instance, we take the following rule of an `add` agent, of course, it works as an addition operation on two attributes:
 
 ```
 >>> add(result, int b) >< (int a) => result~(a+b);
-```
-
-Of course, it works as an addition operation on two attributes:
-
-```
 >>> add(r, 3) ~ 5;
 (1 interactions, 0.00 sec)
 >>> r;
@@ -582,10 +577,10 @@ The sequence of `<condition-on-attributes>` must be finished with the otherwise 
 - Example: Fibonacci number:
 
   ```
-  fib(result) >< (int n)
-  | n == 0 => result~0
-  | n == 1 => result~1
-  | _ => fib(r1)~(n-1), fib(r2)~(n-2), Add(result, r2)~r1;
+  fib(r) >< (int n)
+  | n == 0 => r~0
+  | n == 1 => r~1
+  | _ => fib(r1)~(n-1), fib(r2)~(n-2), Add(r, r2)~r1;
   
   // * We cannot write result~(r1+r2) for Add(result, r2)~r1
   // because r1, r2 may have not been connected to attributes in the anonymous agents,
