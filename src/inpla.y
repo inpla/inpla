@@ -22,8 +22,8 @@
 
 // ----------------------------------------------
   
-#define VERSION "0.10.7"
-#define BUILT_DATE  "11 March 2023"
+#define VERSION "0.10.8"
+#define BUILT_DATE  "29 April 2023"
 
 // ------------------------------------------------------------------
 
@@ -6457,7 +6457,7 @@ int Compile_term_on_ast(Ast *ptr, int target) {
 	  IMCode_genCode3(OP_LOADP, alloc[0], 0, result);
 	  IMCode_genCode3(OP_LOADP, alloc[1], 1, result);
 	  IMCode_genCode3(OP_LOADP, alloc[2], 2, result);	  
-	  IMCode_genCode3(OP_LOADP, alloc[2], 3, result);	  
+	  IMCode_genCode3(OP_LOADP, alloc[3], 3, result);	  
 #endif	  
 	} else {
 	  mkagent = OP_REUSEAGENT4;
@@ -8084,12 +8084,14 @@ int make_rule(Ast *ast) {
   ast->left->left = ast_remove_tuple1(ruleAgent_L);
   ast->left->right = ast_remove_tuple1(ruleAgent_R);
 
+
   
   Ast *rule_mainbody = ast->right;
   Ast_remove_tuple1_in_mainbody(rule_mainbody);
 
   
   set_annotation_LR(VM_OFFSET_ANNOTATE_L, VM_OFFSET_ANNOTATE_R);  
+
   if (!make_rule_oneway(ast)) {
     return 0;
   }
@@ -8104,7 +8106,7 @@ int make_rule(Ast *ast) {
   ruleAgent_R = ast->left->right;
   
   ast->left->left = ruleAgent_R;
-  ast->left->right = ruleAgent_L;;
+  ast->left->right = ruleAgent_L;
   set_annotation_LR(VM_OFFSET_ANNOTATE_R, VM_OFFSET_ANNOTATE_L);
   
   //  ast_puts(ast);puts("");
@@ -9785,7 +9787,7 @@ loop_agent_a1_a2_this_order:
 	      
 	    default:
 	      for (int i=1; i<arity; i++) {
-		VALUE a2port = AGENT(a2)->port[1];
+		VALUE a2port = AGENT(a2)->port[i];
 		VALUE eps = make_Agent(vm, ID_ERASER);
 		PUSH(vm, eps, a2port);
 	      }

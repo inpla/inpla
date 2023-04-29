@@ -1,5 +1,13 @@
 # Change log
 
+### v0.10.8 (released on 29 April 2023)
+#### Bug fix
+- **Segmentation faults due to use of 4-tuples or built-in Eraser**: These are now resolved. 
+
+
+
+
+
 ### v0.10.7 (released on 11 March 2023)
 
 |              |                       Inpla8                        |                        Inpla8r                         |
