@@ -1,0 +1,228 @@
+// N-Queen on unary natural numbers
+//
+// The original is written as a Lisp program in the following file:
+// https://www.istc.kobe-u.ac.jp/activity/mage/m27/27_Lisp.pdf
+
+
+// ---------------------------------------
+// eq
+// equality between unary natural numbers numbers
+// r << eq(m, n)
+// ---------------------------------------
+eq(r,m) >< Z => eqZ(r)~m;
+eq(r,m) >< S(x) => eqS(r,x)~m;
+
+eqZ(r) >< Z => r~True;
+eqZ(r) >< S(x) => r~False, Eraser~x;
+
+eqS(r,x) >< Z => r~False, Eraser~x;
+eqS(r,x) >< S(y) => eq(r,y)~x;
+
+
+
+// ---------------------------------------
+// r, m1, n1 << eq_stream(m,n)
+// ---------------------------------------
+eq_stream(r,m1,n1, m) >< Z => eqZ_stream(r,m1,n1)~m;
+eq_stream(r,m1,n1, m) >< S(n) => n1~S(w), eqS_stream(r,m1,w, n)~m;
+
+eqZ_stream(r,m1,n1) >< Z => r~True, m1~Z, n1~Z;
+eqZ_stream(r,m1,n1) >< S(m) => r~False, m1~S(m), n1~Z;
+
+
+eqS_stream(r,m1,n1, n) >< Z => r~False, m1~Z, n1~n;
+eqS_stream(r,m1,n1, n) >< S(m) => m1~S(w), eq_stream(r,w , n1, m)~n;
+
+
+
+
+
+// ---------------------------------------
+// member
+//   r, m1, list1 << member(m, list)
+// ---------------------------------------
+// fun member x [] = false
+//  | member x (y::ys) = if x=y then true else (member x ys);
+
+member(r, m1, list1, m) >< [] =>
+        r~False, m1~m,  list1~[];
+
+member(r, m1, list1, m) >< n:ys  =>
+	  eq_result, m2, n2 << eq_stream(m,n),
+	  list1~n2:cnt, 
+	  member1(r, m1, cnt, m2, ys) ~ eq_result;
+
+
+member1(r, m1, list1, m2, ys) >< True =>
+	   r~True, m1~m2, list1~ys;
+
+member1(r, m1, list1, m2, ys) >< False =>
+	   member(r, m1, list1, m2) ~ys;
+	   
+
+// member(r,m1,list1, S(Z)) ~ [S(S(Z)), S(Z)];
+
+
+
+
+// ---------------------------------------
+// len_list (stream version)
+//   len, done << len_list(list)
+// ---------------------------------------
+ 
+len_list(len, done) >< [] =>
+        len~Z, done~[];
+len_list(len, done) >< x:xs => 
+        done~x:cnt, 
+        len_list_(len, cnt, S(Z))~xs;
+
+len_list_(len, done, ct) >< [] =>
+        len~ct, done~[];
+len_list_(len, done, ct) >< x:xs => 
+        done~x:cnt, 
+        len_list_(len, cnt, S(ct)) ~ xs; 
+
+
+// ---------------------------------------
+// len (non-stream version)
+//   ret << len(list)
+// ---------------------------------------
+ 
+len(ret) >< [] =>
+        ret~Z;
+len(ret) >< x:xs =>
+        len_list(ret, Eraser)~x:xs;
+
+
+
+/** 
+ * threat (stream version)
+ * check for (0,q) and (k, qpos[col=k]) where k=1...
+ * http://www.nct9.ne.jp/m_hiroi/func/haskell06.html
+     0 1 2    --> 
+    +-------------
+   1| . . . . . .
+   2| . . . -3. .  5 - 3 = 2
+   3| . . -2. . .  5 - 2 = 3
+   4| . -1. . . .  5 - 1 = 4
+   5| Q . . . . .  Q position is 5  
+   6| . +1. . . .  5 + 1 = 6
+   7| . . +2. . .  5 + 2 = 7
+   8| . . . +3. .  5 + 2 = 8
+    +-------------
+ *   r, board_done << threat(k,m, board)
+ *   return
+ *        r: True if threat conditions are satisfied
+ *     done: the same to `board'
+ */
+// fun threat k m [] = false
+//   | threat k m (x::xs) =
+//    if (k = x-m) orelse (k = x+m) then true
+//    else (threat (k+1) m xs);
+
+
+
+// r << diff(m,n)
+diff(r,m) >< Z => r~m;
+diff(r,m) >< S(n) => diff_S(r,n)~m;
+diff_S(r, n) >< Z => r~S(n);
+diff_S(r, n) >< S(m) => diff(r,m)~n;
+
+
+
+threat(r, done, k, q) >< [] =>
+	  r~False, done~[], Eraser~k, Eraser~q;
+
+threat(r, done, k, q) >< x:xs =>
+	  x1,x2 << Dup(x),
+	  q1,q2 << Dup(q),
+	  diff_xq << diff(x1,q1),
+	  k1,k2 << Dup(k),
+	  eq_ret << eq(k1, diff_xq),
+	  threat1(r, done, k2, q2 , x2:xs)~eq_ret;
+	  
+threat1(r, done, k, q, xxs) >< True =>
+	   r~True, done~xxs, Eraser~k, Eraser~q;
+	   
+threat1(r, done, k, q, xxs) >< False =>
+	   x1:xs1 ~ xxs,
+	   done~x1:cnt, threat(r, cnt, S(k), q)~xs1;
+	   
+
+// fun queen1 b n 0 = []
+//   | queen1 b n m =
+//     if (member m b) orelse (threat 1 m b) then (queen1 b n (m-1))
+//     else if (length b) = (n-1) then (m::b)::(queen1 b n (m-1))
+//         else (queen1 (m::b) n n) @ (queen1 b n (m-1));
+// fun queen n = queen1 n [] n;
+
+queen(ret, n) >< () =>
+	   n1, n2 << Dup(n),
+	   queen_(ret, [], n1)~n2;
+
+
+queen_(r, b, n) >< Z =>
+	  r~[], Eraser~b, Eraser~n;
+	  
+queen_(r, b, n) >< S(m) =>
+	  mem_ret, done_m, done_b << member(S(m), b),
+	  queen__chk_m_in_b(r, done_b, n, done_m)~mem_ret;	  
+
+
+dec(r)><Z => r~Z;
+dec(r)><S(n) => r~n;
+
+queen__chk_m_in_b(r, b, n, m) >< True =>
+     m1 << dec(m),
+     queen_(r, b, n)~m1;
+
+queen__chk_m_in_b(r, b, n, m) >< False =>
+     m1,m2 << Dup(m),
+     th_ret, done_b << threat(S(Z), m1, b), 
+     queen__chk_threat(r, done_b, n, m2)~th_ret;
+
+
+
+queen__chk_threat(r, b, n, m) >< True =>
+	m_dec << dec(m),
+        queen_(r, b, n)~m_dec;
+	
+queen__chk_threat(r, b, n, m) >< False =>
+        len_ret, done_b << len_list(b), 
+	queen__chk_lastelem(r, done_b, n, m, len_ret)~();
+
+
+
+queen__chk_lastelem(r, b, n, m, len_ret) >< () =>
+		       n1,nn << Dup(n),
+		       n_dec << dec(nn),
+		       eq_ret << eq(len_ret, n_dec),
+		       queen__chk_lastelem2(r, b, n1, m) ~ eq_ret;
+
+
+queen__chk_lastelem2(r,b,n, m) >< True =>
+        b1, b2 << Dup(b),
+	m1, mm << Dup(m),
+	m_dec << dec(mm),
+        r~(m1:b1):cnt, queen_(cnt, b2, n)~m_dec;
+
+queen__chk_lastelem2(r,b,n, m) >< False =>
+        b1, b2 << Dup(b),
+        r << Append(cnt1, cnt2),
+	n1, Dup(n2,n3) << Dup(n),
+	m1, mm << Dup(m),
+	m_dec << dec(mm),	
+        queen_(cnt1, m1:b1, n1)~n2, queen_(cnt2, b2, n3)~m_dec;
+
+
+
+// ----------------------------------------------------------
+// main
+// ----------------------------------------------------------
+n~S(S(S(S(S(S(S(S(Z)))))))), // 8
+//n~S(S(S(S(S(S(S(S(S(Z))))))))), // 9
+//n~S(S(S(S(Z)))), // 4
+//n~S(Z), // 1
+
+queen(ret,n)~(), len(count)~ret;
+prnat count; // count ->92 when n=8
