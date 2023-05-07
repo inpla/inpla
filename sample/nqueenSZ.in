@@ -60,8 +60,6 @@ member1(r, m1, list1, m2, ys) >< False =>
 	   member(r, m1, list1, m2) ~ys;
 	   
 
-// member(r,m1,list1, S(Z)) ~ [S(S(Z)), S(Z)];
-
 
 
 
@@ -189,24 +187,20 @@ queen__chk_threat(r, b, n, m) >< True =>
 	
 queen__chk_threat(r, b, n, m) >< False =>
         len_ret, done_b << len_list(b), 
-	queen__chk_lastelem(r, done_b, n, m, len_ret)~();
+	n1,nn << Dup(n),
+	n_dec << dec(nn),
+	eq_ret << eq(len_ret, n_dec),
+	queen__chk_lastelem(r, done_b, n1, m) ~ eq_ret;
 
 
 
-queen__chk_lastelem(r, b, n, m, len_ret) >< () =>
-		       n1,nn << Dup(n),
-		       n_dec << dec(nn),
-		       eq_ret << eq(len_ret, n_dec),
-		       queen__chk_lastelem2(r, b, n1, m) ~ eq_ret;
-
-
-queen__chk_lastelem2(r,b,n, m) >< True =>
+queen__chk_lastelem(r,b,n, m) >< True =>
         b1, b2 << Dup(b),
 	m1, mm << Dup(m),
 	m_dec << dec(mm),
         r~(m1:b1):cnt, queen_(cnt, b2, n)~m_dec;
 
-queen__chk_lastelem2(r,b,n, m) >< False =>
+queen__chk_lastelem(r,b,n, m) >< False =>
         b1, b2 << Dup(b),
         r << Append(cnt1, cnt2),
 	n1, Dup(n2,n3) << Dup(n),
@@ -221,8 +215,11 @@ queen__chk_lastelem2(r,b,n, m) >< False =>
 // ----------------------------------------------------------
 n~S(S(S(S(S(S(S(S(Z)))))))), // 8
 //n~S(S(S(S(S(S(S(S(S(Z))))))))), // 9
+//n~S(S(S(S(S(S(S(S(S(S(Z)))))))))), // 10
+//n~S(S(S(S(S(S(S(S(S(S(S(Z))))))))))), // 11
 //n~S(S(S(S(Z)))), // 4
 //n~S(Z), // 1
+
 
 queen(ret,n)~(), len(count)~ret;
 prnat count; // count ->92 when n=8
