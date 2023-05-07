@@ -22,8 +22,8 @@
 
 // ----------------------------------------------
   
-#define VERSION "0.10.8"
-#define BUILT_DATE  "29 April 2023"
+#define VERSION "0.10.8-1"
+#define BUILT_DATE  "7 May 2023"
 
 // ------------------------------------------------------------------
 
@@ -1633,21 +1633,36 @@ void puts_term(VALUE ptr) {
   } else {
     // Agent
     int i, arity;
-
+    int with_parenthses = 1;
+    char *agent_name;
+    
     arity = IdTable_get_arity(AGENT(ptr)->basic.id);
-    printf("%s", IdTable_get_name(AGENT(ptr)->basic.id));
-    if (arity != 0) {
+    agent_name = IdTable_get_name(AGENT(ptr)->basic.id);
+    printf("%s", agent_name);
+
+    if (((agent_name[0] >= 'A') && (agent_name[0] <= 'Z'))
+	&& (arity == 0)) {
+      // If the first letter of agent_name is not capital and the arity is 0
+      // then parentheses is not needed.
+      with_parenthses = 0;
+    }
+
+    
+    if (with_parenthses) {
       printf("(");
     }
+    
     for (i=0; i<arity; i++) {
       puts_term(AGENT(ptr)->port[i]);
       if (i != arity - 1) {
 	printf(",");
       }
     }
-    if (arity != 0) {
+    
+    if (with_parenthses) {
       printf(")");
     }
+    
   }
 }
 
@@ -3588,17 +3603,22 @@ int CmEnv_newvar(void) {
 
 
 
-int CmEnv_check_meta_occur_once(void) {
+int CmEnv_check_linearity_in_rule(void) {
   int i;
 
   for (i=0; i<CmEnv.bindPtr; i++) {
 
     if ((CmEnv.bind[i].type == NB_META_L) || (CmEnv.bind[i].type == NB_META_R)) {
       if (CmEnv.bind[i].refnum != 1) { // Be just once!
-	printf("ERROR: `%s' is referred not once in the right-hand side of the rule definition", CmEnv.bind[i].name);
+	printf("ERROR: `%s' is referred not once in the right-hand side ", CmEnv.bind[i].name);
 	return 0;
       }
       
+    } else if (CmEnv.bind[i].type == NB_NAME) {
+      if (CmEnv.bind[i].refnum != 1) { // Be just once in the RHS.
+	printf("ERROR: `%s' is referred not twice in the right-hand side ", CmEnv.bind[i].name);
+	return 0;
+      }
     }
   }
 
@@ -7291,17 +7311,20 @@ int Compile_rule_mainbody_on_ast(Ast *mainbody) {
     
     if (!Compile_body_on_ast(body)) return 0;
 
-    Compile_gen_RET_for_rulebody();
-      
-    CmEnv_retrieve_MKGNAME();
-
-    
-    if (!CmEnv_check_meta_occur_once()) {
-      printf("in the rule:\n  %s >< %s.\n", 
+    if (!CmEnv_check_linearity_in_rule()) {
+      printf("of the rule:\n  %s >< %s.\n", 
 	     IdTable_get_name(CmEnv.idL),
 	     IdTable_get_name(CmEnv.idR));
       return 0;
     }
+
+    
+    Compile_gen_RET_for_rulebody();
+
+    // Change MKNAME to MKGNAME if the name occurs just onece
+    CmEnv_retrieve_MKGNAME();
+
+    
     
     return 1;
       
@@ -7752,6 +7775,7 @@ int get_ruleagentID(Ast *ruleAgent) {
     id = IdTable_getid_builtin_funcAgent(ruleAgent);
     if (id == -1) {
       id=NameTable_get_set_id_with_IdTable_forAgent(ruleAgent->left->sym);
+      
     }
   }
 
@@ -7785,6 +7809,8 @@ int make_rule_oneway(Ast *ast) {
   unsigned long long t, time;
   start_timer(&t);
 #endif
+
+  CmEnv_clear_all(); 
 
   
   ruleAgent_L = ast->left->left;
@@ -7823,7 +7849,6 @@ int make_rule_oneway(Ast *ast) {
     idL = get_ruleagentID(ruleAgent_L);    
   }
   
-
   /*
   // Annotation (*L)、(*R) の処理があるため
   // 単純に ruleAgentL、ruleAgentR を入れ替えれば良いわけではない。
@@ -7895,9 +7920,8 @@ int make_rule_oneway(Ast *ast) {
   gencode_num = 2;
   
 
-
   
-  CmEnv_clear_all(); 
+  //  CmEnv_clear_all(); 
  
   if (idL == ID_INT) {
     set_metaL_as_IntName(ruleAgent_L);
@@ -7954,7 +7978,6 @@ int make_rule_oneway(Ast *ast) {
   if (!Compile_rule_mainbody_on_ast(rule_mainbody)) return 0;
 
 
-
 #ifdef OPTIMISE_IMCODE_TCO
   if (is_tco) {
     
@@ -7968,7 +7991,7 @@ int make_rule_oneway(Ast *ast) {
 #endif
   
 
-  //          #define DEBUG_MKRULE  
+  //            #define DEBUG_MKRULE  
 #ifndef DEBUG_MKRULE  
   gencode_num += CmEnv_generate_VMCode(&code[2]);
 #else
@@ -8005,7 +8028,6 @@ int make_rule_oneway(Ast *ast) {
   //    ast_puts(ruleAgent_R); puts("");
 #endif
 
-  
   // Record the rule code for idL >< idR
   RuleTable_record(idL, idR, code, gencode_num); 
 
@@ -8054,7 +8076,7 @@ int make_rule_oneway(Ast *ast) {
 	 IdTable_get_name(idR),
 	 (double)(time)/1000000.0);
 #endif
-  
+    
   
   return 1;
 }

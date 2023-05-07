@@ -1,5 +1,49 @@
 # Change log
 
+### v0.10.8-1 minor update (released on 7 May 2023)
+#### Bug fix
+- **Segmentation faults in rule definitions**: This was caused by a lack of linearity checking, which had been omitted for some experiments. Also, the compilation environment was updated for incomplete rule definitions. These are now fixed. Previously, the segmentation fault error was caused as follows:
+
+  ```
+  Inpla 0.10.8 : Interaction nets as a programming language [built: 29 April 2023]
+  >>> eps() >< S(x) => eps~x;     // This should be the linearity error
+  >>> eps() >< S(x) => eps~x;     // The `eps' is recognised as a global name
+  Segmentation fault
+  ```
+
+  Of course, it works now:
+
+  ```
+  Inpla 0.10.8-1 : Interaction nets as a programming language [built: 7 May 2023]
+  >>> eps() >< S(x) => eps~x;
+  ERROR: `eps' is referred not twice in the right-hand side of the rule:
+    eps >< S.
+  >>> eps() >< S(x) => eps()~x;
+  >>>
+  ```
+
+#### Polished
+
+- **Pretty printing of agents**: 0-arity agents whose names start with a lowercase letters are printed with round brackets like `eps()`.
+
+  ```
+  >>> (a,b,c) ~ (Z, S(Z), eps());
+  (1 interactions, 0.00 sec)
+  >>> ifce;
+  a b c
+  
+  Connections:
+  a ->Z
+  b ->S(Z)
+  c ->eps()                       // Previously, it was `c ->eps'.
+  
+  >>>
+  ```
+
+  
+
+
+
 ### v0.10.8 (released on 29 April 2023)
 #### Bug fix
 - **Segmentation faults due to use of 4-tuples or built-in Eraser**: These are now resolved. 

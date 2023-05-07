@@ -117,11 +117,10 @@ IDTYPE NameTable_get_set_id_with_IdTable_forAgent(char *key) {
   int hash;
   NameList *add;
 
-
   hash = getHash(key);
   
   if (NameHashTable[hash] == NULL) {
-
+    
     add = NameList_new();
     add->name = key;
     add->id = IdTable_new_agentid();
@@ -134,9 +133,8 @@ IDTYPE NameTable_get_set_id_with_IdTable_forAgent(char *key) {
   
   NameList *at = NameHashTable[hash];
   while (at != NULL) {
-    if (strcmp(at->name, key) == 0) {
-      return (at->id);
-      
+    if (strcmp(at->name, key) == 0) {      
+      return (at->id);      
     }
     at = at->next;
   }
