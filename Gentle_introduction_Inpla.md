@@ -85,7 +85,7 @@ A **connection** is a relation between two terms, that means the two term are co
   ```
 
 
-* **Connections between names** are evaluated as that ports corresponding to these names are connected mutually in interaction nets frameworks. However, in Inpla, these are evaluated as that, for the connections, the left-hand side name connects to the right-hand side name, thus only one way. For instance, `x~y` is evaluated that the `x` connects to the `x` (not that the `y` connects to `x`):
+* **Connections between names** are evaluated as that ports corresponding to these names are connected mutually in interaction nets frameworks. However, in Inpla, these are evaluated as that, for the connections, the left-hand side name connects to the right-hand side name, thus only one way. For instance, `x~y` is evaluated that the `x` connects to the `y` (not that the `y` connects to `x`):
 
   ```
   >>> x~y;
