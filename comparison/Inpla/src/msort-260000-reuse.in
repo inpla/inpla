@@ -12,10 +12,10 @@ merge(ret, snd) >< x:xs => (*L)mergeCC(ret, x, xs)~snd;
 
 mergeCC(ret, int y, ys) >< [] => ret~(*R)(y:ys);
 mergeCC(ret, int y, ys) >< (int x):xs
-| x <= y => ret~(x:cnt), (*L)mergeCC(cnt, y, ys) ~ xs
-| _      => ret~(y:cnt), (*L)mergeCC(cnt, x, xs) ~ ys;
+| x <= y => ret~(*R)(x:cnt), (*L)mergeCC(cnt, y, ys) ~ xs
+| _      => ret~(*R)(y:cnt), (*L)mergeCC(cnt, x, xs) ~ ys;
 
-split(right,left) >< [] => right~[], left~[];
+split(right,left) >< [] => right~(*L)[], left~(*R)[];
 split(right,left) >< x:xs =>
 	right~(*R)(x:cntl), left~cntr, (*L)split(cntr,cntl)~xs;
 
@@ -28,13 +28,13 @@ make_RandList(ret) >< (int n)
 
 
 // validation checks
-valid(ret) >< [] => ret~True;
+valid(ret) >< [] => ret~(*L)True;
 valid(ret) >< x:xs => (*L)valid_Cons(ret,x)~xs;
 
 valid_Cons(ret, int x) >< [] => ret~True;
 valid_Cons(ret, int x) >< (int y):ys
 | x<=y => (*L)valid_Cons(ret,y)~ys
-| _ => ret~False, Eraser~ys;
+| _ => ret~(*L)False, (*R)Eraser~ys;
 
 // The `Eraser' is a built-in agent defined for any agents as follows:
 //Eraser >< Alpha(a1, ..., a5) => Eraser~a1, ..., Eraser~a5;

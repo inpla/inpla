@@ -14,14 +14,14 @@
 // Heaps 
 // ------------------------------------------------
 // There are three methods for agents and names heaps:
-//   - Fixed-size ring buffers (default)
+//   - Fixed-size ring buffers
 //       The size is specified by an execution option -c
 //
 //   - Expandable ring buffers
 //       Automatically new buffers are inserted when all are run up.
 //
 //   - Ring buffers whose Initial size and newly inserted size
-//     are flexibly changed.
+//     are flexibly changed. (DEFAULT)
 //       The initial size and the expansion magnification are
 //       specified by execution options -Xms, -Xmt, respectively.
 //

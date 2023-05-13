@@ -22,8 +22,8 @@
 
 // ----------------------------------------------
   
-#define VERSION "0.10.8-1"
-#define BUILT_DATE  "7 May 2023"
+#define VERSION "0.11.0"
+#define BUILT_DATE  "13 May 2023"
 
 // ------------------------------------------------------------------
 
@@ -942,7 +942,7 @@ typedef struct HoopList_tag {
 
 typedef struct Heap_tag {
   HoopList *last_alloc_list;
-  int last_alloc_idx;
+  unsigned int last_alloc_idx;
 } Heap;  
 
 
@@ -963,7 +963,7 @@ HoopList *HoopList_new_forName(unsigned int size) {
       printf("[HoopList->Hoop (name)]Malloc error\n");
       exit(-1);
   }  
-  for (int i=0; i<size; i++) {
+  for (unsigned int i=0; i<size; i++) {
     RESET_HOOPFLAG_READYFORUSE_NAME(((Name *)(hp_list->hoop))[i].basic.id);
   }
   hp_list->size = size;
@@ -999,7 +999,7 @@ HoopList *HoopList_new_forAgent(unsigned int size) {
       printf("[HoopList->Hoop]Malloc error\n");
       exit(-1);
   }
-  for (int i=0; i<size; i++) {
+  for (unsigned int i=0; i<size; i++) {
     RESET_HOOPFLAG_READYFORUSE_AGENT(((Agent *)(hp_list->hoop))[i].basic.id);
   }
   hp_list->size = size;
@@ -1032,7 +1032,7 @@ unsigned long Heap_GetNum_Usage_forAgent(Heap *hp) {
   do {
     
     hoop = (Agent *)(hoop_list->hoop);
-    for (int i = 0; i < hoop_list->size; i++) {
+    for (unsigned int i = 0; i < hoop_list->size; i++) {
       if (!IS_READYFORUSE(hoop[i].basic.id)) {
 	count++;
       }
@@ -1054,7 +1054,7 @@ unsigned long Heap_GetNum_Usage_forName(Heap *hp) {
   do {
     
     hoop = (Name *)(hoop_list->hoop);
-    for (int i = 0; i < hoop_list->size; i++) {
+    for (unsigned int i = 0; i < hoop_list->size; i++) {
       if (!IS_READYFORUSE(hoop[i].basic.id)) {
 	count++;
       }
@@ -1072,7 +1072,7 @@ unsigned long Heap_GetNum_Usage_forName(Heap *hp) {
 //static inline
 VALUE myalloc_Agent(Heap *hp) {
 
-  int idx;  
+  unsigned int idx;  
   HoopList *hoop_list;
   Agent *hoop;
   
@@ -1126,7 +1126,8 @@ VALUE myalloc_Agent(Heap *hp) {
 #endif
       
       HoopList *new_hoop_list;
-      unsigned int new_size_p2 = hoop_list->size * Hoop_increasing_magnitude;
+      //unsigned int new_size_p2 = hoop_list->size * Hoop_increasing_magnitude;
+      unsigned int new_size_p2 = (hp->last_alloc_list->size) * Hoop_increasing_magnitude;
       new_hoop_list = HoopList_new_forAgent(new_size_p2);
 
       HoopList *last_alloc = hoop_list->next;
@@ -1154,7 +1155,7 @@ VALUE myalloc_Agent(Heap *hp) {
 //static inline
 VALUE myalloc_Name(Heap *hp) {
 
-  int idx;
+  unsigned int idx;
   HoopList *hoop_list;
   Name *hoop;
 
@@ -1207,7 +1208,9 @@ VALUE myalloc_Name(Heap *hp) {
 #endif
       
       HoopList *new_hoop_list;
-      unsigned int new_size_p2 = hoop_list->size * Hoop_increasing_magnitude;
+      //unsigned int new_size_p2 = hoop_list->size * Hoop_increasing_magnitude;
+      unsigned int new_size_p2 = (hp->last_alloc_list->size) * Hoop_increasing_magnitude;      
+
       new_hoop_list = HoopList_new_forName(new_size_p2);
 
       HoopList *last_alloc = hoop_list->next;
@@ -1867,6 +1870,14 @@ void VM_Buffer_Init(VirtualMachine * restrict vm) {
   vm->agentHeap.last_alloc_list->next = vm->agentHeap.last_alloc_list;
   vm->agentHeap.last_alloc_idx = 0;
   */
+
+  // Agent and Name heaps start from two hoops:
+  //     +-----------------------+
+  //     |    new        new     |
+  //     v    hoop       hoop    |
+  // init-->|......|-->|......|--+
+  //        last_alloc  next
+  //        idx=0
   
   vm->agentHeap.last_alloc_list = HoopList_new_forAgent(Hoop_init_size);
   vm->agentHeap.last_alloc_list->next = HoopList_new_forAgent(Hoop_init_size);

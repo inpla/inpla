@@ -20,7 +20,7 @@ member(r, list, int x) >< (int y):ys
 | x==y =>
         r~1, list~(*R)(y:ys)
 | _ =>
-        list~(*R)(y:cnt), member(r, cnt, x)~ys;
+        list~(*R)(y:cnt), (*L)member(r, cnt, x)~ys;
 
 
 /** 
@@ -35,13 +35,13 @@ len_list(len, done) >< [] =>
         len~0, done~(*R)[];
 len_list(len, done) >< x:xs => 
         done~(*R)(x:cnt), 
-        len_list_(len, cnt, 1)~xs;
+        (*L)len_list_(len, cnt, 1)~xs;
 
 len_list_(len, done, int ct) >< [] =>
         len~ct, done~(*R)[];
 len_list_(len, done, int ct) >< x:xs => 
         done~(*R)(x:cnt), 
-        len_list_(len, cnt, ct+1) ~ xs; 
+        (*L)len_list_(len, cnt, ct+1) ~ xs; 
 
 /** 
  * len (non-stream version)
@@ -53,7 +53,7 @@ len_list_(len, done, int ct) >< x:xs =>
 len(ret) >< [] =>
         ret~0;
 len(ret) >< x:xs =>
-        len_list(ret, Eraser)~(*R)(x:xs);
+        (*L)len_list(ret, Eraser)~(*R)(x:xs);
 
 
 
@@ -88,7 +88,7 @@ threat(r, done, int k, int q)><(int x):xs
 | (k == x-q) or (k == q-x) =>
         r~1, done~(*R)(x:xs)
 | _ =>
-        done~(*R)(x:cnt), threat(r, cnt, k+1, q)~xs;
+        done~(*R)(x:cnt), (*L)threat(r, cnt, k+1, q)~xs;
 
 
 
@@ -99,14 +99,14 @@ threat(r, done, int k, int q)><(int x):xs
 //         else (queen1 (m::b) n n) @ (queen1 b n (m-1));
 // fun queen n = queen1 n [] n;
 
-queen(ret) >< (int n) => queen_(ret, [], n)~n;
+queen(ret) >< (int n) => (*L)queen_(ret, [], n)~n;
 
 queen_(r, b, int n) >< (int m)
 | m==0 =>
-        r~[], (*L)Eraser~b
+        r~(*L)[], Eraser~b
 | _ =>
         mem_ret, done_b << member(m,b), 
-        queen__chk_m_in_b(r, done_b, n, m)~mem_ret;
+        (*L)queen__chk_m_in_b(r, done_b, n, m)~mem_ret;
 
 queen__chk_m_in_b(r, b, int n, int m) >< (int mem_ret)
 | mem_ret == 1 =>

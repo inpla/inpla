@@ -1,5 +1,20 @@
 # Change log
 
+### v0.11.0 (released on 13 May 2023)
+#### Polished
+- **The expansion size of the Flexibly expandable ring buffer for agents and names**: The ring buffer contains several small ring buffers. A new one is added to the ring buffer when each node in these buffers is used up. The size of the new buffer was based on the size of the last buffer searched, but this was found to be inefficient, especially for the reuse optimisation. So, it is now based on the size of the buffer where the last node was placed. It improves the reuse optimisation. The annotations for the optimisation were selected heuristically. Now they are placed systematically based on an algorithm. The execution times are shown in the table below. We can get more or less almost the same ones. This will be the basis for the automatic placement of the annotations.
+
+|              |                    v0.10.8-1                     |                                                        | -> | v0.11.0 |         |
+| ------------ | :----------------------------------------------: | :----------------------------------------------------: | :-----:: | :-------: | :-------: |
+|              |                      Inpla8                      |                        Inpla8r                         |  | Inpla8 | Inpra8r |
+| n-queens 12  |    0.54     |    0.36     |  | 0.55 | 0.40 |
+| ack(3,11)    | 0.90  | 0.73  |  | 0.91 | **0.68** |
+| fib 38       |      0.43      |      0.45      |  | **0.43** | **0.45** |
+| bsort 20000  |   2.38    | 1.48  |  | **2.31** | **1.45** |
+| isort 20000  | 0.32  | 0.32  |  | **0.32** | 0.33 |
+| qsort 260000 |   0.15   | 0.12 |  | **0.15** | **0.12** |
+| msort 260000 | 0.14 |   0.16   |  | **0.14** | 0.17 |
+
 ### v0.10.8-1 minor update (released on 7 May 2023)
 #### Bug fix
 - **Segmentation faults in rule definitions**: This was caused by a lack of linearity checking, which had been omitted for some experiments. Also, the compilation environment was updated for incomplete rule definitions. These are now fixed. Previously, the segmentation fault error was caused as follows:

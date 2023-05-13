@@ -2,7 +2,7 @@
 isort(ret) >< [] => ret~(*R)[];
 isort(ret) >< x:xs => (*R)I(ret, x)~cnt, (*L)isort(cnt)~xs;
 
-I(ret, int x) >< [] => ret~[x];
+I(ret, int x) >< [] => ret~(*R)[x];
 I(ret, int x) >< (int y):ys
 | x<=y => ret~(*L)(x:(*R)(y:ys))
 | _    => (*L)I(cnt, x)~ys, ret~(*R)(y:cnt);
@@ -16,13 +16,13 @@ make_RandList(ret) >< (int n)
 
 
 // validation checks
-valid(ret) >< [] => ret~True;
+valid(ret) >< [] => ret~(*L)True;
 valid(ret) >< x:xs => (*L)valid_Cons(ret,x)~xs;
 
 valid_Cons(ret, int x) >< [] => ret~True;
 valid_Cons(ret, int x) >< (int y):ys
 | x<=y => (*L)valid_Cons(ret,y)~ys
-| _ => ret~False, Eraser~ys;
+| _ => ret~(*L)False, (*R)Eraser~ys;
 
 // The `Eraser' is a built-in agent defined for any agents as follows:
 //Eraser >< Alpha(a1, ..., a5) => Eraser~a1, ..., Eraser~a5;
