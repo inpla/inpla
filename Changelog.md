@@ -1,6 +1,30 @@
 # Change log
 
+### v0.11.1 (released on 14 Feb 2024)
+
+#### Bug Fix
+
+- **Negative numbers as immutable constants**: Negative numbers were not defined as immutable constants. This is now fixed.
+
+  ```
+  >>> const N=-8;
+  >>> r~N;
+  (0 interactions, 0.00 sec)
+  >>> ifce;
+  r
+  
+  Connections:
+  r ->-8
+  
+  >>>
+  ```
+
+  
+
+
+
 ### v0.11.0 (released on 13 May 2023)
+
 #### Polished
 - **The expansion size of the Flexibly expandable ring buffer for agents and names**: Nodes in Inpla are managed by the ring buffer. A set of nodes is inserted to the ring buffer when all nodes are used up. The size of the new nodes was based on the size of the set where we found all the nodes had run out, but this was turned out to be inefficient, especially for the reuse optimisation. So, it is now based on the size of the buffer where the last node was placed. It improves the reuse optimisation. The annotations for the optimisation were selected heuristically. Now they are placed systematically based on an algorithm. The execution times are shown in the table below. We can get more or less almost the same ones (the bold ones mean faster or the same). This will be the basis for the automatic placement of the annotations.
 

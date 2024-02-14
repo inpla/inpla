@@ -22,8 +22,8 @@
 
 // ----------------------------------------------
   
-#define VERSION "0.11.0"
-#define BUILT_DATE  "13 May 2023"
+#define VERSION "0.11.1"
+#define BUILT_DATE  "14 Feb 2024"
 
 // ------------------------------------------------------------------
 
@@ -158,7 +158,7 @@ static char *Errormsg = NULL;
 }
 
 %token <chval> NAME AGENT
-%token <longval> INT_LITERAL
+%token <longval> NUMERAL_LITERAL
 %token <chval> STRING_LITERAL
 %token LP RP LC RC LB RB COMMA CROSS DELIMITER ABR
 %token COLON
@@ -354,8 +354,17 @@ command:
 
 
 }
-| DEF AGENT LD INT_LITERAL DELIMITER {
+| DEF AGENT LD NUMERAL_LITERAL DELIMITER {
   int entry=ast_recordConst($2,$4);
+
+  if (!entry) {
+    printf("`%s' has been already bound to a value `%d' as immutable.\n\n",
+	   $2, ast_getRecordedVal(entry));
+    fflush(stdout);
+  }
+ }
+| DEF AGENT LD SUB NUMERAL_LITERAL DELIMITER {
+  int entry=ast_recordConst($2,$5*(-1));
 
   if (!entry) {
     printf("`%s' has been already bound to a value `%d' as immutable.\n\n",
@@ -566,7 +575,7 @@ unary_expr
 
 primary_expr
 : nameterm { $$ = $1;}
-| INT_LITERAL { $$ = ast_makeInt($1); }
+| NUMERAL_LITERAL { $$ = ast_makeInt($1); }
 | AGENT { $$=ast_makeAST(AST_AGENT, ast_makeSymbol($1), NULL); }
 | LP expr RP { $$ = $2; }
 
@@ -904,7 +913,7 @@ static inline
 void myfree(VALUE ptr) {
 
   SET_HOOPFLAG_READYFORUSE(BASIC(ptr)->id);
-
+  
 }
 
 static inline
@@ -1124,6 +1133,25 @@ VALUE myalloc_Agent(Heap *hp) {
 #ifdef VERBOSE_HOOP_EXPANSION
       puts("(Agent hoop is expanded)");
 #endif
+
+      //puts("!");
+      /*
+      {
+	Agent *last = (Agent *)(hp->last_alloc_list->hoop);
+	unsigned long size = hp->last_alloc_list->size;
+	unsigned long count = 0;
+	for (unsigned long i = 0; i<size; i++) {
+	  if (!IS_READYFORUSE(last[i].basic.id)) {
+	    count++;
+	  }	  
+	}
+	printf("%lu is occupied in %lu size.\n\n", count, size);
+      }
+      */
+      //            printf("%lu is occupied.\n",
+      //      	     Heap_GetNum_Usage_forAgent(hp));
+      
+      
       
       HoopList *new_hoop_list;
       //unsigned int new_size_p2 = hoop_list->size * Hoop_increasing_magnitude;
@@ -11104,7 +11132,6 @@ int exec(Ast *at) {
   printf("(%d mkAgent calls)\n", NumberOfMkAgent);
 #endif
 
-  
 #ifdef VERBOSE_NODE_USE
   printf("(%lu agents and %lu names nodes are used.)\n", 
 	 Heap_GetNum_Usage_forAgent(&VM.agentHeap),
