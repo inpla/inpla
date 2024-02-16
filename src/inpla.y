@@ -22,8 +22,8 @@
 
 // ----------------------------------------------
   
-#define VERSION "0.11.1"
-#define BUILT_DATE  "14 Feb 2024"
+#define VERSION "0.11.2"
+#define BUILT_DATE  "16 Feb 2024"
 
 // ------------------------------------------------------------------
 
@@ -95,7 +95,7 @@ extern FILE *yyin;
 extern int yylex();
 int yyerror();
 #define YY_NO_INPUT
-extern int yylineno;
+extern int yylineno, yycolumn;
 
 // For error message when nested source files are specified.
 #define MY_YYLINENO 
@@ -157,18 +157,27 @@ static char *Errormsg = NULL;
   Ast *ast;
 }
 
-%token <chval> NAME AGENT
+%token <chval> NAME "NAME_LITERAL"
+%token <chval> AGENT "AGENT_LITERAL"
 %token <longval> NUMERAL_LITERAL
 %token <chval> STRING_LITERAL
-%token LP RP LC RC LB RB COMMA CROSS DELIMITER ABR
-%token COLON
-%token TO CNCT
 
-%token ANNOTATE_L ANNOTATE_R
+%token CROSS "><"
+%token ABR "<<"
+%token ARROW "=>"
+%token PIPE "|"
 
-%token PIPE
-%token NOT AND OR LD EQUAL NE GT GE LT LE
-%token ADD SUB MUL DIV MOD INT LET IN END IF THEN ELSE ANY WHERE RAND DEF
+%token ANNOTATE_L "(*L)"
+%token ANNOTATE_R "(*R)"
+
+%token NE "!=" 
+%token LD "="
+%token EQUAL "=="
+%token LE "<="
+%token GE ">="
+
+%token NOT AND OR
+%token INT LET IN END IF THEN ELSE WHERE RAND DEF
 %token INTERFACE IFCE PRNAT FREE EXIT
 %token END_OF_FILE USE
 
@@ -190,39 +199,47 @@ abr_annotate
  //body 
 
 %nonassoc REDUCE
-%nonassoc RP
+%nonassoc ')'
 
-%right COLON
+%right ':'
  //%right LD
  //%right EQ
  //%left NE GE GT LT
  //%left ADD SUB
  //%left MULT DIV
 
+       // For error message information
+       %define parse.error verbose
+       %locations
+
+
 %%
 s     
-: error DELIMITER { 
+: error ';' { 
   yyclearin;
   yyerrok; 
   puts(Errormsg);
   free(Errormsg);
   ast_heapReInit();
   if (yyin == stdin) yylineno=0;
+  yycolumn=1;
   //  YYACCEPT;
   YYABORT;
 }
-| DELIMITER { 
+| ';' { 
   if (yyin == stdin) yylineno=0;
+  yycolumn=1;
   YYACCEPT;
 }
-| body DELIMITER
+| body ';'
 {
   exec($1); // $1 is a list such as [stmlist, aplist]
   ast_heapReInit(); 
   if (yyin == stdin) yylineno=0;
+  yycolumn=1;
   YYACCEPT;
 }
-| rule DELIMITER { 
+| rule ';' { 
   if (make_rule($1)) {
     if (yyin == stdin) yylineno=0;
     YYACCEPT;
@@ -230,9 +247,11 @@ s
     if (yyin == stdin) yylineno=0;
     YYABORT;
   }
+  yycolumn=1;
 }
 | command {
   if (yyin == stdin) yylineno=0;
+  yycolumn=1;
   YYACCEPT;
 }
 ;
@@ -246,10 +265,10 @@ body
 | aplist WHERE stmlist_nondelimiter { $$ = ast_makeAST(AST_BODY, $3, $1);}
 | aplist WHERE  { $$ = ast_makeAST(AST_BODY, NULL, $1);}
 | LET stmlist IN aplist END { $$ = ast_makeAST(AST_BODY, $2, $4);}
-| LET stmlist DELIMITER IN aplist END { $$ = ast_makeAST(AST_BODY, $2, $5);}
+| LET stmlist ';' IN aplist END { $$ = ast_makeAST(AST_BODY, $2, $5);}
 | LET  IN aplist END { $$ = ast_makeAST(AST_BODY, NULL, $3);}
-| LC stmlist RC  aplist { $$ = ast_makeAST(AST_BODY, $2, $4);}
-| LC stmlist DELIMITER RC aplist { $$ = ast_makeAST(AST_BODY, $2, $5);}
+| '{' stmlist '}'  aplist { $$ = ast_makeAST(AST_BODY, $2, $4);}
+| '{' stmlist ';' '}' aplist { $$ = ast_makeAST(AST_BODY, $2, $5);}
 ;
 
 // rule is changed as follows:
@@ -265,16 +284,16 @@ body
 
 
 rule
-: astterm CROSS astterm TO 
+: astterm CROSS astterm ARROW 
 { $$ = ast_makeAST(AST_RULE, ast_makeAST(AST_CNCT, $1, $3),
                  	     NULL); }
 
-| astterm CROSS astterm TO body
+| astterm CROSS astterm ARROW body
 { $$ = ast_makeAST(AST_RULE, ast_makeAST(AST_CNCT, $1, $3), 
 		             $5); }
 
 
-| astterm CROSS astterm TO if_sentence
+| astterm CROSS astterm ARROW if_sentence
 { $$ = ast_makeAST(AST_RULE, ast_makeAST(AST_CNCT, $1, $3),
                  	     $5); } 
 
@@ -293,38 +312,38 @@ name_params
 ;
 
 command:
-| FREE name_params DELIMITER
+| FREE name_params ';'
 { 
   free_Names_ast($2);
 }
-| FREE DELIMITER
-| FREE IFCE DELIMITER
+| FREE ';'
+| FREE IFCE ';'
 {
   NameTable_free_all();
 }
-| FREE INTERFACE DELIMITER
+| FREE INTERFACE ';'
 {
   NameTable_free_all();
 }
-| name_params DELIMITER
+| name_params ';'
 { 
   puts_Names_ast($1);
 }
 
-| PRNAT NAME DELIMITER
+| PRNAT NAME ';'
 { 
   puts_Name_port0_nat($2); 
 }
-| INTERFACE DELIMITER
+| INTERFACE ';'
 { 
   NameTable_puts_all(); 
 }
-| IFCE DELIMITER
+| IFCE ';'
 { 
   NameTable_puts_all(); 
 }
-| EXIT DELIMITER {destroy(); exit(0);}
-| USE STRING_LITERAL DELIMITER {
+| EXIT ';' {destroy(); exit(0);}
+| USE STRING_LITERAL ';' {
   // http://flex.sourceforge.net/manual/Multiple-Input-Buffers.html
   yyin = fopen($2, "r");
   if (!yyin) {
@@ -354,7 +373,7 @@ command:
 
 
 }
-| DEF AGENT LD NUMERAL_LITERAL DELIMITER {
+| DEF AGENT LD NUMERAL_LITERAL ';' {
   int entry=ast_recordConst($2,$4);
 
   if (!entry) {
@@ -363,7 +382,7 @@ command:
     fflush(stdout);
   }
  }
-| DEF AGENT LD SUB NUMERAL_LITERAL DELIMITER {
+| DEF AGENT LD '-' NUMERAL_LITERAL ';' {
   int entry=ast_recordConst($2,$5*(-1));
 
   if (!entry) {
@@ -376,7 +395,7 @@ command:
 
 
 bodyguard
-: PIPE expr TO bd_compound bd_elif
+: PIPE expr ARROW bd_compound bd_elif
 { $$ = ast_makeAST(AST_IF, $2, ast_makeAST(AST_THEN_ELSE, $4, $5));}
 ;
 
@@ -387,12 +406,12 @@ bd_compound
 
 bd_elif
 : bd_else
-| PIPE expr TO bd_compound bd_elif
+| PIPE expr ARROW bd_compound bd_elif
 { $$ = ast_makeAST(AST_IF, $2, ast_makeAST(AST_THEN_ELSE, $4, $5));}
 ;
 
 bd_else
-: PIPE ANY TO bd_compound
+: PIPE '_' ARROW bd_compound
 { $$ = $4; }
 ;
 
@@ -413,12 +432,12 @@ if_compound
 
 // AST -----------------
 astterm
-: LP ANNOTATE_L RP astterm_item
+: '(' ANNOTATE_L ')' astterm_item
 { $$=ast_makeAST(AST_ANNOTATION_L, $4, NULL); }
-| LP ANNOTATE_R RP astterm_item
+| '(' ANNOTATE_R ')' astterm_item
 { $$=ast_makeAST(AST_ANNOTATION_R, $4, NULL); }
-//| astterm_item COLON astterm_item
-| astterm_item COLON astterm   // h:t
+//| astterm_item ':' astterm_item
+| astterm_item ':' astterm   // h:t
 {$$ = ast_makeAST(AST_OPCONS, NULL, ast_makeList2($1, $3)); }
 | astterm_item
 ;
@@ -435,9 +454,9 @@ astterm_item
 ;
 
 agent_percent
-: MOD AGENT
+: '%' AGENT
 { $$=ast_makeAST(AST_PERCENT, ast_makeSymbol($2), NULL); }
-| MOD NAME
+| '%' NAME
 { $$=ast_makeAST(AST_PERCENT, ast_makeSymbol($2), NULL); }
 ;
 
@@ -446,13 +465,13 @@ val_declare
 ;
 
 agent_cons
-: LB astterm PIPE astterm RB
+: '[' astterm PIPE astterm ']'
 { $$ = ast_makeAST(AST_OPCONS, NULL, ast_makeList2($2, $4)); }
 ;
 
 agent_list
-: LB RB { $$ = ast_makeAST(AST_NIL, NULL, NULL); }
-| LB astparams RB { $$ = ast_paramToCons($2); }
+: '[' ']' { $$ = ast_makeAST(AST_NIL, NULL, NULL); }
+| '[' astparams ']' { $$ = ast_paramToCons($2); }
 ;
 
 agent_tuple
@@ -471,34 +490,34 @@ agentterm
 
 
 astparam
-: LP RP { $$ = NULL; }
-| LP astparams RP { $$ = $2; }
+: '(' ')' { $$ = NULL; }
+| '(' astparams ')' { $$ = $2; }
 ;
 
 astparams
 : astterm { $$ = ast_makeList1($1); }
-| astparams COMMA astterm { $$ = ast_addLast($1, $3); }
+| astparams ',' astterm { $$ = ast_addLast($1, $3); }
 ;
 
 ap
-: astterm CNCT astterm { $$ = ast_makeAST(AST_CNCT, $1, $3); }
+: astterm '~' astterm { $$ = ast_makeAST(AST_CNCT, $1, $3); }
 //
 // param << A(...)
-| astparams ABR abr_agent_name LP astparams RP
+| astparams ABR abr_agent_name '(' astparams ')'
 { $$ = ast_unfoldABR($1, $3, $5, NULL); }
 // << A(...)
-| ABR abr_agent_name LP astparams RP
+| ABR abr_agent_name '(' astparams ')'
 { $$ = ast_unfoldABR(NULL, $2, $4, NULL); }
 // param << (*L)A(...)
-| astparams ABR abr_annotate abr_agent_name  LP astparams RP
+| astparams ABR abr_annotate abr_agent_name  '(' astparams ')'
 { $$ = ast_unfoldABR($1, $4, $6, $3); }
 // << (*L)A(...)
-| ABR abr_annotate abr_agent_name LP astparams RP
+| ABR abr_annotate abr_agent_name '(' astparams ')'
 { $$ = ast_unfoldABR(NULL, $3, $5, $2); }
 //
-//| astparams ABR NAME LP astparams RP
+//| astparams ABR NAME '(' astparams ')'
 //{ $$ = ast_unfoldABR($1, $3, $5, NULL); }
-//| ABR NAME LP astparams RP
+//| ABR NAME '(' astparams ')'
 //{ $$ = ast_unfoldABR(NULL, $2, $4, NULL); }
 ;
 
@@ -508,14 +527,14 @@ abr_agent_name
 ;
 
 abr_annotate
-: LP ANNOTATE_L RP { $$ = ast_makeAST(AST_ANNOTATION_L, NULL, NULL); }
-| LP ANNOTATE_R RP { $$ = ast_makeAST(AST_ANNOTATION_R, NULL, NULL); }
+: '(' ANNOTATE_L ')' { $$ = ast_makeAST(AST_ANNOTATION_L, NULL, NULL); }
+| '(' ANNOTATE_R ')' { $$ = ast_makeAST(AST_ANNOTATION_R, NULL, NULL); }
 ;
 
 
 aplist
 : ap { $$ = ast_makeList1($1); }
-| aplist COMMA ap { $$ = ast_addLast($1, $3); }
+| aplist ',' ap { $$ = ast_addLast($1, $3); }
 ;
 
 stm
@@ -523,7 +542,7 @@ stm
  
 stmlist
 : stm { $$ = ast_makeList1($1); }
-| stmlist DELIMITER stm { $$ = ast_addLast($1, $3); }
+| stmlist ';' stm { $$ = ast_addLast($1, $3); }
 
 stmlist_nondelimiter
 : stm { $$ = ast_makeList1($1); }
@@ -548,36 +567,36 @@ logical_expr
 
 relational_expr
 : additive_expr
-| relational_expr LT additive_expr { $$ = ast_makeAST(AST_LT, $1, $3); }
+| relational_expr '<' additive_expr { $$ = ast_makeAST(AST_LT, $1, $3); }
 | relational_expr LE additive_expr { $$ = ast_makeAST(AST_LE, $1, $3); }
-| relational_expr GT additive_expr { $$ = ast_makeAST(AST_LT, $3, $1); }
+| relational_expr '>' additive_expr { $$ = ast_makeAST(AST_LT, $3, $1); }
 | relational_expr GE additive_expr { $$ = ast_makeAST(AST_LE, $3, $1); }
 ;
 
 additive_expr
 : multiplicative_expr
-| additive_expr ADD multiplicative_expr { $$ = ast_makeAST(AST_PLUS, $1, $3); }
-| additive_expr SUB multiplicative_expr { $$ = ast_makeAST(AST_SUB, $1, $3); }
+| additive_expr '+' multiplicative_expr { $$ = ast_makeAST(AST_PLUS, $1, $3); }
+| additive_expr '-' multiplicative_expr { $$ = ast_makeAST(AST_SUB, $1, $3); }
 ;
 
 multiplicative_expr
 : unary_expr
-| multiplicative_expr MUL primary_expr { $$ = ast_makeAST(AST_MUL, $1, $3); }
-| multiplicative_expr DIV primary_expr { $$ = ast_makeAST(AST_DIV, $1, $3); }
-| multiplicative_expr MOD primary_expr { $$ = ast_makeAST(AST_MOD, $1, $3); }
+| multiplicative_expr '*' primary_expr { $$ = ast_makeAST(AST_MUL, $1, $3); }
+| multiplicative_expr '/' primary_expr { $$ = ast_makeAST(AST_DIV, $1, $3); }
+| multiplicative_expr '%' primary_expr { $$ = ast_makeAST(AST_MOD, $1, $3); }
 
 
 unary_expr
 : primary_expr
-| SUB primary_expr { $$ = ast_makeAST(AST_UNM, $2, NULL); }
-| RAND LP primary_expr RP { $$ = ast_makeAST(AST_RAND, $3, NULL); }
+| '-' primary_expr { $$ = ast_makeAST(AST_UNM, $2, NULL); }
+| RAND '(' primary_expr ')' { $$ = ast_makeAST(AST_RAND, $3, NULL); }
 ;
 
 primary_expr
 : nameterm { $$ = $1;}
 | NUMERAL_LITERAL { $$ = ast_makeInt($1); }
 | AGENT { $$=ast_makeAST(AST_AGENT, ast_makeSymbol($1), NULL); }
-| LP expr RP { $$ = $2; }
+| '(' expr ')' { $$ = $2; }
 
 ;
 
@@ -588,14 +607,14 @@ primary_expr
 int yyerror(char *s) {
   extern char *yytext;
   char msg[256];
-
+  
 #ifdef MY_YYLINENO
   if (InfoLineno != NULL) {
-    sprintf(msg, "%s:%d: %s near token `%s'.\n", 
-	  InfoLineno->fname, yylineno+1, s, yytext);
+    sprintf(msg, "%s:%d:%d: %s near token `%s'.\n", 
+	    InfoLineno->fname, yylineno+1, yycolumn, s, yytext);
   } else {
-    sprintf(msg, "%d: %s near token `%s'.\n", 
-	  yylineno, s, yytext);
+    sprintf(msg, "%d:%d: %s near token `%s'.\n", 
+	    yylineno, yycolumn, s, yytext);
   }
 #else
   sprintf(msg, "%d: %s near token `%s'.\n", yylineno, s, yytext);
@@ -1776,7 +1795,7 @@ void puts_Name_port0_nat(char *sym) {
 	} else if (IS_NAMEID(BASIC(a1)->id)) {
 	  a1=NAME(a1)->port;
 	} else {
-	  puts("ERROR: puts_Name_port0_nat");
+	  puts("ERROR: it is not unary number.");
 	  exit(-1);
 	}
       }
@@ -3649,13 +3668,15 @@ int CmEnv_check_linearity_in_rule(void) {
 
     if ((CmEnv.bind[i].type == NB_META_L) || (CmEnv.bind[i].type == NB_META_R)) {
       if (CmEnv.bind[i].refnum != 1) { // Be just once!
-	printf("ERROR: `%s' is referred not once in the right-hand side ", CmEnv.bind[i].name);
+	printf("%d:ERROR: `%s' is referred not once in the right-hand side ",
+	       yylineno, CmEnv.bind[i].name);
 	return 0;
       }
       
     } else if (CmEnv.bind[i].type == NB_NAME) {
       if (CmEnv.bind[i].refnum != 1) { // Be just once in the RHS.
-	printf("ERROR: `%s' is referred not twice in the right-hand side ", CmEnv.bind[i].name);
+	printf("%d:ERROR: `%s' is referred not twice in the right-hand side ",
+	       yylineno, CmEnv.bind[i].name);
 	return 0;
       }
     }
@@ -3671,8 +3692,8 @@ int CmEnv_check_name_reference_times(void) {
   for (i=0; i<CmEnv.bindPtr; i++) {
     if (CmEnv.bind[i].type == NB_NAME) {
       if (CmEnv.bind[i].refnum > 2) {
-	printf("ERROR: The name `%s' occurs more than twice.\n", 
-	       CmEnv.bind[i].name);
+	printf("%d:ERROR: The name `%s' occurs more than twice.\n", 
+	       yylineno, CmEnv.bind[i].name);
 	return 0;
       }
     }
@@ -6123,8 +6144,8 @@ int Compile_expr_on_ast(Ast *ptr, int target) {
       // Increase the counter of compilation errors
       CmEnv.count_compilation_errors++;
       
-      printf("ERROR: `%s' is referred to as a property variable in an expression, although it has not yet been declared (as so).\n",
-	     ptr->left->sym);
+      printf("%d:ERROR: `%s' is referred to as a property variable in an expression, although it has not yet been declared (as so).\n",
+	     yylineno, ptr->left->sym);
       return 0;
     }
 
@@ -6134,8 +6155,9 @@ int Compile_expr_on_ast(Ast *ptr, int target) {
       int get_result;
       get_result = CmEnv_gettype_forname((ptr)->left->sym, &type);
       if ((get_result) && (type != NB_INTVAR)) {
-	printf("Warning: `%s' is used as a property variable, although is is not declared as so.\n",
-		   (ptr)->left->sym);
+	printf("%d:Warning: `%s' is used as a property variable, although is is not declared as so.\n",
+	       yylineno,
+	       (ptr)->left->sym);
 
       }
     }
@@ -6310,7 +6332,8 @@ int Compile_expr_on_ast(Ast *ptr, int target) {
   }
     
   default:
-    puts("ERROR: Wrong AST was given to CompileExpr.\n");
+    printf("%d:ERROR: Wrong AST was given to CompileExpr.\n\n",
+	 yylineno);
     return 0;
 
   }
@@ -6558,7 +6581,7 @@ int Compile_term_on_ast(Ast *ptr, int target) {
 	char *sym = (char *)ptr->left->sym;
 	id = NameTable_get_id(sym);
 	if (id == -1) {
-	  printf("Warning: `%s' is given to %%, although it hasn't yet been defined.\n", sym);
+	  printf("%d:Warning: `%s' is given to %%, although it hasn't yet been defined.\n", yylineno, sym);
 	  id=NameTable_get_set_id_with_IdTable_forAgent(sym);
 	}
 	
@@ -6750,7 +6773,8 @@ int Compile_term_on_ast(Ast *ptr, int target) {
 #else    
     int compile_expr_result = Compile_expr_on_ast(ptr, result);
     if (compile_expr_result == 0) {
-      puts("ERROR: Something strange in Compile_term_on_ast.");
+      printf("%d:ERROR: Something strange in Compile_term_on_ast.\n",
+	     yylineno);
       ast_puts(ptr); puts("");
       //      exit(1);      
     }
@@ -6819,8 +6843,9 @@ int check_invalid_occurrence(Ast *ast) {
       count = keynode_exists_in_another_term(aheap, NULL);
       if (count == 2) {
 	// already twice
-	printf("ERROR: `%s' occurs twice already. \n", ast->left->sym);
-	printf("        Use `ifce' command to see the occurrence.\n");
+	printf("%d:ERROR: `%s' occurs twice already. \n",
+	       yylineno, ast->left->sym);
+	printf("Use `ifce' command to see the occurrence.\n");
 	return 0;	    
       }	  
       
@@ -6894,13 +6919,15 @@ int Compile_eqlist_on_ast_in_rulebody(Ast *at) {
 	  // the left term is a variable on property
 	
 	  if (Ast_is_expr(eq->right)) {
-	    printf("Warning: The variable `%s' is connected to an expression. It may cause runtime error.\n",
+	    printf("%d:Warning: The variable `%s' is connected to an expression. It may cause runtime error.\n",
+		   yylineno,
 		   (eq->left)->left->sym);
 	  
 	  } else if ((eq->right)->id == AST_NAME) {
 	    result = CmEnv_gettype_forname((eq->right)->left->sym, &type);
 	    if ((result !=0) && (type == NB_INTVAR)) {
-	      printf("Warning: The variable `%s' is connected to a variable %s. It may cause runtime error.\n",
+	      printf("%d:Warning: The variable `%s' is connected to a variable %s. It may cause runtime error.\n",
+		     yylineno,
 		     (eq->left)->left->sym, (eq->right)->left->sym);	    
 	    }
 	  }
@@ -6914,14 +6941,16 @@ int Compile_eqlist_on_ast_in_rulebody(Ast *at) {
 	  // the right term is a variable on property
 	
 	  if (Ast_is_expr(eq->left)) {
-	  	    printf("Warning: The variable `%s' is connected to an expression. It may cause runtime error.\n",
-	  		   (eq->right)->left->sym);
+	    printf("%d:Warning: The variable `%s' is connected to an expression. It may cause runtime error.\n",
+		   yylineno,
+		   (eq->right)->left->sym);
 	  	  
 	  } else {
 	    if ((eq->left)->id == AST_NAME) {
 	      result = CmEnv_gettype_forname((eq->left)->left->sym, &type);
 	      if ((result !=0) && (type == NB_INTVAR)) {
-		printf("Warning: The variable `%s' is connected to a variable %s. It may cause runtime error.\n",
+		printf("%d:Warning: The variable `%s' is connected to a variable %s. It may cause runtime error.\n",
+		       yylineno,
 		       (eq->right)->left->sym, (eq->left)->left->sym);	    
 		
 	      }
@@ -7257,7 +7286,7 @@ int Compile_stmlist_on_ast(Ast *at) {
 
     // (AST_LD (AST_NAME sym NULL) some)
     if (ptr->id != AST_LD) {
-      puts("System ERROR: The given StmList contains something besides statements.");
+      printf("%d:System ERROR: The given StmList contains something besides statements.", yylineno);
       exit(-1);
     }
     // operation of x=y:
@@ -7267,7 +7296,8 @@ int Compile_stmlist_on_ast(Ast *at) {
       // the sym is new
       toRegLeft = CmEnv_set_as_INTVAR(ptr->left->left->sym);
     } else {
-      printf("Warning: `%s' has been already defined.\n", ptr->left->left->sym);
+      printf("%d:Warning: `%s' has been already defined.\n",
+	     yylineno, ptr->left->left->sym);
     }
 
     // for the y
@@ -7316,7 +7346,8 @@ int Compile_body_on_ast(Ast *body) {
 
   if (!Compile_stmlist_on_ast(stms)) return 0;
   if (!Compile_eqlist_on_ast_in_rulebody(eqs)) {
-    printf("ERROR: Compilation failure for %s >< %s.\n",
+    printf("%d:ERROR: Compilation failure for %s >< %s.\n",
+	   yylineno,
 	   IdTable_get_name(CmEnv.idL),
 	   IdTable_get_name(CmEnv.idR));
     return 0;
@@ -7936,7 +7967,8 @@ int make_rule_oneway(Ast *ast) {
     arity = get_arity_on_ast(ruleAgent_L);
   }
   if (arity > MAX_PORT) {
-    printf("ERROR: Too many arguments of `%s'. It should be MAX_PORT(=%d) or less.\n",
+    printf("%d:ERROR: Too many arguments of `%s'. It should be MAX_PORT(=%d) or less.\n",
+	   yylineno,
 	   ruleAgent_L->left->sym, MAX_PORT);
     return 0;
   }
@@ -7949,7 +7981,8 @@ int make_rule_oneway(Ast *ast) {
     arity = get_arity_on_ast(ruleAgent_R);
   }
   if (arity > MAX_PORT) {
-    printf("ERROR: Too many arguments of `%s'. It should be MAX_PORT(=%d) or less.\n",
+    printf("%d:ERROR: Too many arguments of `%s'. It should be MAX_PORT(=%d) or less.\n",
+	   yylineno,
 	   ruleAgent_R->left->sym, MAX_PORT);
     return 0;
   }
@@ -8133,11 +8166,11 @@ int make_rule(Ast *ast) {
   Ast *ruleAgent_R = ast->left->right;
 
   if (ruleAgent_L->id == AST_NAME) {
-    printf("ERROR: The name `%s' was specified as the left-hand side of rule agents. It should be an agent.\n", ruleAgent_L->left->sym);
+    printf("%d:ERROR: The name `%s' was specified as the left-hand side of rule agents. It should be an agent.\n", yylineno, ruleAgent_L->left->sym);
     return 0;
   }
   if (ruleAgent_R->id == AST_NAME) {
-    printf("ERROR: The name `%s' was specified as the right-hand side of rule agents. It should be an agent.\n", ruleAgent_R->left->sym);
+    printf("%d:ERROR: The name `%s' was specified as the right-hand side of rule agents. It should be an agent.\n", yylineno, ruleAgent_R->left->sym);
     return 0;
   }
   

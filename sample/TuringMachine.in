@@ -1,0 +1,131 @@
+// -------------------------------------------------------------
+// Turing Machine
+// -------------------------------------------------------------
+// Every 1 on tapes becomes 0.
+// It finishes when the head reads a tape cell whose value is 0.
+//
+// Rule
+// (state, sym) => command
+// (0    ,   1) => Write(0, 1)      // write 0 and change state into 1
+// (1    ,   0) => GoRight(2)       // headPos+1 and change state into 2
+// (2    ,   1) => Write(0, 1)      // write 0 and change state into 1
+// otherwise    => Halt    
+//
+// Example:
+// (tape, state, headPos) 
+// ([0,1,1,1,1,0], 1, 0) -->* ([0,0,0,0,0,0,0],2,5)
+//
+
+
+
+// -----------------------------------------
+// getRule
+// rule << getRule( (int state, int sym) )
+// NOTE: getRule needs a pair (state, sym).
+//       So it should be called such as
+//	 ret << getRule( (state, sym) );
+// -----------------------------------------
+
+getRule(r) >< (int state, int sym)
+| (state==0) && (sym==1) => r~Write(0, 1)
+| (state==1) && (sym==0) => r~GoRight(2)
+| (state==2) && (sym==1) => r~Write(0, 1)
+| _ => r~Halt;
+
+
+
+
+// -----------------------------------------
+// changeSym
+// resultTape << changeSym(headPos, sym, tape)
+// -----------------------------------------
+
+changeSym(resultTape, headPos, sym) >< t:ts =>   // <-- t:ts is tape
+  resultTape << changeSym_sub([], headPos, sym, t:ts);
+
+changeSym_sub(r, done, int headPos, int sym) >< (int t):ts
+  | headPos == 0 => r << Append(done, sym:ts)
+  | _ => done_new << Append(done, [t]),
+       r << changeSym_sub(done_new, headPos-1, sym, ts);
+
+changeSym_sub(r, done, headPos, sym) >< [] =>
+  r~Error(done, headPos, sym);
+
+
+
+
+// -----------------------------------------
+// do
+// configure << do(tape, int state, int headPos, Command)
+// -----------------------------------------
+
+do(r, tape, int state, int headPos) >< Write(sym, new_state) =>
+  changeSym(doneTape, headPos, sym) ~ tape,
+  r ~ Configure(doneTape, new_state, headPos);
+
+do(r, tape, int state, int head) >< GoRight(int new_state) =>
+  r ~ Configure(tape, new_state, head+1);
+
+do(r, tape, int state, int head) >< Halt =>
+  r ~ STOP_Configure(tape, state, head);
+
+
+
+// -----------------------------------------
+// getSym
+// tapeDone << getSym(sym, int headPos, tape)
+// -----------------------------------------
+
+getSym(tapeDone, sym, int headPos) >< t:ts =>    // <- t:ts is tape  
+  tapeDone << getSym_sub([], sym, headPos, t:ts);
+
+
+getSym_sub(r, done, sym, int headPos) >< (int t):ts
+  | headPos == 0 => r << Append(done, t:ts), sym~t
+  | _ => cnt << Append(done,[t]),
+       r << getSym_sub(cnt, sym, headPos-1, ts);
+
+getSym_sub(r, done, sym, int headPos) >< []
+  | headPos == 0 => r << Append(done, [0]), sym~0
+  | _ => new_done << Append(done, [0]),
+         r << getSym_sub(new_done, sym, headPos-1, []);
+
+
+
+// -----------------------------------------
+// oneCycle
+// configure << Configure(tape, int state, int headPos)
+// -----------------------------------------
+
+oneCycle(r) >< Configure(tape, int state, int headPos) =>
+  tapeDone, sym << getSym(headPos, tape),
+  r << oneCycle_sub(tapeDone, state, headPos, sym);
+
+oneCycle_sub(r, tapeDone, int state, int headPos)><(int sym) =>
+  rule << getRule( (state, sym) ),
+  r << do(tapeDone, state, headPos, rule);
+
+
+
+// -----------------------------------------
+// allCycle
+// result << allCycle(Configure(tape, state, headPos))
+// -----------------------------------------
+
+allCycle(r) >< Configure(tape, state, headPos) =>
+  r1 << oneCycle(Configure(tape, state, headPos)),
+  r << allCycle(r1);
+
+allCycle(r) >< STOP_Configure(tape, state, headPos) =>
+  r ~ Configure(tape, state, headPos);
+
+
+
+
+// -----------------------------------------
+// main
+// -----------------------------------------
+
+configure ~ Configure([1,1,1,1,1,0], 0, 0),  //(tape, state, headPos)
+r << allCycle(configure);
+r;   // -->* Configure([0,0,0,0,0,0,0],2,5)

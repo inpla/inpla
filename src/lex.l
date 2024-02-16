@@ -67,47 +67,37 @@ char *Parse_closeStringBuffer() {
   return ret;
 }
 
+// https://stackoverflow.com/questions/26854374/how-do-i-use-yy-bs-lineno-and-yy-bs-column-in-flex
+int yycolumn = 1;
+#define YY_USER_ACTION \
+  yylloc.first_line = yylloc.last_line = yylineno; \
+  yylloc.first_column = yycolumn; \
+  yylloc.last_column = yycolumn + yyleng - 1; \
+  yycolumn += yyleng; \
+  //yylval.str = strdup(yytext);
 
 
 %}
 
 %option nounput
-%option yylineno
 %option noyywrap
+%option yylineno
 %x STRING_STATE COM_STATE
 %%
-<INITIAL>";" return (DELIMITER);
-<INITIAL>":" return (COLON);
-<INITIAL>"(" return (LP);
-<INITIAL>")" return (RP);
-<INITIAL>"{" return LC;
-<INITIAL>"}" return RC;
-<INITIAL>"[" return LB;
-<INITIAL>"]" return RB;
-<INITIAL>"," return (COMMA);
 <INITIAL>"><" return (CROSS);
-<INITIAL>"=>" return (TO);
-<INITIAL>"~" return (CNCT);
-<INITIAL>"-" return (SUB);
+<INITIAL>"=>" return (ARROW);
+<INITIAL>"|" return(PIPE);
 <INITIAL>"&&" return(AND);
 <INITIAL>"and" return(AND);
 <INITIAL>"||" return(OR);
 <INITIAL>"or" return(OR);
 <INITIAL>"!" return(NOT);
 <INITIAL>"not" return(NOT);
-<INITIAL>"|" return(PIPE);
 <INITIAL>"=" return(LD);
 <INITIAL>"==" return(EQUAL);
 <INITIAL>"!=" return(NE);
-<INITIAL>">" return(GT);
 <INITIAL>">=" return(GE);
-<INITIAL>"<" return(LT);
 <INITIAL>"<=" return(LE);
-<INITIAL>"+" return (ADD);
-<INITIAL>"*" return (MUL);
-<INITIAL>"/" return (DIV);
-<INITIAL>"%" return (MOD);
-<INITIAL>"_" return (ANY);
 <INITIAL>"<<" return (ABR);
 
 <INITIAL>"int" return(INT);
@@ -150,8 +140,8 @@ char *Parse_closeStringBuffer() {
 <COM_STATE>\n ;
 <COM_STATE>"*/" BEGIN INITIAL; //comment
 
-<INITIAL>\r\n ;
-<INITIAL>[\n|\r] ;
+<INITIAL>\r\n { yycolumn=1; };
+<INITIAL>[\n|\r] { yycolumn=1; };
 <INITIAL>[ \t]+ ;
 <INITIAL><<EOF>> {return END_OF_FILE;}
 <INITIAL>\" {
@@ -173,7 +163,7 @@ char *Parse_closeStringBuffer() {
 //    Parse_addString('\n');
 yyerror("Unterminated string");
 BEGIN(INITIAL);
-return DELIMITER;
+return ';';
 }
 <STRING_STATE>\\\"      Parse_addString('"');
 <STRING_STATE>\\n       Parse_addString('\n');

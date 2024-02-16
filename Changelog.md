@@ -1,5 +1,13 @@
 # Change log
 
+### v0.11.2 (released on 16 Feb 2024)
+
+#### Polished
+
+- **Kindly error messages**: Error messages have column number. Other helpful clues can be included.
+
+
+
 ### v0.11.1 (released on 14 Feb 2024)
 
 #### Bug Fix
