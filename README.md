@@ -291,9 +291,11 @@ Electronic Communications of the EASST, Volume 73: Graph Computation Models - Se
 
 
 ## Related Works
-
-* [HINet: Interaction Nets in Haskell](http://www.cas.mcmaster.ca/~kahl/Haskell/HINet/)
+* [Train: Translator of a functional language to interaction nets (Inpla)](https://github.com/inpla/train)
 * [High-order Virtual Machine (HVM)](https://github.com/Kindelia/HVM)
+* [Language, interpreter and compiler for interaction nets](https://github.com/szeiger/interact)
+* [HINet: Interaction Nets in Haskell](http://www.cas.mcmaster.ca/~kahl/Haskell/HINet/)
+
 
 
 
