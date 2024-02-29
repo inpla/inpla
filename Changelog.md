@@ -1,5 +1,25 @@
 # Change log
 
+### v0.11.3 (released on 29 Feb 2024)
+
+#### Bug Fix
+
+- **Segmentation fault caused by rules of Int and an agent**: Rules of Int and an agent could cause Segmentation fault error, though rules of an agent and Int were safe:
+
+  ```
+  >>> A(r) >< (int x) => r~x;
+  >>> A(r)~3;
+  (1 interactions, 0.00 sec)
+  >>> free ifce;
+  >>> (int x) >< A(r) => r~x;
+  >>> A(r)~3;
+  Segmentation fault
+  ```
+
+  This issue has now been resolved.
+
+
+
 ### v0.11.2 (released on 16 Feb 2024)
 
 #### Polished

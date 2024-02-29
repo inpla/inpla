@@ -6,7 +6,7 @@
 
 Inpla is a multi-threaded parallel interpreter of interaction nets. Once you write programs for sequential execution, it works also in multi-threaded parallel execution. Each thread is managed on each CPU-core with POSIX-thread library. 
 
-* The current version is 0.11.2, released on **16 Feb 2024**. (See [Changelog.md](Changelog.md) for details.) 
+* The current version is 0.11.3, released on **29 Feb 2024**. (See [Changelog.md](Changelog.md) for details.) 
 * The below graph shows speed-up ratio to threads numbers for programs in the following benchmark table.
 
 ![speedup-ratio](pic/benchmark_reuse_v0.11.0.png)
@@ -291,11 +291,9 @@ Electronic Communications of the EASST, Volume 73: Graph Computation Models - Se
 
 
 ## Related Works
-* [Train: Translator of a functional language to interaction nets (Inpla)](https://github.com/inpla/train)
-* [High-order Virtual Machine (HVM)](https://github.com/Kindelia/HVM)
-* [Language, interpreter and compiler for interaction nets](https://github.com/szeiger/interact)
-* [HINet: Interaction Nets in Haskell](http://www.cas.mcmaster.ca/~kahl/Haskell/HINet/)
 
+* [HINet: Interaction Nets in Haskell](http://www.cas.mcmaster.ca/~kahl/Haskell/HINet/)
+* [High-order Virtual Machine (HVM)](https://github.com/Kindelia/HVM)
 
 
 

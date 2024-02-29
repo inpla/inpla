@@ -22,8 +22,8 @@
 
 // ----------------------------------------------
   
-#define VERSION "0.11.2"
-#define BUILT_DATE  "16 Feb 2024"
+#define VERSION "0.11.3"
+#define BUILT_DATE  "29 Feb 2024"
 
 // ------------------------------------------------------------------
 
@@ -7803,12 +7803,14 @@ int set_metaR(Ast *ast) {
 }
 
 void set_metaL_as_IntName(Ast *ast) {
-  CmEnv_set_symbol_as_meta(ast->left->sym, CmEnv.reg_agentL, NB_INTVAR);
+  //  CmEnv_set_symbol_as_meta(ast->left->sym, CmEnv.reg_agentL, NB_INTVAR);
+  CmEnv_set_symbol_as_meta(ast->left->sym, VM_OFFSET_ANNOTATE_L, NB_INTVAR);
   
 }
 
 void set_metaR_as_IntName(Ast *ast) {
-  CmEnv_set_symbol_as_meta(ast->left->sym, CmEnv.reg_agentR, NB_INTVAR);
+  //  CmEnv_set_symbol_as_meta(ast->left->sym, CmEnv.reg_agentR, NB_INTVAR);
+  CmEnv_set_symbol_as_meta(ast->left->sym, VM_OFFSET_ANNOTATE_L, NB_INTVAR);
 }
 
 
