@@ -40,8 +40,8 @@ getRule(r) >< (int state, int sym)
 // resultTape << changeSym(headPos, sym, tape)
 // -----------------------------------------
 
-changeSym(resultTape, headPos, sym) >< t:ts =>   // <-- t:ts is tape
-  resultTape << changeSym_sub([], headPos, sym, t:ts);
+changeSym(resultTape, headPos, sym) >< tape =>   // <-- tape is a list
+  resultTape << changeSym_sub([], headPos, sym, tape);
 
 changeSym_sub(r, done, int headPos, int sym) >< (int t):ts
   | headPos == 0 => r << Append(done, sym:ts)
@@ -76,8 +76,8 @@ do(r, tape, int state, int head) >< Halt =>
 // tapeDone << getSym(sym, int headPos, tape)
 // -----------------------------------------
 
-getSym(tapeDone, sym, int headPos) >< t:ts =>    // <- t:ts is tape  
-  tapeDone << getSym_sub([], sym, headPos, t:ts);
+getSym(tapeDone, sym, int headPos) >< tape =>    // <- tape is a list
+  tapeDone << getSym_sub([], sym, headPos, tape);
 
 
 getSym_sub(r, done, sym, int headPos) >< (int t):ts

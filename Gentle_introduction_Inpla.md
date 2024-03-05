@@ -637,7 +637,7 @@ Inpla has the following macro:
 
   ```
   $ ./inpla -h
-  Inpla version 0.8.0
+  Inpla version 0.12.0
   Usage: inpla [options]
   
   Options:
@@ -648,7 +648,8 @@ Inpla has the following macro:
                       0: the same size heap is inserted when it runs up.
                       1: the twice (=2^1) size heap is inserted.
    -Xes <num>       Set initial equation stack size         (Default:        256)
-    -w               Enable Weak Reduction strategy         (Default:      false)
+   -w               Enable Weak Reduction strategy          (Default:      false)
+   -c               Enable to output compiled codes         (Default:    disable)
    -t <num>         Set the number of threads               (Default:          8)
    -h               Print this help message
   ```
@@ -661,7 +662,36 @@ Inpla has the following macro:
 
 ## Advanced topics
 
+### Wildcard agent in rule definitions
+
+In rule definitions, we can place a variable as a default match on the left or right side of an active pair. For example, we suppose that we define the following rules:
+
+```
+reverse(r) >< [] => r~[];
+reverse(r) >< x:xs => rev_sub(r, [])~x:xs;
+
+rev_sub(r,ys) >< [] => r~ys;
+rev_sub(r,ys) >< x:xs => rev_sub(r,x:ys)~xs;
+```
+
+Using the wildcard agent notation, the `reverse` rule is simply written:
+
+```
+reverse(r) >< [] => r~[];
+reverse(r) >< xs => rev_sub(r, [])~xs;
+```
+
+The process of searching for rules of active pairs is as follows:
+
+- First, user-defined rules are searched for,
+- Next, built-in rules,
+- Finally, rules containing the wildcards,
+- Otherwise, runtime error.
+
+
+
 ### Reuse annotations
+
 In interaction rule definitions, we can specify how active pair agents are reused by putting annotations `(*L)` and `(*R)` before agents in the right-hand side net. This annotations promote in-place computing, and as a result performance can be improved well  in parallel execution.
 
 * For instance, in the rule `gcd(ret) >< (int a, int b)`, we can reuse the `gcd` and `Tuple2` in nets as follows:

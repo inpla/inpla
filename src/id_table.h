@@ -9,25 +9,27 @@
 // 257 ..  : GNAME
 
 
-#define ID_INT 0
+#define ID_INT       0
 
 
 // NOTE:
 // For a NEW BUILT-IN AGENT,
 // STORE the ARITY on IdTable in the function IdTable_init()!
-#define ID_TUPLE0 1
-#define ID_TUPLE1 2
-#define ID_TUPLE2 3
-#define ID_TUPLE3 4
-#define ID_TUPLE4 5
-#define ID_TUPLE5 6
+#define ID_TUPLE0    1
+#define ID_TUPLE1    2
+#define ID_TUPLE2    3
+#define ID_TUPLE3    4
+#define ID_TUPLE4    5
+#define ID_TUPLE5    6
 #define GET_TUPLEID(arity) (ID_TUPLE0+arity)
 #define IS_TUPLEID(id) ((id >= ID_TUPLE0) && (id <= ID_TUPLE5))
 #define GET_TUPLEARITY(id) (id - ID_TUPLE0)
 
-#define ID_NIL 7
-#define ID_CONS 8
+#define ID_NIL       7
+#define ID_CONS      8
 #define IS_LISTID(id) ((id == ID_NIL) && (id == ID_CONS))
+
+#define ID_WILDCARD  9
 
 #define ID_INTAGENT 10   // This is an experimental dummy agent
                          // to show the use effect of Int agent.
@@ -54,7 +56,7 @@
 #define ID_MAP      31
 #define END_ID_OF_BUILTIN_OP_AGENT 31
 
-// ID_ERASER and ID_DUP was put as 254, 255
+// ID_ERASER and ID_DUP were put as 254, 255
 // because these IDs are wanted larger like ID_DUP > any_agent.id
 
 

@@ -70,6 +70,7 @@ void IdTable_init() {
   IdTable[ID_NIL].name = "[]";
   IdTable[ID_CONS].name = "Cons";
   IdTable[ID_INTAGENT].name = "Int";
+  IdTable[ID_WILDCARD].name = "Wildcard";
   
   IdTable[ID_APPEND].name = "Append";
   IdTable[ID_ZIP].name = "Zip";

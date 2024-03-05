@@ -1,5 +1,93 @@
 # Change log
 
+### v0.12.0 (released on 5 Mar 2024)
+
+#### New Features
+
+- **Wildcard agent in rule definitions**: In rule definitions, we can place a variable as a default match on the left or right side of an active pair. For example, we suppose that we define the following rules:
+
+  ```
+  reverse(r) >< [] => r~[];
+  reverse(r) >< x:xs => rev_sub(r, [])~x:xs;
+  
+  rev_sub(r,ys) >< [] => r~ys;
+  rev_sub(r,ys) >< x:xs => rev_sub(r,x:ys)~xs;
+  ```
+
+  Using the wildcard agent notation, the `reverse` rule is simply written:
+
+  ```
+  reverse(r) >< [] => r~[];
+  reverse(r) >< xs => rev_sub(r, [])~xs;
+  ```
+
+  The current process of searching for rules of active pairs is as follows:
+
+  - First, user-defined rules are searched for,
+  - Next, built-in rules,
+  - Finally, rules containing the wildcards,
+  - Otherwise, runtime error.
+
+- **Compiled rule codes**: We can see compiled rule codes by invoking Inpla with `-c` option.
+
+  ```
+  $ ./inpla -c
+  Inpla 0.12.0 : Interaction nets as a programming language [built: 5 Mar 2024]
+  >>> Add(r,y) >< S(x) => Add(r,S(y))~x;
+  Rule: Add(id:20,arity:2) >< S(id:32,arity:1).
+  Line:Addr.
+  0001:0000: mkagent id:32 reg13
+  0002:0003: loadp reg2 $0 reg13
+  0003:0007: mkagent id:20 reg14
+  0004:0010: loadp reg1 $0 reg14
+  0005:0014: loadp reg13 $1 reg14
+  0006:0018: push reg14 reg6
+  0007:0021: ret_free_lr
+  >>>
+  ```
+
+  With this option, we can also observe how the reuse annotations `(*L)`, `(*R)` work:
+
+  ```
+  >>> Add(r,y) >< S(x) => (*L)Add(r,(*R)S(y))~x;
+  Rule: Add(id:20,arity:2) >< S(id:32,arity:1).
+  Line:Addr.
+  0001:0000: loadp_r reg2 $0
+  0002:0003: loadp_l reg12 $1
+  0003:0006: push reg11 reg6
+  0004:0009: ret
+  >>>
+  ```
+
+
+#### Bug Fix
+
+- **The reuse strategy for Nil**: `[]` was reused by the old method using the `reuseagent` instruction:
+
+  ```
+  >>> reverse(r) >< [] => r~(*R)[];
+  Rule: reverse(id:32,arity:1) >< [](id:7,arity:0).
+  Line:Addr.
+  0001:0000: reuseagent0 reg12 as id=7
+  0002:0003: push reg1 reg12
+  0003:0006: ret_free_l
+  ```
+
+  The reuse method has been improved; it's ID is changed by `chid`, and ports are reconnected by `loadp` if they are needed. This is now fixed:
+
+  ```
+  >>> reverse(r) >< [] => r~(*R)[];
+  Rule: reverse(id:32,arity:1) >< [](id:7,arity:0).
+  Line:Addr.
+  0001:0000: push reg1 reg12
+  0002:0003: ret_free_l
+  ```
+
+  
+
+  
+
+
 ### v0.11.3 (released on 29 Feb 2024)
 
 #### Bug Fix

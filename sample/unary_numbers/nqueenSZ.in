@@ -88,8 +88,8 @@ len_list_(len, done, ct) >< x:xs =>
  
 len(ret) >< [] =>
         ret~Z;
-len(ret) >< x:xs =>
-        len_list(ret, Eraser)~x:xs;
+len(ret) >< list =>
+        len_list(ret, Eraser)~list;
 
 
 
@@ -162,8 +162,8 @@ queen(ret, n) >< () =>
 queen_(r, b, n) >< Z =>
 	  r~[], Eraser~b, Eraser~n;
 	  
-queen_(r, b, n) >< S(m) =>
-	  mem_ret, done_m, done_b << member(S(m), b),
+queen_(r, b, n) >< m =>
+	  mem_ret, done_m, done_b << member(m, b),
 	  queen__chk_m_in_b(r, done_b, n, done_m)~mem_ret;	  
 
 

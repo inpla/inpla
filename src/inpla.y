@@ -22,8 +22,8 @@
 
 // ----------------------------------------------
   
-#define VERSION "0.11.3"
-#define BUILT_DATE  "29 Feb 2024"
+#define VERSION "0.12.0"
+#define BUILT_DATE  "5 Mar 2024"
 
 // ------------------------------------------------------------------
 
@@ -1679,6 +1679,9 @@ void puts_term(VALUE ptr) {
     printf("%%");
     printf("%s", IdTable_get_name(FIX2INT(AGENT(ptr)->port[0])));
     
+  } else if (BASIC(ptr)->id == ID_WILDCARD) {
+    printf("Wildcard");
+    
     
   } else {
     // Agent
@@ -2624,42 +2627,42 @@ void IMCode_puts(int n) {
       break;
 
     case OP_MKGNAME:
-      printf("%s id:%ld var%ld; \"%s\"\n", string_opcode[imcode->opcode],
+      printf("%s id%ld var%ld; \"%s\"\n", string_opcode[imcode->opcode],
 	     imcode->operand1, imcode->operand2,
 	     IdTable_get_name(imcode->operand1));
       break;
 
     case OP_MKAGENT0:
-      printf("%s id:%ld var%ld\n", string_opcode[imcode->opcode],
+      printf("%s id%ld var%ld\n", string_opcode[imcode->opcode],
 	     imcode->operand1, imcode->operand2);
       break;
 
     case OP_MKAGENT1:
-      printf("%s id:%ld var%ld var%ld\n", string_opcode[imcode->opcode],
+      printf("%s id%ld var%ld var%ld\n", string_opcode[imcode->opcode],
 	     imcode->operand1, imcode->operand2, imcode->operand3);
       break;
 
     case OP_MKAGENT2:
-      printf("%s id:%ld var%ld var%ld var%ld\n", string_opcode[imcode->opcode],
+      printf("%s id%ld var%ld var%ld var%ld\n", string_opcode[imcode->opcode],
 	     imcode->operand1, imcode->operand2,
 	     imcode->operand3, imcode->operand4);
       break;
 
     case OP_MKAGENT3:
-      printf("%s id:%ld var%ld var%ld var%ld var%ld\n", string_opcode[imcode->opcode],
+      printf("%s id%ld var%ld var%ld var%ld var%ld\n", string_opcode[imcode->opcode],
 	     imcode->operand1, imcode->operand2,
 	     imcode->operand3, imcode->operand4, imcode->operand5);
       break;
 
     case OP_MKAGENT4:
-      printf("%s id:%ld var%ld var%ld var%ld var%ld var%ld \n", string_opcode[imcode->opcode],
+      printf("%s id%ld var%ld var%ld var%ld var%ld var%ld \n", string_opcode[imcode->opcode],
 	     imcode->operand1, imcode->operand2,
 	     imcode->operand3, imcode->operand4, imcode->operand5,
 	     imcode->operand6);
       break;
 
     case OP_MKAGENT5:
-      printf("%s id:%ld var%ld var%ld var%ld var%ld var%ld var%ld \n", string_opcode[imcode->opcode],
+      printf("%s id%ld var%ld var%ld var%ld var%ld var%ld var%ld \n", string_opcode[imcode->opcode],
 	     imcode->operand1, imcode->operand2,
 	     imcode->operand3, imcode->operand4, imcode->operand5,
 	     imcode->operand6, imcode->operand7);
@@ -2667,36 +2670,36 @@ void IMCode_puts(int n) {
 
       
     case OP_REUSEAGENT0:
-      printf("%s var%ld id:%ld\n", string_opcode[imcode->opcode],
+      printf("%s var%ld id%ld\n", string_opcode[imcode->opcode],
 	     imcode->operand1, imcode->operand2);
       break;
 
     case OP_REUSEAGENT1:
-      printf("%s var%ld id:%ld var%ld\n", string_opcode[imcode->opcode],
+      printf("%s var%ld id%ld var%ld\n", string_opcode[imcode->opcode],
 	     imcode->operand1, imcode->operand2, imcode->operand3);
       break;
 
     case OP_REUSEAGENT2:
-      printf("%s var%ld id:%ld var%ld var%ld\n", string_opcode[imcode->opcode],
+      printf("%s var%ld id%ld var%ld var%ld\n", string_opcode[imcode->opcode],
 	     imcode->operand1, imcode->operand2,
 	     imcode->operand3, imcode->operand4);
       break;
 
     case OP_REUSEAGENT3:
-      printf("%s var%ld id:%ld var%ld var%ld var%ld\n", string_opcode[imcode->opcode],
+      printf("%s var%ld id%ld var%ld var%ld var%ld\n", string_opcode[imcode->opcode],
 	     imcode->operand1, imcode->operand2,
 	     imcode->operand3, imcode->operand4, imcode->operand5);
       break;
 
     case OP_REUSEAGENT4:
-      printf("%s var%ld id:%ld var%ld var%ld var%ld var%ld\n", string_opcode[imcode->opcode],
+      printf("%s var%ld id%ld var%ld var%ld var%ld var%ld\n", string_opcode[imcode->opcode],
 	     imcode->operand1, imcode->operand2,
 	     imcode->operand3, imcode->operand4, imcode->operand5,
 	     imcode->operand6);
       break;
 
     case OP_REUSEAGENT5:
-      printf("%s var%ld id:%ld var%ld var%ld var%ld var%ld var%ld\n",
+      printf("%s var%ld id%ld var%ld var%ld var%ld var%ld var%ld\n",
 	     string_opcode[imcode->opcode],
 	     imcode->operand1, imcode->operand2,
 	     imcode->operand3, imcode->operand4, imcode->operand5,
@@ -2834,7 +2837,7 @@ void IMCode_puts(int n) {
       
       // arity is 3: opcode var1 id2 LABEL3
     case OP_JMPCNCT:
-      printf("%s var%ld id:%ld %s%ld\n", string_opcode[imcode->opcode],
+      printf("%s var%ld id%ld %s%ld\n", string_opcode[imcode->opcode],
 	     imcode->operand1, imcode->operand2,
 	     string_opcode[OP_LABEL],imcode->operand3);
       break;
@@ -2866,13 +2869,15 @@ void IMCode_puts(int n) {
 
 #define MAX_VMCODE_SEQUENCE 1024  
 void VMCode_puts(void **code, int n) {
+  int line = 0;
   
-  puts("[PutsCode]");
+  //puts("[PutsCode]");
   if (n==-1) n = MAX_VMCODE_SEQUENCE;
 
-  printf("Addr.\n");
+  printf("Line:Addr.\n");
   for (int i=0; i<n; i++) {
-    printf("%04d: ", i);
+    line++;
+    printf("%04d:%04d: ", line, i);
     
     if (code[i] == CodeAddr[OP_MKNAME]) {
       printf("mkname reg%lu\n",
@@ -2880,27 +2885,34 @@ void VMCode_puts(void **code, int n) {
       i+=1;
       
     } else if (code[i] == CodeAddr[OP_MKGNAME]) {
-      printf("mkgname id:%lu reg%lu; \"%s\"\n",
+      printf("mkgname id%lu reg%lu; \"%s\"\n",
 	     (unsigned long)code[i+1],
 	     (unsigned long)code[i+2],
 	     IdTable_get_name((unsigned long)code[i+1]));
       i+=2;
 
     } else if (code[i] == CodeAddr[OP_MKAGENT0]) {
-      printf("mkagent0 id:%lu reg%lu\n", 
+#ifdef USE_MKAGENT_N
+      printf("mkagent0 id%lu reg%lu\n", 
 	     (unsigned long)code[i+1],
 	     (unsigned long)code[i+2]);
+#else
+      printf("mkagent id:%lu reg%lu\n", 
+	     (unsigned long)code[i+1],
+	     (unsigned long)code[i+2]);
+#endif
+      
       i+=2;
 
     } else if (code[i] == CodeAddr[OP_MKAGENT1]) {
 #if !defined(OPTIMISE_TWO_ADDRESS) || !defined(OPTIMISE_TWO_ADDRESS_MKAGENT1)
-      printf("mkagent1 id:%lu reg%lu reg%lu\n", 
+      printf("mkagent1 id%lu reg%lu reg%lu\n", 
 	     (unsigned long)code[i+1],
 	     (unsigned long)code[i+2],
 	     (unsigned long)code[i+3]);
       i+=3;
 #else
-      printf("mkagent1 id:%lu reg%lu\n", 
+      printf("mkagent1 id%lu reg%lu\n", 
 	     (unsigned long)code[i+1],
 	     (unsigned long)code[i+2]);
       i+=2;
@@ -2908,14 +2920,14 @@ void VMCode_puts(void **code, int n) {
 
     } else if (code[i] == CodeAddr[OP_MKAGENT2]) {
 #if !defined(OPTIMISE_TWO_ADDRESS) || !defined(OPTIMISE_TWO_ADDRESS_MKAGENT2)
-      printf("mkagent2 id:%lu reg%lu reg%lu reg%lu\n", 
+      printf("mkagent2 id%lu reg%lu reg%lu reg%lu\n", 
 	     (unsigned long)code[i+1],
 	     (unsigned long)code[i+2],
 	     (unsigned long)code[i+3],
 	     (unsigned long)code[i+4]);
       i+=4;
 #else
-      printf("mkagent2 id:%lu reg%lu reg%lu\n", 
+      printf("mkagent2 id%lu reg%lu reg%lu\n", 
 	     (unsigned long)code[i+1],
 	     (unsigned long)code[i+2],
 	     (unsigned long)code[i+3]);
@@ -2924,7 +2936,7 @@ void VMCode_puts(void **code, int n) {
       
     } else if (code[i] == CodeAddr[OP_MKAGENT3]) {
 #if !defined(OPTIMISE_TWO_ADDRESS) || !defined(OPTIMISE_TWO_ADDRESS_MKAGENT3)
-      printf("mkagent3 id:%lu reg%lu reg%lu reg%lu reg%lu\n", 
+      printf("mkagent3 id%lu reg%lu reg%lu reg%lu reg%lu\n", 
 	     (unsigned long)code[i+1],
 	     (unsigned long)code[i+2],
 	     (unsigned long)code[i+3],
@@ -2932,7 +2944,7 @@ void VMCode_puts(void **code, int n) {
 	     (unsigned long)code[i+5]);
       i+=5;
 #else
-      printf("mkagent3 id:%lu reg%lu reg%lu reg%lu\n", 
+      printf("mkagent3 id%lu reg%lu reg%lu reg%lu\n", 
 	     (unsigned long)code[i+1],
 	     (unsigned long)code[i+2],
 	     (unsigned long)code[i+3],
@@ -2942,7 +2954,7 @@ void VMCode_puts(void **code, int n) {
       
     } else if (code[i] == CodeAddr[OP_MKAGENT4]) {
 #if !defined(OPTIMISE_TWO_ADDRESS) || !defined(OPTIMISE_TWO_ADDRESS_MKAGENT4)
-      printf("mkagent4 id:%lu reg%lu reg%lu reg%lu reg%lu reg%lu\n", 
+      printf("mkagent4 id%lu reg%lu reg%lu reg%lu reg%lu reg%lu\n", 
 	     (unsigned long)code[i+1],
 	     (unsigned long)code[i+2],
 	     (unsigned long)code[i+3],
@@ -2951,7 +2963,7 @@ void VMCode_puts(void **code, int n) {
 	     (unsigned long)code[i+6]);
       i+=6;
 #else
-      printf("mkagent4 id:%lu reg%lu reg%lu reg%lu reg%lu\n", 
+      printf("mkagent4 id%lu reg%lu reg%lu reg%lu reg%lu\n", 
 	     (unsigned long)code[i+1],
 	     (unsigned long)code[i+2],
 	     (unsigned long)code[i+3],
@@ -2961,7 +2973,7 @@ void VMCode_puts(void **code, int n) {
 #endif
       
     } else if (code[i] == CodeAddr[OP_MKAGENT5]) {
-      printf("mkagent5 id:%lu reg%lu reg%lu reg%lu reg%lu reg%lu reg%lu\n", 
+      printf("mkagent5 id%lu reg%lu reg%lu reg%lu reg%lu reg%lu reg%lu\n", 
 	     (unsigned long)code[i+1],
 	     (unsigned long)code[i+2],
 	     (unsigned long)code[i+3],
@@ -3084,12 +3096,12 @@ void VMCode_puts(void **code, int n) {
       i+=2;
       
     } else if (code[i] == CodeAddr[OP_CHID_L]) {
-      printf("chgid_l $%ld\n",
+      printf("chgid_l id:%ld\n",
 	     (unsigned long)code[i+1]);
       i+=1;
       
     } else if (code[i] == CodeAddr[OP_CHID_R]) {
-      printf("chgid_r $%ld\n",
+      printf("chgid_r id:%ld\n",
 	     (unsigned long)code[i+1]);
       i+=1;
       
@@ -3265,7 +3277,7 @@ void VMCode_puts(void **code, int n) {
       i+=2;
 
     } else if (code[i] == CodeAddr[OP_JMPCNCT]) {
-      printf("jmpcnct reg%lu id:%lu $%lu\n",
+      printf("jmpcnct reg%lu id%lu $%lu\n",
 	     (unsigned long)code[i+1],
 	     (unsigned long)code[i+2],
 	     (unsigned long)code[i+3]);
@@ -3352,6 +3364,7 @@ typedef enum {
   NB_META_L,
   NB_META_R,
   NB_INTVAR,
+  NB_WILDCARD,
 } NB_TYPE;
 
 
@@ -3365,7 +3378,7 @@ typedef struct {
               // >0: local name
               // (for the bind names: should be 1)
               // (for the int names: not paticular)
-  NB_TYPE type; // NB_NAME, NB_META_L, NB_META_R or NB_INTVAR
+  NB_TYPE type; // NB_NAME, NB_META_L (or R), NB_INTVAR, NB_WILDCARD
 } NameBind;
 
 
@@ -3404,8 +3417,13 @@ typedef struct {
   // the amount of compilation error
   int count_compilation_errors;
 
-  // warning output for x:int~y:int and x:int~1
+  // warning output for x~y and x~i
+  // where x and y are int modified names, and i is an integer such as 1
   int put_warning_for_cnct_property;
+
+  // a flag to output compiled codes
+  int put_compiled_codes;
+  
   
 } CmEnvironment;
 
@@ -3414,11 +3432,13 @@ typedef struct {
 #define ANNOTATE_NOTHING      0 // The rule agent is not reused.
 #define ANNOTATE_REUSE        1 // Annotation (*L), (*R) is specified.
 #define ANNOTATE_INT_MODIFIER 2 // (int i), therefore it must not be freed.
-#define ANNOTATE_TCO          3 // Annotated and reused as TCO.
+#define ANNOTATE_WILDCARD     3 // Wildcard Agent, therefore it must not be freed.
+#define ANNOTATE_TCO          4 // Annotated and reused as TCO.
 
 // Init for CmEnv
 static CmEnvironment CmEnv = {
   .put_warning_for_cnct_property = 1, // with warning
+  .put_compiled_codes = 0,            // without outputting codes
 };
 
 
@@ -3511,11 +3531,14 @@ void CmEnv_clear_keeping_rule_properties(void)
 {
   // clear the information of names EXCEPT meta ones.
   CmEnv_clear_bind(CmEnv.bindPtr_metanames);
-  
-  if (CmEnv.annotateL != ANNOTATE_INT_MODIFIER) {
+
+  // Except of  ANNOTATE_INT and ANNOTATE_WILDCARD
+  if ((CmEnv.annotateL != ANNOTATE_INT_MODIFIER)
+      && (CmEnv.annotateL != ANNOTATE_WILDCARD)) {
     CmEnv.annotateL = ANNOTATE_NOTHING;
   }
-  if (CmEnv.annotateR != ANNOTATE_INT_MODIFIER) {
+  if ((CmEnv.annotateR != ANNOTATE_INT_MODIFIER)
+      && (CmEnv.annotateR != ANNOTATE_WILDCARD)) {
     CmEnv.annotateR = ANNOTATE_NOTHING;
   }
 
@@ -3666,7 +3689,10 @@ int CmEnv_check_linearity_in_rule(void) {
 
   for (i=0; i<CmEnv.bindPtr; i++) {
 
-    if ((CmEnv.bind[i].type == NB_META_L) || (CmEnv.bind[i].type == NB_META_R)) {
+    if ((CmEnv.bind[i].type == NB_META_L)
+	|| (CmEnv.bind[i].type == NB_META_R)
+	|| (CmEnv.bind[i].type == NB_WILDCARD)
+	) {
       if (CmEnv.bind[i].refnum != 1) { // Be just once!
 	printf("%d:ERROR: `%s' is referred not once in the right-hand side ",
 	       yylineno, CmEnv.bind[i].name);
@@ -3674,7 +3700,10 @@ int CmEnv_check_linearity_in_rule(void) {
       }
       
     } else if (CmEnv.bind[i].type == NB_NAME) {
-      if (CmEnv.bind[i].refnum != 1) { // Be just once in the RHS.
+      if (CmEnv.bind[i].refnum != 1) {
+	// It must occur twice.
+	// The first occurrence is just recorded and not counted as referred.
+	// So, be just once in the RHS.
 	printf("%d:ERROR: `%s' is referred not twice in the right-hand side ",
 	       yylineno, CmEnv.bind[i].name);
 	return 0;
@@ -4541,7 +4570,7 @@ int CmEnv_generate_VMCode(void **code) {
       break;
     }
     case OP_MKAGENT1: {
-      //      printf("OP_MKAGENT1 id:%d var%d var%d\n", 
+      //      printf("OP_MKAGENT1 id%d var%d var%d\n", 
       //	     imcode->operand1, imcode->operand2, imcode->operand3);
       long src1 = imcode->operand2;
       long dest = imcode->operand3;
@@ -4574,7 +4603,7 @@ int CmEnv_generate_VMCode(void **code) {
       break;
     }
     case OP_MKAGENT2: {
-      //      printf("OP_MKAGENT2 id:%d var%d var%d var%d\n", 
+      //      printf("OP_MKAGENT2 id%d var%d var%d var%d\n", 
       //	     imcode->operand1, imcode->operand2,
       //	     imcode->operand3, imcode->operand4);
 
@@ -4620,7 +4649,7 @@ int CmEnv_generate_VMCode(void **code) {
       break;
     }
     case OP_MKAGENT3: {
-      //      printf("OP_MKAGENT3 id:%d var%d var%d var%d var%d \n", 
+      //      printf("OP_MKAGENT3 id%d var%d var%d var%d var%d \n", 
       //	     imcode->operand1, imcode->operand2,
       //	     imcode->operand3, imcode->operand4, imcode->operand5);
       long src1 = imcode->operand2;
@@ -4671,7 +4700,7 @@ int CmEnv_generate_VMCode(void **code) {
       break;
     }
     case OP_MKAGENT4:  {
-      //      printf("OP_MKAGENT4 var%d id:%d var%d var%d var%d var%d\n", 
+      //      printf("OP_MKAGENT4 var%d id%d var%d var%d var%d var%d\n", 
       //	     imcode->operand1, imcode->operand2,
       //	     imcode->operand3, imcode->operand4, imcode->operand5);
       long src1 = imcode->operand2;
@@ -4729,7 +4758,7 @@ int CmEnv_generate_VMCode(void **code) {
       break;
     }      
     case OP_MKAGENT5: {
-      //      printf("OP_MKAGENT5 var%d id:%d var%d var%d var%d var%d\n", 
+      //      printf("OP_MKAGENT5 var%d id%d var%d var%d var%d var%d\n", 
       //	     imcode->operand1, imcode->operand2,
       //	     imcode->operand3, imcode->operand4, imcode->operand5);
       long src1 = imcode->operand2;
@@ -4786,7 +4815,7 @@ int CmEnv_generate_VMCode(void **code) {
 
 
     case OP_REUSEAGENT0: {
-      //      printf("OP_REUSEAGENT0 var%d id:%d\n", 
+      //      printf("OP_REUSEAGENT0 var%d id%d\n", 
       //	     imcode->operand1, imcode->operand2);
       int dest = imcode->operand1;
 
@@ -4800,7 +4829,7 @@ int CmEnv_generate_VMCode(void **code) {
     }
       
     case OP_REUSEAGENT1: {
-      //      printf("OP_REUSEAGENT1 var%d id:%d var%d\n", 
+      //      printf("OP_REUSEAGENT1 var%d id%d var%d\n", 
       //	     imcode->operand1, imcode->operand2, imcode->operand3);
       long dest = imcode->operand1;
       long src1 = imcode->operand3;
@@ -4846,7 +4875,7 @@ int CmEnv_generate_VMCode(void **code) {
     }
       
     case OP_REUSEAGENT3: {
-      //      printf("OP_REUSEAGENT3 var%d id:%d var%d var%d var%d\n", 
+      //      printf("OP_REUSEAGENT3 var%d id%d var%d var%d var%d\n", 
       //	     imcode->operand1, imcode->operand2,
       //	     imcode->operand3, imcode->operand4, imcode->operand5);
       long dest = imcode->operand1;
@@ -4883,7 +4912,7 @@ int CmEnv_generate_VMCode(void **code) {
     }
       
     case OP_REUSEAGENT4: {
-      //      printf("OP_REUSEAGENT3 var%d id:%d var%d var%d var%d\n", 
+      //      printf("OP_REUSEAGENT3 var%d id%d var%d var%d var%d\n", 
       //	     imcode->operand1, imcode->operand2,
       //	     imcode->operand3, imcode->operand4, imcode->operand5);
       long dest = imcode->operand1;
@@ -4927,7 +4956,7 @@ int CmEnv_generate_VMCode(void **code) {
       break;
     }      
     case OP_REUSEAGENT5: {
-      //      printf("OP_REUSEAGENT3 var%d id:%d var%d var%d var%d\n", 
+      //      printf("OP_REUSEAGENT3 var%d id%d var%d var%d var%d\n", 
       //	     imcode->operand1, imcode->operand2,
       //	     imcode->operand3, imcode->operand4, imcode->operand5);
       long dest = imcode->operand1;
@@ -5440,7 +5469,7 @@ int CmEnv_generate_VMCode(void **code) {
       
     case OP_JMPCNCT: {
       // OP_JMPCNCT var id label
-      //      printf("OP_JMPCNCT var%d id:%d $%d\n",
+      //      printf("OP_JMPCNCT var%d id%d $%d\n",
       //	     imcode->operand1, imcode->operand2, imcode->operand3);
       long src1 = imcode->operand1;
 
@@ -6382,8 +6411,22 @@ int Compile_term_on_ast(Ast *ptr, int target) {
       IMCode_genCode2(mkagent, ID_NIL, result);
     } else {
       result = target;
+
+#ifdef OLD_REUSEAGENT
       mkagent = OP_REUSEAGENT0;
       IMCode_genCode2(mkagent, result, ID_NIL);
+#else
+      if (target == VM_OFFSET_ANNOTATE_L) {      
+	if (CmEnv.idL != ID_NIL) {
+	  IMCode_genCode1(OP_CHID_L, ID_NIL);
+	}
+      } else {
+	if (CmEnv.idR != ID_NIL) {
+	  IMCode_genCode1(OP_CHID_R, ID_NIL);
+	}	
+      }      
+#endif
+      
     }
 
     return result;
@@ -7606,13 +7649,14 @@ void RuleTable_delete(int symlID, int symrID) {
 }
 
 
-void *RuleTable_get_code(VALUE heap_syml, VALUE heap_symr, int *result) {
+//void *RuleTable_get_code(VALUE heap_syml, VALUE heap_symr, int *result) {
+void *RuleTable_get_code(int syml, int symr, int *result) {
   // returns:
   //   *code  :  for syml><symr
   //   result :  1 for success, otherwise 0.
   
-  int syml = AGENT(heap_syml)->basic.id;
-  int symr = AGENT(heap_symr)->basic.id;
+  //  int syml = AGENT(heap_syml)->basic.id;
+  //  int symr = AGENT(heap_symr)->basic.id;
   
   //RuleList *add;
   
@@ -7646,6 +7690,8 @@ void *RuleTable_get_code(VALUE heap_syml, VALUE heap_symr, int *result) {
   return NULL;
 
 }
+
+
 
 
 //static inline
@@ -7700,9 +7746,9 @@ void RuleTable_record(int symlID, int symrID, void **code, int byte) {
 }
 
 
-void *RuleTable_get_code(VALUE heap_syml, VALUE heap_symr, int *result) {
-  int symlID = AGENT(heap_syml)->basic.id;
-  int symrID = AGENT(heap_symr)->basic.id;
+void *RuleTable_get_code(int symlID, int symrID, int *result) {
+  //  int symlID = AGENT(heap_syml)->basic.id;
+  //  int symrID = AGENT(heap_symr)->basic.id;
 
   void *code = RuleTable[symrID][symlID];
   if (code == NULL) {
@@ -7713,6 +7759,7 @@ void *RuleTable_get_code(VALUE heap_syml, VALUE heap_symr, int *result) {
     
   return code;
 }
+
 
 static inline
 void RuleTable_get_code_for_Int(VALUE heap_syml, void ***code) {
@@ -7802,15 +7849,24 @@ int set_metaR(Ast *ast) {
   return 1;
 }
 
+
 void set_metaL_as_IntName(Ast *ast) {
-  //  CmEnv_set_symbol_as_meta(ast->left->sym, CmEnv.reg_agentL, NB_INTVAR);
   CmEnv_set_symbol_as_meta(ast->left->sym, VM_OFFSET_ANNOTATE_L, NB_INTVAR);
   
 }
 
 void set_metaR_as_IntName(Ast *ast) {
-  //  CmEnv_set_symbol_as_meta(ast->left->sym, CmEnv.reg_agentR, NB_INTVAR);
-  CmEnv_set_symbol_as_meta(ast->left->sym, VM_OFFSET_ANNOTATE_L, NB_INTVAR);
+  CmEnv_set_symbol_as_meta(ast->left->sym, VM_OFFSET_ANNOTATE_R, NB_INTVAR);
+}
+
+
+void set_metaL_as_AnyAgent(Ast *ast) {
+  CmEnv_set_symbol_as_meta(ast->left->sym, VM_OFFSET_ANNOTATE_L, NB_WILDCARD);
+  
+}
+
+void set_metaR_as_AnyAgent(Ast *ast) {
+  CmEnv_set_symbol_as_meta(ast->left->sym, VM_OFFSET_ANNOTATE_R, NB_WILDCARD);
 }
 
 
@@ -7839,6 +7895,9 @@ int get_ruleagentID(Ast *ruleAgent) {
     
   } else if (ruleAgent->id == AST_INTVAR) {
     id = ID_INT;
+
+  } else if (ruleAgent->id == AST_NAME) {
+    id = ID_WILDCARD;
 
   } else if (strcmp((char *)ruleAgent->left->sym, "Int") == 0) {
     id = ID_INTAGENT;
@@ -7875,24 +7934,26 @@ int make_rule_oneway(Ast *ast) {
   int gencode_num=0;
 
 
+  CmEnv_clear_all(); 
 
+
+
+  
   //  #define PUT_RULE_COMPILATION_TIME
 #ifdef PUT_RULE_COMPILATION_TIME
   unsigned long long t, time;
   start_timer(&t);
 #endif
 
-  CmEnv_clear_all(); 
-
   
   ruleAgent_L = ast->left->left;
   ruleAgent_R = ast->left->right;
 
   
-  //        #define MYDEBUG1
+  //          #define MYDEBUG1
 #ifdef MYDEBUG1
-  ast_puts(ruleAgent_L); puts("");
-  ast_puts(ruleAgent_R); puts("");
+  printf("MYDEBUG1"); ast_puts(ruleAgent_L); puts("");
+  printf("MYDEBUG1"); ast_puts(ruleAgent_R); puts("");
   //  ast_puts(bodies); exit(1);
 #endif
 
@@ -7957,13 +8018,11 @@ int make_rule_oneway(Ast *ast) {
   }
   */
 
-  
-
   int arity;
   
   // IMPORTANT:
   // The first two codes stores arities of idL and idR, respectively.
-  if (idL == ID_INT) {
+  if ((idL == ID_INT) || (idL == ID_WILDCARD)) {
     arity = 0;
   } else {
     arity = get_arity_on_ast(ruleAgent_L);
@@ -7977,7 +8036,7 @@ int make_rule_oneway(Ast *ast) {
   IdTable_set_arity(idL, arity);
   code[0] = (void *)(unsigned long)arity;
   
-  if (idR == ID_INT) {
+  if ((idR == ID_INT) || (idR == ID_WILDCARD)) {
     arity = 0;
   } else {
     arity = get_arity_on_ast(ruleAgent_R);
@@ -7995,11 +8054,13 @@ int make_rule_oneway(Ast *ast) {
   
 
   
-  //  CmEnv_clear_all(); 
  
   if (idL == ID_INT) {
     set_metaL_as_IntName(ruleAgent_L);
     CmEnv.annotateL = ANNOTATE_INT_MODIFIER; // to prevent putting Free_L
+  } else if (idL == ID_WILDCARD) {
+    set_metaL_as_AnyAgent(ruleAgent_L);
+    CmEnv.annotateL = ANNOTATE_WILDCARD; // to prevent putting Free_L
   } else {
     if (!set_metaL(ruleAgent_L)) {
       return 0;
@@ -8009,6 +8070,9 @@ int make_rule_oneway(Ast *ast) {
   if (idR == ID_INT) {
     set_metaR_as_IntName(ruleAgent_R);
     CmEnv.annotateR = ANNOTATE_INT_MODIFIER;  // to prevent putting Free_R
+  } else if (idR == ID_WILDCARD) {
+    set_metaR_as_AnyAgent(ruleAgent_R);
+    CmEnv.annotateR = ANNOTATE_WILDCARD;  // to prevent putting Free_R
   } else {
     if (!set_metaR(ruleAgent_R)) {
       return 0;
@@ -8065,7 +8129,7 @@ int make_rule_oneway(Ast *ast) {
 #endif
   
 
-  //            #define DEBUG_MKRULE  
+  //              #define DEBUG_MKRULE  
 #ifndef DEBUG_MKRULE  
   gencode_num += CmEnv_generate_VMCode(&code[2]);
 #else
@@ -8102,6 +8166,18 @@ int make_rule_oneway(Ast *ast) {
   //    ast_puts(ruleAgent_R); puts("");
 #endif
 
+
+  if (CmEnv.put_compiled_codes) {
+    printf("Rule: %s(id:%d,arity:%lu) >< %s(id:%d,arity:%lu).\n", 
+  	   IdTable_get_name(idL), idL, (unsigned long)code[0],
+  	   IdTable_get_name(idR), idR, (unsigned long)code[1]);    
+    VMCode_puts(&code[2], gencode_num-2);
+    if (yyin != stdin) {
+      puts("");
+    }
+  }
+
+  
   // Record the rule code for idL >< idR
   RuleTable_record(idL, idR, code, gencode_num); 
 
@@ -8167,6 +8243,7 @@ int make_rule(Ast *ast) {
   Ast *ruleAgent_L = ast->left->left;
   Ast *ruleAgent_R = ast->left->right;
 
+  /*
   if (ruleAgent_L->id == AST_NAME) {
     printf("%d:ERROR: The name `%s' was specified as the left-hand side of rule agents. It should be an agent.\n", yylineno, ruleAgent_L->left->sym);
     return 0;
@@ -8175,6 +8252,7 @@ int make_rule(Ast *ast) {
     printf("%d:ERROR: The name `%s' was specified as the right-hand side of rule agents. It should be an agent.\n", yylineno, ruleAgent_R->left->sym);
     return 0;
   }
+  */
   
   
   ast->left->left = ast_remove_tuple1(ruleAgent_L);
@@ -8194,21 +8272,33 @@ int make_rule(Ast *ast) {
 
   
   // another way
-  
+  int preserve_CmEnv_put_compiled_codes = CmEnv.put_compiled_codes;
+  CmEnv.put_compiled_codes = 0;            // without outputting codes
+    
   CmEnv.put_warning_for_cnct_property = 0; // without warning
 
-  
+  Ast *tmp;
+  tmp = ast->left->left;
+  ast->left->left = ast->left->right;
+  ast->left->right = tmp;
+
+  /*
   ruleAgent_L = ast->left->left;
   ruleAgent_R = ast->left->right;
   
   ast->left->left = ruleAgent_R;
   ast->left->right = ruleAgent_L;
+  */
+  
   set_annotation_LR(VM_OFFSET_ANNOTATE_R, VM_OFFSET_ANNOTATE_L);
   
   //  ast_puts(ast);puts("");
   int result_make_rule = make_rule_oneway(ast);
 
   CmEnv.put_warning_for_cnct_property = 1; // retrieve warning 
+  CmEnv.put_compiled_codes = preserve_CmEnv_put_compiled_codes; //retrieve
+
+
   
   return result_make_rule;
 }
@@ -9546,6 +9636,7 @@ loop:
   if (IS_FIXNUM(a2)) {
 loop_a2IsFixnum:    
     if (IS_FIXNUM(a1)) {
+
       printf("Runtime ERROR: "); puts_term(a1); printf("~"); puts_term(a2); 
       printf("\nInteger %ld >< %ld can not be used as an active pair\n",
 	     FIX2INT(a1), FIX2INT(a2));
@@ -9558,13 +9649,13 @@ loop_a2IsFixnum:
 #endif
     }
 
-    // a1 is agent
+    // a1 is an agent
     if (IS_AGENTID(BASIC(a1)->id)) {
 
       void **code = NULL;
      
       RuleTable_get_code_for_Int(a1, &code);
-
+      
       if (code == NULL) {	
 	// built-in: BUILT-IN_OP >< int 
 
@@ -9849,7 +9940,7 @@ loop_a2IsAgent:
       int result;
       void **code;
             
-      code = RuleTable_get_code(a1, a2, &result);
+      code = RuleTable_get_code(BASIC(a1)->id, BASIC(a2)->id, &result);
 
       if (result == 0) {
 	// there is no user-defined rule.
@@ -10698,6 +10789,12 @@ loop_agent_a1_a2_this_order:
 	} // end switch(BASIC(a1)->id)
 
 
+	// Wildcard Agents
+	code = RuleTable_get_code(BASIC(a1)->id, ID_WILDCARD, &result);
+	if (result != 0) {
+	  //	  VMCode_puts(&code[0], 10);
+	  goto label_exec_agent_a1_a2;
+	}
 
 	if ((BASIC(a1)->id < BASIC(a2)->id)
 	    || (BASIC(a2)->id == ID_ERASER)
@@ -10710,7 +10807,7 @@ loop_agent_a1_a2_this_order:
 	}
 	
 	
-	printf("Runtime Error: There is no interaction rule for the following pair:\n  ");
+	printf("Runtime Error: There is no interaction rule for the following pair:\n");
 	puts_term(a1);
 	printf("~");
 	puts_term(a2);
@@ -10735,6 +10832,7 @@ loop_agent_a1_a2_this_order:
       //      return;
 
       
+label_exec_agent_a1_a2:      
       int i;
       unsigned long arity;
       arity = (unsigned long)code[0];
@@ -10795,6 +10893,7 @@ loop_agent_a1_a2_this_order:
       vm->reg[VM_OFFSET_ANNOTATE_L] = a1;
       vm->reg[VM_OFFSET_ANNOTATE_R] = a2;
 
+      
       //free_Agent(a1);
       //free_Agent(a2);
 
@@ -11550,7 +11649,6 @@ int main(int argc, char *argv[])
 	printf(" -f <filename>    Set input file name                     (Default:      STDIN)\n");
 	printf(" -d <Name>=<val>  Bind <val> to <Name>\n");
 
-
 #ifdef EXPANDABLE_HEAP
 #elif defined(FLEX_EXPANDABLE_HEAP)
 	printf(" -Xms <num>       Set initial heap size to 2^<num>        (Defalut: %2u (=%4u))\n",
@@ -11562,7 +11660,7 @@ int main(int argc, char *argv[])
 	printf("                    2: the size is four times (=2^2).\n");	
 #else
 	//v0.5.6
-	printf(" -c <num>         Set size of heaps                       (Defalut: %10u)\n", heap_size);
+	printf(" -m <num>         Set size of heaps                       (Defalut: %10u)\n", heap_size);
 #endif
 
 	
@@ -11576,6 +11674,8 @@ int main(int argc, char *argv[])
 #else
 	printf(" -w               Enable Weak Reduction strategy          (Default:    disable)\n");
 #endif
+
+	printf(" -c               Enable to output compiled codes         (Default:    disable)\n");
 
 
 	
@@ -11726,17 +11826,17 @@ int main(int argc, char *argv[])
 
 
 #if !defined(EXPANDABLE_HEAP) && !defined(FLEX_EXPANDABLE_HEAP)
-      case 'c':
+      case 'm':
 	// v0.5.6
         i++;
         if (i < argc) {
           param = atoi(argv[i]);
           if (param == 0) {
-            printf("ERROR: `%s' is illegal parameter for -c\n", argv[i]);
+            printf("ERROR: `%s' is illegal parameter for -m\n", argv[i]);
             exit(-1);
           }
         } else {
-          printf("ERROR: The option `-c' needs a number as an argument.");
+          printf("ERROR: The option `-m' needs a number as an argument.");
           exit(-1);
         }
         heap_size=param;
@@ -11767,7 +11867,12 @@ int main(int argc, char *argv[])
         break;	  
 #endif
 	  
-	  
+
+      case 'c':
+	CmEnv.put_compiled_codes = 1;
+	break;
+
+	
       default:
         printf("ERROR: Unrecognized option %s\n", argv[i]);
         printf("Use -h option for getting more information.\n\n");
