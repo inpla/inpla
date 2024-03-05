@@ -17,10 +17,12 @@
 * [Commands](#commands)
 * [Execution Options](#execution-options)
 * [Advanced topics](#advanced-topics)
-  - [Reuse annotations](#reuse-annotations)
-  - [built-in agents more](#built-in-agents-more)
-  - [Map and reduce functions (with Abbreviation notation `%`)](#map-and-reduce-functions)
-  - [Weak reduction strategy](#weak-reduction-strategy)
+  * [Wildcard agent in rule definitions](#Wildcard-agent-in-rule-definitions)
+  * [Reuse annotations](#reuse-annotations)
+  * [built-in agents more](#built-in-agents-more)
+  * [Map and reduce functions (with Abbreviation notation `%`)](#map-and-reduce-functions)
+  * [Weak reduction strategy](#weak-reduction-strategy)
+
 
 
 
