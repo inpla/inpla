@@ -1,5 +1,19 @@
 # Change log
 
+### v0.12.1 (released on  Mar 2024)
+
+#### Bug Fix
+
+- **Compilation error in some environment**: A compilation error occurred in some environment:
+
+  ```
+  src/inplya.y:10836:7: error: a label can only be part of a statement and a declaration is not a statement
+  ```
+
+  It is now fixed.
+
+
+
 ### v0.12.0 (released on 5 Mar 2024)
 
 #### New Features

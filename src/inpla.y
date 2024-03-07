@@ -22,8 +22,8 @@
 
 // ----------------------------------------------
   
-#define VERSION "0.12.0"
-#define BUILT_DATE  "5 Mar 2024"
+#define VERSION "0.12.1"
+#define BUILT_DATE  "8 Mar 2024"
 
 // ------------------------------------------------------------------
 
@@ -10832,7 +10832,8 @@ loop_agent_a1_a2_this_order:
       //      return;
 
       
-label_exec_agent_a1_a2:      
+label_exec_agent_a1_a2:
+      ;
       int i;
       unsigned long arity;
       arity = (unsigned long)code[0];
