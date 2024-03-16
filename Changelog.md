@@ -1,6 +1,53 @@
 # Change log
 
-### v0.12.1 (released on  Mar 2024)
+### v0.12.2 (released on 16 Mar 2024)
+
+#### New Features
+
+- **Tail call optimisation on/off switch**: Tail call optimisation was enabled by default. It is now enabled by invoking Inpla with `-foptimise-tail-calls`. If the last equation in a rule has the reuse annotations, this optimisation is cancelled the same as before. I hope that this will be useful if we want to have a *pure* interaction nets evaluator.
+
+  ```
+  $ ./inpla -c
+  Inpla 0.12.2 : Interaction nets as a programming language [built: 16 Mar 2024]
+  >>> add(r,y) >< S(x) => r~S(w), add(w,y)~x;
+  Rule: add(id:33,arity:2) >< S(id:32,arity:1).
+  Line:Addr.
+  0001:0000: mkname reg13
+  0002:0002: mkagent id:32 reg14
+  0003:0005: loadp reg13 $0 reg14
+  0004:0009: push reg1 reg14
+  0005:0012: mkagent id:33 reg14
+  0006:0015: loadp reg13 $0 reg14
+  0007:0019: loadp reg2 $1 reg14
+  0008:0023: push reg14 reg6
+  0009:0026: ret_free_lr
+  >>>
+  ```
+  The following is an example with the optimisation enabled:
+  ```
+  $ ./inpla -c -foptimise-tail-calls
+  Inpla 0.12.2 : Interaction nets as a programming language [built: 16 Mar 2024]
+  >>> add(r,y) >< S(x) => r~S(w), add(w,y)~x;
+  Rule: add(id:33,arity:2) >< S(id:32,arity:1).
+  Line:Addr.
+  0001:0000: mkname reg13
+  0002:0002: mkagent id:32 reg14
+  0003:0005: loadp reg13 $0 reg14
+  0004:0009: push reg1 reg14
+  0005:0012: jmpcnct reg6 id32 $15    ; if x is S, PC is added by 15 (=> go to 0031).
+  0006:0016: mkagent id:33 reg14
+  0007:0019: loadp reg13 $0 reg14
+  0008:0023: loadp reg2 $1 reg14
+  0009:0027: push reg14 reg6
+  0010:0030: ret_free_lr
+  0011:0031: load reg13 reg1          ; w is connected as add(w,_)
+  0012:0034: loop_rrec1_free_r reg6   ; reload x as the RHS node and loop this rule.
+  >>>
+  ```
+
+
+
+### v0.12.1 (released on  8 Mar 2024)
 
 #### Bug Fix
 

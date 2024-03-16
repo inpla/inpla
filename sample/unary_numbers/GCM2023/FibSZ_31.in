@@ -1,0 +1,19 @@
+// Fibonacci number on unary natural numbers
+fib(r)><Z => r~Z;
+fib(r)><S(x) => fibS(r)~x;
+fibS(r)><Z => r~S(Z);
+fibS(r)><S(x) => Dup(x1,x2)~x, add(r,r2)~r1, fib(r2)~x2, fibS(r1)~x1;
+
+
+//------ ADD ------
+add(r,x)><Z => r~x;
+add(r,x)><S(y) => r~S(w), add(w,x)~y;
+
+
+// Execution
+// Fib 31
+//     1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+fib(r)~S(S(S(S(S(S(S(S(S(S(S(S(S(S(S(S(S(S(S(S(S(S(S(S(S(S(S(S(S(S(S(Z)))))))))))))))))))))))))))))));
+prnat r;
+free r;
+

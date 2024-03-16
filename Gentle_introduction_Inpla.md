@@ -639,6 +639,23 @@ Inpla has the following macro:
 
   ```
   $ ./inpla -h
+  Inpla version 0.12.2
+  Usage: inpla [options]
+  
+  Options:
+   -f <filename>    Set input file name                     (Default:      STDIN)
+   -d <Name>=<val>  Bind <val> to <Name>
+   -Xms <num>       Set initial heap size to 2^<num>        (Defalut: 12 (=4096))
+   -Xmt <num>       Set multiple heap increment to 2^<num>  (Defalut:  3 (=   8))
+                      0: the same (=2^0) size heap is inserted when it runs up.
+                      1: the heap size is twice (=2^1).
+                      2: the size is four times (=2^2).
+   -Xes <num>       Set initial equation stack size         (Default:        256)
+   -w               Enable Weak Reduction strategy          (Default:    disable)
+   -c               Enable output of compiled codes         (Default:    disable)
+   -h               Print this help message
+   -foptimise-tail-calls  Enable tail call optimisation     (Default:    disable)
+  
   Inpla version 0.12.0
   Usage: inpla [options]
   
@@ -650,16 +667,18 @@ Inpla has the following macro:
                       0: the same size heap is inserted when it runs up.
                       1: the twice (=2^1) size heap is inserted.
    -Xes <num>       Set initial equation stack size         (Default:        256)
+   -t <num>         Set the number of threads               (Default:          8)
    -w               Enable Weak Reduction strategy          (Default:      false)
    -c               Enable to output compiled codes         (Default:    disable)
-   -t <num>         Set the number of threads               (Default:          8)
    -h               Print this help message
+   -foptimise-tail-calls  Enable tail call optimisation     (Default:    disable)
   ```
 
 **Note**: 
 
 * The option `-w` is available for the single-thread version.
 * The option ```-t``` is available for the multi-thread version that is compiled by ```make thread```. The default value is setting for the number of cores, so execution will be automatically scaled without specifying this. 
+* The option `-foptimise-tail-calls` enables the optimisation of tail calls. If the last equation in a rule has the reuse annotations, this optimisation is cancelled.
 
 
 ## Advanced topics

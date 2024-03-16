@@ -6,10 +6,10 @@
 
 Inpla is a multi-threaded parallel interpreter of interaction nets. Once you write programs for sequential execution, it works also in multi-threaded parallel execution. Each thread is managed on each CPU-core with POSIX-thread library. 
 
-* The current version is 0.12.1, released on **8 Mar 2024**. (See [Changelog.md](Changelog.md) for details.) 
+* The current version is 0.12.2, released on **16 Mar 2024**. (See [Changelog.md](Changelog.md) for details.) 
 * The below graph shows speed-up ratio to threads numbers for programs in the following benchmark table.
 
-![speedup-ratio](pic/benchmark_reuse_v0.11.0.png)
+![speedup-ratio](pic/benchmark_reuse_v0.12.2.png)
 
 
 - **Comparison in execution time** with other implementations: **Haskell** (GHC version 8.10.7), **OCaml** (ocamlopt, the native-code compiler, version 4.13.1), **Standard ML of New Jersey** v110.74 (interpreter mode) and **Python** 3.10.6 in execution time.
@@ -17,19 +17,19 @@ Inpla is a multi-threaded parallel interpreter of interaction nets. Once you wri
 
 |                | Haskell  |   OCaml   |   SML    | Python | Inpla8 | Inpla8r |
 | -------------- | :------: | :------: | :----: | :----: | :------: | :------: |
-| n-queens 12 | [**0.23**](comparison/Haskell/nqueen-12.hs) | [0.44](comparison/OCaml/nqueen12.ml) | [0.60](comparison/SML/ack3-11.sml) | [3.79](comparison/Python/nqueen-12.py) | [0.55](comparison/Inpla/src/nqueen-12.in) | [0.40](comparison/Inpla/src/nqueen-12-reuse.in) |
-| ack(3,11)    |   [2.37](comparison/Haskell/ack3-11.hs)   | [0.57](comparison/OCaml/ack3_11.ml) | [**0.42**](comparison/SML/ack3-11.sml) |   [-](comparison/Python/ack3-11.py)    |  [0.91](comparison/Inpla/src/ack-stream_3-11.in)  |   [0.68](comparison/Inpla/src/ack-stream_3-11-reuse.in)   |
+| n-queens 12 | [**0.23**](comparison/Haskell/nqueen-12.hs) | [0.44](comparison/OCaml/nqueen12.ml) | [0.60](comparison/SML/ack3-11.sml) | [3.79](comparison/Python/nqueen-12.py) | [0.55](comparison/Inpla/src/nqueen-12.in) | [0.41](comparison/Inpla/src/nqueen-12-reuse.in) |
+| ack(3,11)    |   [2.37](comparison/Haskell/ack3-11.hs)   | [0.57](comparison/OCaml/ack3_11.ml) | [**0.42**](comparison/SML/ack3-11.sml) |   [-](comparison/Python/ack3-11.py)    |  [0.92](comparison/Inpla/src/ack-stream_3-11.in)  |   [0.70](comparison/Inpla/src/ack-stream_3-11-reuse.in)   |
 | fib 38       |   [1.61](comparison/Haskell/fib-38.hs)   | [**0.15**](comparison/OCaml/fib38.ml) | [0.27](comparison/SML/fib-38.sml) |  [9.27](comparison/Python/fib-38.py)  |  [0.43](comparison/Inpla/src/fib-38.in)  |   [0.45](comparison/Inpla/src/fib-38-reuse.in)   |
-| bsort 20000 |  [5.03](comparison/Haskell/bsort-20000.hs)  |  [6.47](comparison/OCaml/bsort20000.ml)  |  [2.39](comparison/SML/bsort-20000.sml)  | [20.02](comparison/Python/bsort-20000.py) |  [2.31](comparison/Inpla/src/bsort-20000.in)  | [**1.45**](comparison/Inpla/src/bsort-20000-reuse.in) |
+| bsort 20000 |  [5.03](comparison/Haskell/bsort-20000.hs)  |  [6.47](comparison/OCaml/bsort20000.ml)  |  [2.39](comparison/SML/bsort-20000.sml)  | [20.02](comparison/Python/bsort-20000.py) |  [2.38](comparison/Inpla/src/bsort-20000.in)  | [**1.46**](comparison/Inpla/src/bsort-20000-reuse.in) |
 | isort 20000 | [2.15](comparison/Haskell/isort-20000.hs) |   [1.48](comparison/OCaml/isort20000.ml)   |   [0.60](comparison/SML/isort-20000.sml)   | [8.83](comparison/Python/isort-20000.py) |  [**0.32**](comparison/Inpla/src/isort-20000.in)  |   [0.33](comparison/Inpla/src/isort-20000-reuse.in)   |
 | qsort 260000 | [0.36](comparison/Haskell/qsort-800000.hs) |   [0.22](comparison/OCaml/qsort260000.ml)   |   [0.27](comparison/SML/qsort-260000.sml)   | [10.33](comparison/Python/qsort-260000.py) |  [0.15](comparison/Inpla/src/qsort-260000.in)  |   [**0.12**](comparison/Inpla/src/qsort-260000-reuse.in)   |
-| msort 260000 | [0.38](comparison/Haskell/msort-800000.hs) |   [0.17](comparison/OCaml/msort260000.ml)   |   [0.29](comparison/SML/msort-260000.sml)   | [11.09](comparison/Python/msort-260000.py) |  [**0.14**](comparison/Inpla/src/msort-260000.in)  |   [0.17](comparison/Inpla/src/msort-260000-reuse.in)   |
+| msort 260000 | [0.38](comparison/Haskell/msort-800000.hs) |   [0.17](comparison/OCaml/msort260000.ml)   |   [0.29](comparison/SML/msort-260000.sml)   | [11.09](comparison/Python/msort-260000.py) |  [**0.14**](comparison/Inpla/src/msort-260000.in)  |   [0.18](comparison/Inpla/src/msort-260000-reuse.in)   |
 
 
 
   - The above table contains execution time in second on average of ten times execution by using Linux PC (Core i7-9700 (8 threads, no Hyper-threading), 16GB memory). The fastest one is shown with bold style.   Scripts for the comparison table are in the `comparison` directory. These are written to have the same algorithms as much as possible, though only the Ackermann function in Inpla is a little optimised to interaction nets computing so that it can take advantage of the parallelism well.
   
-  - Inpla8  and Inpla8r mean 8 threads without/with [reuse-annotated](./Gentle_introduction_Inpla.md#reuse-annotations) execution, respectively. 
+  - Inpla8 and Inpla8r mean 8 threads without/with [reuse-annotated](./Gentle_introduction_Inpla.md#reuse-annotations) execution, respectively. Inpla8 is called with an enable switch to optimise tail calls, as it is off by default since v0.12.2. Inpla8r is not called with this option because this optimisation will not work if the last equation in a rule has the reuse annotations.
   
   - "n-queens 12" is computation of n-Queens at 12.
   
@@ -292,8 +292,10 @@ Electronic Communications of the EASST, Volume 73: Graph Computation Models - Se
 
 ## Related Works
 
-* [HINet: Interaction Nets in Haskell](http://www.cas.mcmaster.ca/~kahl/Haskell/HINet/)
+* [Train: Translator of a functional language to interaction nets (Inpla notation)](https://github.com/inpla/train)
 * [High-order Virtual Machine (HVM)](https://github.com/Kindelia/HVM)
+* [Language, interpreter and compiler for interaction nets](https://github.com/szeiger/interact)
+* [HINet: Interaction Nets in Haskell](http://www.cas.mcmaster.ca/~kahl/Haskell/HINet/)
 
 
 

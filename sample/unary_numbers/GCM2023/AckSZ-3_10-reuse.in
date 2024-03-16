@@ -1,0 +1,13 @@
+// Ackermann function on unary natural numbers
+
+ack(r,y)>< Z    => r~(*R)S(y);
+ack(r,y)>< S(x) => (*L)ack_Sx(r, x)~y;
+ack_Sx(r,x)>< Z    => (*L)ack(r, S((*R)Z))~x;
+ack_Sx(r,x)>< S(y) => (*R)Dup(x1,x2)~x, (*L)ack(r,cnt)~x1, ack_Sx(cnt,x2)~y;
+
+// ack 3 10
+//          1 2 3 4 5 6 7 8 9 0
+ack(result, S(S(S(S(S(S(S(S(S(S(Z)))))))))))~S(S(S(Z)));
+
+prnat result;
+exit;

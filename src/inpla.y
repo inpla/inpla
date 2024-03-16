@@ -22,8 +22,8 @@
 
 // ----------------------------------------------
   
-#define VERSION "0.12.1"
-#define BUILT_DATE  "8 Mar 2024"
+#define VERSION "0.12.2"
+#define BUILT_DATE  "16 Mar 2024"
 
 // ------------------------------------------------------------------
 
@@ -3421,9 +3421,11 @@ typedef struct {
   // where x and y are int modified names, and i is an integer such as 1
   int put_warning_for_cnct_property;
 
-  // a flag to output compiled codes
+  // flag: output compiled codes
   int put_compiled_codes;
-  
+
+  // flag: tail-call-optimisation
+  int tco;
   
 } CmEnvironment;
 
@@ -3439,6 +3441,7 @@ typedef struct {
 static CmEnvironment CmEnv = {
   .put_warning_for_cnct_property = 1, // with warning
   .put_compiled_codes = 0,            // without outputting codes
+  .tco = 0,                           // without tail call opt.
 };
 
 
@@ -3641,14 +3644,17 @@ int CmEnv_find_var(char *key) {
   for (i=0; i<CmEnv.bindPtr; i++) {
     if (strcmp(key, CmEnv.bind[i].name) == 0) {
 
-#ifndef OPTIMISE_IMCODE_TCO
-      CmEnv.bind[i].refnum++;
-#else
-      // During compilation on ANNOTATE_TCO, ignore counting up.
-      if (CmEnv.annotateL != ANNOTATE_TCO) {
+      // #ifndef OPTIMISE_IMCODE_TCO
+      if (!CmEnv.tco) {
 	CmEnv.bind[i].refnum++;
-      }	
-#endif
+
+	
+      } else {	
+	// During compilation on ANNOTATE_TCO, ignore counting up.
+	if (CmEnv.annotateL != ANNOTATE_TCO) {
+	  CmEnv.bind[i].refnum++;
+	}	
+      }
       
       return CmEnv.bind[i].reg;
     }
@@ -7019,44 +7025,18 @@ int Compile_eqlist_on_ast_in_rulebody(Ast *at) {
     Ast *next = ast_getTail(at);
 
     
-#ifndef OPTIMISE_IMCODE_TCO
-    // Without Tail Call Recursion Optimisation
+    //#ifndef OPTIMISE_IMCODE_TCO
+    if (!CmEnv.tco) {
+
+      // Without Tail Call Recursion Optimisation
     
-    // 2021/9/6: It seems, always EnvAddCodePUSH is selected
-    // because at is not NULL in this step. Should be (next == NULL)?
-    //
-    // 2021/9/12: It is faster
-    // when we choose OP_PUSH always in parallel execution,
-    // though I am not sure the reason.
+      // 2021/9/6: It seems, always EnvAddCodePUSH is selected
+      // because at is not NULL in this step. Should be (next == NULL)?
+      //
+      // 2021/9/12: It is faster
+      // when we choose OP_PUSH always in parallel execution,
+      // though I am not sure the reason.
 
-    int var1 = Compile_term_on_ast(eq->left, -1);
-    int var2 = Compile_term_on_ast(eq->right, -1);
-
-    // Check whether compilation errors arise
-    if (CmEnv.count_compilation_errors != 0) {
-      return 0;
-    }
-
-
-    
-    /*
-    if (next == NULL) {
-      IMCode_genCode2(OP_MYPUSH, var1, var2);
-    } else {
-      IMCode_genCode2(OP_PUSH, var1, var2);
-    }
-    */
-    
-    IMCode_genCode2(OP_PUSH, var1, var2);
-
-    at = next;
-
-    
-#else    
-    // WITH Tail Call Optimisation
-    
-    if ((next != NULL) 
-	|| ((next == NULL) && (eq->id == AST_CNCT))) {
       int var1 = Compile_term_on_ast(eq->left, -1);
       int var2 = Compile_term_on_ast(eq->right, -1);
 
@@ -7064,253 +7044,283 @@ int Compile_eqlist_on_ast_in_rulebody(Ast *at) {
       if (CmEnv.count_compilation_errors != 0) {
 	return 0;
       }
-      
+
+
+    
+      /*
+	if (next == NULL) {
+	IMCode_genCode2(OP_MYPUSH, var1, var2);
+	} else {
+	IMCode_genCode2(OP_PUSH, var1, var2);
+	}
+      */
+    
       IMCode_genCode2(OP_PUSH, var1, var2);
 
+      at = next;
       
     } else {
-      // operation for the last placed equation.
-     
-
-      if (eq->id == AST_CNCT_TCO_INTVAR) {
-	// rule_left_agent ~ expression
-
-	// It always becomes loop operation
-	// because of the form `(*L) ~ expression'.
-	
-	
+    
+      // WITH Tail Call Optimisation
+    
+      if ((next != NULL) 
+	  || ((next == NULL) && (eq->id == AST_CNCT))) {
+	int var1 = Compile_term_on_ast(eq->left, -1);
 	int var2 = Compile_term_on_ast(eq->right, -1);
+
 	// Check whether compilation errors arise
 	if (CmEnv.count_compilation_errors != 0) {
 	  return 0;
 	}
+      
+	IMCode_genCode2(OP_PUSH, var1, var2);
 
+      
+      } else {
+	// operation for the last placed equation.
+     
+
+	if (eq->id == AST_CNCT_TCO_INTVAR) {
+	  // rule_left_agent ~ expression
+
+	  // It always becomes loop operation
+	  // because of the form `(*L) ~ expression'.
 	
 	
-	int alloc[MAX_PORT];
-	int arity = 0;
-
-	// The `rule_left_aget' is annotated by (*L) manually
-	// in the function `Ast_make_annotation_TailCallOptimisation'.
-
-	// So, first
-	// Pealing (*L)
-	Ast *eq_lhs = eq->left;               // (*L)(AGENT(Fib, arglist))
-	Ast *deconst_term = eq_lhs->left;      // (AGENT(Fib, arglist))
-	Ast *arg_list = deconst_term->right;   // arglist
-
-	
-	//		printf("TCO: %s><int\n", deconst_term->left->sym);
-
-	
-	for (int i=0; i<MAX_PORT; i++) {
-	  if (arg_list == NULL) break;
-	  arity++;	  
-
-	  //	  ast_puts(arg_list->left); puts("");
-	  
-	  alloc[i] = Compile_term_on_ast(arg_list->left, -1);
-	  
+	  int var2 = Compile_term_on_ast(eq->right, -1);
 	  // Check whether compilation errors arise
 	  if (CmEnv.count_compilation_errors != 0) {
 	    return 0;
 	  }
+
+	
+	
+	  int alloc[MAX_PORT];
+	  int arity = 0;
+
+	  // The `rule_left_aget' is annotated by (*L) manually
+	  // in the function `Ast_make_annotation_TailCallOptimisation'.
+
+	  // So, first
+	  // Pealing (*L)
+	  Ast *eq_lhs = eq->left;               // (*L)(AGENT(Fib, arglist))
+	  Ast *deconst_term = eq_lhs->left;      // (AGENT(Fib, arglist))
+	  Ast *arg_list = deconst_term->right;   // arglist
+
+	
+	  //		printf("TCO: %s><int\n", deconst_term->left->sym);
+
+	
+	  for (int i=0; i<MAX_PORT; i++) {
+	    if (arg_list == NULL) break;
+	    arity++;	  
+
+	    //	  ast_puts(arg_list->left); puts("");
 	  
-	  arg_list = ast_getTail(arg_list);
-	}
+	    alloc[i] = Compile_term_on_ast(arg_list->left, -1);
+	  
+	    // Check whether compilation errors arise
+	    if (CmEnv.count_compilation_errors != 0) {
+	      return 0;
+	    }
+	  
+	    arg_list = ast_getTail(arg_list);
+	  }
 
 
-	for (int i=0; i<arity; i++) {
-	  if (alloc[i] == VM_OFFSET_ANNOTATE_R) {
+	  for (int i=0; i<arity; i++) {
+	    if (alloc[i] == VM_OFFSET_ANNOTATE_R) {
 	      // VM_OFFSET_ANNOTATE_R should be preserved
 	      int newreg = CmEnv_newvar();
 	      IMCode_genCode2(OP_LOAD, VM_OFFSET_ANNOTATE_R, newreg);
 	      alloc[i] = newreg;
 	      break;
-	  }
-	}
-	IMCode_genCode2(OP_LOAD_META, var2, VM_OFFSET_ANNOTATE_R);
-	
-
-	for (int i=0; i<arity; i++) {
-	  for (int j=i+1; j<arity; j++) {
-	    if (alloc[j] == VM_OFFSET_METAVAR_L(i)) {
-	      // VM_OFFSET_METAVAR_L(i) should be preserved
-	      int newreg = CmEnv_newvar();
-	      IMCode_genCode2(OP_LOAD, VM_OFFSET_METAVAR_L(i), newreg);
-	      alloc[j] = newreg;
-	      break;
 	    }
 	  }
+	  IMCode_genCode2(OP_LOAD_META, var2, VM_OFFSET_ANNOTATE_R);
+	
+
+	  for (int i=0; i<arity; i++) {
+	    for (int j=i+1; j<arity; j++) {
+	      if (alloc[j] == VM_OFFSET_METAVAR_L(i)) {
+		// VM_OFFSET_METAVAR_L(i) should be preserved
+		int newreg = CmEnv_newvar();
+		IMCode_genCode2(OP_LOAD, VM_OFFSET_METAVAR_L(i), newreg);
+		alloc[j] = newreg;
+		break;
+	      }
+	    }
 	      
-	  IMCode_genCode2(OP_LOAD_META, alloc[i], VM_OFFSET_METAVAR_L(i));  
-	}
+	    IMCode_genCode2(OP_LOAD_META, alloc[i], VM_OFFSET_METAVAR_L(i));  
+	  }
 	
-	IMCode_genCode0(OP_LOOP);
+	  IMCode_genCode0(OP_LOOP);
 
-	// prevent putting FREE_L, and ignore counting up for name ref
-	CmEnv.annotateL = ANNOTATE_TCO;   
+	  // prevent putting FREE_L, and ignore counting up for name ref
+	  CmEnv.annotateL = ANNOTATE_TCO;   
 	
 
-	//	IMCode_puts(0); exit(1);
+	  //	IMCode_puts(0); exit(1);
 
 
 	
-      } else if (eq->id == AST_CNCT_TCO) {
-	// rule_left_agent ~ name   where the name is meta_R
+	} else if (eq->id == AST_CNCT_TCO) {
+	  // rule_left_agent ~ name   where the name is meta_R
 	
-	// Pealing (*L)
-	Ast *eq_lhs = eq->left;               // (*L)(AGENT(Fib, arglist))
-	Ast *deconst_term = eq_lhs->left;      // (AGENT(Fib, arglist))
+	  // Pealing (*L)
+	  Ast *eq_lhs = eq->left;               // (*L)(AGENT(Fib, arglist))
+	  Ast *deconst_term = eq_lhs->left;      // (AGENT(Fib, arglist))
 	  
 
 	
-	int eq_rhs_name_reg = CmEnv_find_var(eq->right->left->sym);
+	  int eq_rhs_name_reg = CmEnv_find_var(eq->right->left->sym);
 	  
 
-	int label1 = CmEnv_get_newlabel();	
-	if (CmEnv.idR == ID_CONS) {
-	  // JMPCNCT_CONS reg pc
-	  IMCode_genCode2(OP_JMPCNCT_CONS,
-			  eq_rhs_name_reg, label1);
+	  int label1 = CmEnv_get_newlabel();	
+	  if (CmEnv.idR == ID_CONS) {
+	    // JMPCNCT_CONS reg pc
+	    IMCode_genCode2(OP_JMPCNCT_CONS,
+			    eq_rhs_name_reg, label1);
 	  
-	} else {
-	  // JMPCNCT reg id pc
-	  IMCode_genCode3(OP_JMPCNCT,
-			  eq_rhs_name_reg, CmEnv.idR, label1);
-	}
+	  } else {
+	    // JMPCNCT reg id pc
+	    IMCode_genCode3(OP_JMPCNCT,
+			    eq_rhs_name_reg, CmEnv.idR, label1);
+	  }
 	
 #ifdef OPTIMISE_TWO_ADDRESS
-	IMCode_genCode0(OP_BEGIN_JMPCNCT_BLOCK);
+	  IMCode_genCode0(OP_BEGIN_JMPCNCT_BLOCK);
 #endif
 	
-	int var1 = Compile_term_on_ast(deconst_term, -1);
-	//int var1 = Compile_term_on_ast(eq_lhs, -1);
+	  int var1 = Compile_term_on_ast(deconst_term, -1);
+	  //int var1 = Compile_term_on_ast(eq_lhs, -1);
 
-	// Check whether compilation errors arise
-	if (CmEnv.count_compilation_errors != 0) {
-	  return 0;
-	}
-
-	
-	IMCode_genCode2(OP_PUSH, var1, eq_rhs_name_reg);
-	Compile_gen_RET_for_rulebody();
-
-	// From now on,
-	// prevent putting FREE_L, and ignore counting up for name ref
-	CmEnv.annotateL = ANNOTATE_TCO;
-	
-#ifdef OPTIMISE_TWO_ADDRESS
-        IMCode_genCode0(OP_BEGIN_JMPCNCT_BLOCK);
-#endif
-	
-	IMCode_genCode1(OP_LABEL, label1);
-
-	
-	Ast *arg_list = deconst_term->right;   // arglist
-	int arity = 0;
-	int alloc[MAX_PORT];
-	
-	for (int i=0; i<MAX_PORT; i++) {
-	  if (arg_list == NULL) break;
-	  arity++;	  
-	  
-	  alloc[i] = Compile_term_on_ast(arg_list->left, -1);
 	  // Check whether compilation errors arise
 	  if (CmEnv.count_compilation_errors != 0) {
 	    return 0;
 	  }
-	  
-	  arg_list = ast_getTail(arg_list);
-	}
+
 	
-	for (int i=0; i<arity; i++) {
-	  if (alloc[i] == VM_OFFSET_METAVAR_L(i))
-	    continue;
+	  IMCode_genCode2(OP_PUSH, var1, eq_rhs_name_reg);
+	  Compile_gen_RET_for_rulebody();
+
+	  // From now on,
+	  // prevent putting FREE_L, and ignore counting up for name ref
+	  CmEnv.annotateL = ANNOTATE_TCO;
+	
+#ifdef OPTIMISE_TWO_ADDRESS
+	  IMCode_genCode0(OP_BEGIN_JMPCNCT_BLOCK);
+#endif
+	
+	  IMCode_genCode1(OP_LABEL, label1);
+
+	
+	  Ast *arg_list = deconst_term->right;   // arglist
+	  int arity = 0;
+	  int alloc[MAX_PORT];
+	
+	  for (int i=0; i<MAX_PORT; i++) {
+	    if (arg_list == NULL) break;
+	    arity++;	  
 	  
-
-	  if (eq_rhs_name_reg == VM_OFFSET_METAVAR_L(i)) {
-	    // preserve eq_rhs_name_reg to be overwritten
-	    // because it is used for OP_LOOP_RREC.
-	    // Ex.
-	    // MergeCC(ret, int y, ys) >< (int x):xs
-	    // | _      => ret~(y:cnt), MergeCC(cnt, x, xs) ~ ys;
-	    // The `ys' is stored in reg(3), but it is overwritten by `xs',
-	    // though `ys' is required by LOOP_RREC2 `ys' placed later.
-	    // So, the `ys' must be preserved.
-
-	    int newreg = CmEnv_newvar();
-	    IMCode_genCode2(OP_LOAD, eq_rhs_name_reg, newreg);
-	    eq_rhs_name_reg = newreg;
-	  }
-
-	  
-	  for (int j=i+1; j<arity; j++) {
-	    if (alloc[j] == VM_OFFSET_METAVAR_L(i)) {
-	      // preserve VM_OFFSET_METAVAR_L(i)
-	      // if it is used later.
-	      // Ex.
-	      // LD 3,1
-	      // LD 1,3  <-- 1 is disappeared.
-	      // ==>
-	      // It must be as follows:
-	      // LD 1, newreg
-	      // LD 3, 1
-	      // LD newreg, 3
-	      //
-	      // Ex.2  A(a,b,c)>< (int x):xs => A(c,a,b)~xs;
-	      //
-	      
-	      int newreg = CmEnv_newvar();
-	      IMCode_genCode2(OP_LOAD, VM_OFFSET_METAVAR_L(i), newreg);
-	      alloc[j] = newreg;
-	      break;
+	    alloc[i] = Compile_term_on_ast(arg_list->left, -1);
+	    // Check whether compilation errors arise
+	    if (CmEnv.count_compilation_errors != 0) {
+	      return 0;
 	    }
-	  }
-
-	  IMCode_genCode2(OP_LOAD_META, alloc[i], VM_OFFSET_METAVAR_L(i));
 	  
-	}
-
-	
-	int arityR = IdTable_get_arity(CmEnv.idR);
-	if (CmEnv.annotateR == ANNOTATE_REUSE) {
-	  switch (arityR) {
-	  case 1:
-	    IMCode_genCode1(OP_LOOP_RREC1, eq_rhs_name_reg);
-	    break;
-	  case 2:
-	    IMCode_genCode1(OP_LOOP_RREC2, eq_rhs_name_reg);
-	    break;
-	  default:
-	    IMCode_genCode2(OP_LOOP_RREC, eq_rhs_name_reg, arityR);
+	    arg_list = ast_getTail(arg_list);
 	  }
-	} else {
-	  switch (arityR) {
-	  case 1:
-	    IMCode_genCode1(OP_LOOP_RREC1_FREE_R, eq_rhs_name_reg);
-	    break;
-	  case 2:
-	    IMCode_genCode1(OP_LOOP_RREC2_FREE_R, eq_rhs_name_reg);
-	    break;
-	  default:
-	    IMCode_genCode2(OP_LOOP_RREC_FREE_R, eq_rhs_name_reg, arityR);
-	  }	  
-	}
+	
+	  for (int i=0; i<arity; i++) {
+	    if (alloc[i] == VM_OFFSET_METAVAR_L(i))
+	      continue;
+	  
 
-	//		IMCode_puts(0); //exit(1);
+	    if (eq_rhs_name_reg == VM_OFFSET_METAVAR_L(i)) {
+	      // preserve eq_rhs_name_reg to be overwritten
+	      // because it is used for OP_LOOP_RREC.
+	      // Ex.
+	      // MergeCC(ret, int y, ys) >< (int x):xs
+	      // | _      => ret~(y:cnt), MergeCC(cnt, x, xs) ~ ys;
+	      // The `ys' is stored in reg(3), but it is overwritten by `xs',
+	      // though `ys' is required by LOOP_RREC2 `ys' placed later.
+	      // So, the `ys' must be preserved.
+
+	      int newreg = CmEnv_newvar();
+	      IMCode_genCode2(OP_LOAD, eq_rhs_name_reg, newreg);
+	      eq_rhs_name_reg = newreg;
+	    }
+
+	  
+	    for (int j=i+1; j<arity; j++) {
+	      if (alloc[j] == VM_OFFSET_METAVAR_L(i)) {
+		// preserve VM_OFFSET_METAVAR_L(i)
+		// if it is used later.
+		// Ex.
+		// LD 3,1
+		// LD 1,3  <-- 1 is disappeared.
+		// ==>
+		// It must be as follows:
+		// LD 1, newreg
+		// LD 3, 1
+		// LD newreg, 3
+		//
+		// Ex.2  A(a,b,c)>< (int x):xs => A(c,a,b)~xs;
+		//
+	      
+		int newreg = CmEnv_newvar();
+		IMCode_genCode2(OP_LOAD, VM_OFFSET_METAVAR_L(i), newreg);
+		alloc[j] = newreg;
+		break;
+	      }
+	    }
+
+	    IMCode_genCode2(OP_LOAD_META, alloc[i], VM_OFFSET_METAVAR_L(i));
+	  
+	  }
+
+	
+	  int arityR = IdTable_get_arity(CmEnv.idR);
+	  if (CmEnv.annotateR == ANNOTATE_REUSE) {
+	    switch (arityR) {
+	    case 1:
+	      IMCode_genCode1(OP_LOOP_RREC1, eq_rhs_name_reg);
+	      break;
+	    case 2:
+	      IMCode_genCode1(OP_LOOP_RREC2, eq_rhs_name_reg);
+	      break;
+	    default:
+	      IMCode_genCode2(OP_LOOP_RREC, eq_rhs_name_reg, arityR);
+	    }
+	  } else {
+	    switch (arityR) {
+	    case 1:
+	      IMCode_genCode1(OP_LOOP_RREC1_FREE_R, eq_rhs_name_reg);
+	      break;
+	    case 2:
+	      IMCode_genCode1(OP_LOOP_RREC2_FREE_R, eq_rhs_name_reg);
+	      break;
+	    default:
+	      IMCode_genCode2(OP_LOOP_RREC_FREE_R, eq_rhs_name_reg, arityR);
+	    }	  
+	  }
+
+	  //		IMCode_puts(0); //exit(1);
 	
 	
-      } else {
-	// unknown AST id
-	puts("Fatal ERROR in Compile_eqlist_on_ast_in_rulebody"); exit(1);
-      }
+	} else {
+	  // unknown AST id
+	  puts("Fatal ERROR in Compile_eqlist_on_ast_in_rulebody"); exit(1);
+	}
       
-    } 
+      } 
 
     
-    at = next;
-#endif
+      at = next;
+
+      
+    }  // #endif
     
   }
   
@@ -8086,17 +8096,20 @@ int make_rule_oneway(Ast *ast) {
 
   //puts("Before:"); ast_puts(rule_mainbody); puts("");
 
-#ifdef OPTIMISE_IMCODE_TCO
+  
+  int is_tco=0;
 
-  int is_tco;
-  if (!Ast_mainbody_has_agentID(rule_mainbody, AST_ANNOTATION_L)) {
+  //#ifdef OPTIMISE_IMCODE_TCO
+  if (CmEnv.tco) {
+  
+    if (!Ast_mainbody_has_agentID(rule_mainbody, AST_ANNOTATION_L)) {
     
-    is_tco = Ast_make_annotation_TailCallOptimisation(rule_mainbody);
+      is_tco = Ast_make_annotation_TailCallOptimisation(rule_mainbody);
 
-  } else {
+    } else {
 
-    is_tco = 0;
-  }
+      is_tco = 0;
+    }
 
 
 #ifdef VERBOSE_TCO
@@ -8111,22 +8124,28 @@ int make_rule_oneway(Ast *ast) {
     
     
   
-#endif
-    
+  }  // #endif
+
+
+  
   if (!Compile_rule_mainbody_on_ast(rule_mainbody)) return 0;
 
 
-#ifdef OPTIMISE_IMCODE_TCO
-  if (is_tco) {
-    
-    //    puts("Before:"); ast_puts(rule_mainbody); puts("");
-    
-    Ast_undo_TCO_annotation(rule_mainbody);
+  
 
-    //    puts("After:"); ast_puts(rule_mainbody); puts("");
+  // #ifdef OPTIMISE_IMCODE_TCO
+  if (CmEnv.tco) {
+ 
+    if (is_tco) {
     
-  }
-#endif
+      //    puts("Before:"); ast_puts(rule_mainbody); puts("");
+    
+      Ast_undo_TCO_annotation(rule_mainbody);
+
+      //    puts("After:"); ast_puts(rule_mainbody); puts("");
+    
+    }
+  }  // #endif
   
 
   //              #define DEBUG_MKRULE  
@@ -11641,6 +11660,7 @@ int main(int argc, char *argv[])
 	printf("Inpla version %s\n", VERSION);
 	exit(-1);
 	break;
+	
       case '-':
       case 'h':
       case '?':
@@ -11676,11 +11696,17 @@ int main(int argc, char *argv[])
 	printf(" -w               Enable Weak Reduction strategy          (Default:    disable)\n");
 #endif
 
-	printf(" -c               Enable to output compiled codes         (Default:    disable)\n");
+	printf(" -c               Enable output of compiled codes         (Default:    disable)\n");
+
+	
+	printf(" -h               Print this help message\n");
+
+	printf(" -foptimise-tail-calls  Enable tail call optimisation     (Default:    disable)\n");
+
+	puts("");
 
 
 	
-	printf(" -h               Print this help message\n\n");
         exit(-1);
 	break;
 
@@ -11815,6 +11841,22 @@ int main(int argc, char *argv[])
 	break;
 	  
       case 'f':
+
+	// flags
+	if (!strcmp(argv[i], "-foptimise-tail-calls")) {
+	  CmEnv.tco = 1;
+	  break;
+	}
+
+
+	// for files
+	if (strcmp(argv[i], "-f")) {
+	  printf("ERROR: Unknown option: `%s'\n", argv[i]);
+	  exit(-1);
+	}
+	
+
+	
 	i++;
 	if (i < argc) {
 	  fname = argv[i];

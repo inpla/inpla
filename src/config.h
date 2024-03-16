@@ -70,10 +70,6 @@
 //#define USE_MKAGENT_N
 
 
-// Optimisation inspired by Tail Call Optimisation  
-//
-#define OPTIMISE_IMCODE_TCO   
-
 //  
 // Optimisation of the intermediate codes
 //

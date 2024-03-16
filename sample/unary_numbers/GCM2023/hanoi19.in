@@ -1,0 +1,52 @@
+// Tower of Hanoi Puzzle
+
+// Rules
+hanoi(return, source, target, aux) >< Z => 
+          // Erase the source, target and aux
+          source ~ Eraser,
+          target ~ Eraser,
+          aux ~ Eraser,
+
+          // result
+          return~[];
+
+hanoi(return, source, target, aux) >< S(n) => 
+          // Duplicate the source, target and aux
+	  source ~ Dup(src1, Dup(src2, src3)),
+          target ~ Dup(tgt1, Dup(tgt2, tgt3)),
+          aux ~ Dup(aux1, aux2),
+
+	  
+          // recursive applications
+	  n ~ Dup(nn1, Dup(nn2, nn3)),
+          hanoi(ret1, src1, aux1, tgt1)~nn1,
+          hanoi(ret2, aux2, tgt2, src2)~nn2,
+
+          // result
+	  append(return, ((nn3,src3,tgt3)):ret2)~ret1;
+
+
+// ---------------------------------------
+// append
+// ---------------------------------------
+append(r,a) >< [] => r~a;
+append(r,a) >< x:xs => r~x:w, append(w,a)~xs;
+
+
+// ---------------------------------------
+// len
+// ---------------------------------------
+len(ret) >< [] => ret~Z;
+len(ret) >< x:xs => len_(ret, S(Z))~xs, Eraser~x;
+len_(ret, n) >< [] => ret~n;
+len_(ret, n) >< x:xs => len_(ret, S(n))~xs, Eraser~x;
+
+
+
+// Net
+hanoi(result, A, C, B) ~
+//1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9
+  S(S(S(S(S(S(S(S(S(S(S(S(S(S(S(S(S(S(S(Z))))))))))))))))))),
+
+len(r)~result;
+prnat r;

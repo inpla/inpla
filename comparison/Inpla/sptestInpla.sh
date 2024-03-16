@@ -11,6 +11,7 @@ waittime=5
 max_threads=9
 min_threads=1
 
+
 # options
 source=$1
 inpla_seq='inplaSeq'
@@ -22,6 +23,8 @@ path_source="$dir_source$source"
 fname=`echo $1 | sed -e s'|.*/\(.*\)|\1|'`
 
 log="log-${fname}.txt"
+
+
 
 
 # main ------------------------------------------------------
