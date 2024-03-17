@@ -290,7 +290,7 @@ Electronic Communications of the EASST, Volume 73: Graph Computation Models - Se
 
 
 
-## Related Works
+## Related Work
 
 * [Train: Translator of a functional language to interaction nets (Inpla notation)](https://github.com/inpla/train)
 * [High-order Virtual Machine (HVM)](https://github.com/Kindelia/HVM)
