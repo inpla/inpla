@@ -1,7 +1,7 @@
 // -------------------------------------------------------------
 // Turing Machine
 // -------------------------------------------------------------
-// Every 1 on tapes becomes 0.
+// Every 1 on the tape becomes 0.
 // It finishes when the head reads a tape cell whose value is 0.
 //
 // Rule
@@ -22,7 +22,7 @@
 // getRule
 // rule << getRule( (int state, int sym) )
 // NOTE: getRule needs a pair (state, sym).
-//       So it should be called such as
+//       So it should be called like this:
 //	 ret << getRule( (state, sym) );
 // -----------------------------------------
 
@@ -126,6 +126,6 @@ allCycle(r) >< STOP_Configure(tape, state, headPos) =>
 // main
 // -----------------------------------------
 
-configure ~ Configure([1,1,1,1,1,0], 0, 0),  //(tape, state, headPos)
-r << allCycle(configure);
+conf ~ Configure([1,1,1,1,1,0], 0, 0),  //(tape, state, headPos)
+r << allCycle(conf);
 r;   // -->* Configure([0,0,0,0,0,0,0],2,5)
