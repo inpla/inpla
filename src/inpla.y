@@ -22,8 +22,8 @@
 
 // ----------------------------------------------
   
-#define VERSION "0.12.2"
-#define BUILT_DATE  "16 Mar 2024"
+#define VERSION "0.12.3"
+#define BUILT_DATE  "18 Apr 2024"
 
 // ------------------------------------------------------------------
 
@@ -3726,7 +3726,7 @@ int CmEnv_check_name_reference_times(void) {
   int i;
   for (i=0; i<CmEnv.bindPtr; i++) {
     if (CmEnv.bind[i].type == NB_NAME) {
-      if (CmEnv.bind[i].refnum > 2) {
+      if (CmEnv.bind[i].refnum > 1) {
 	printf("%d:ERROR: The name `%s' occurs more than twice.\n", 
 	       yylineno, CmEnv.bind[i].name);
 	return 0;
@@ -6064,8 +6064,19 @@ int Ast_make_annotation_TailCallOptimisation(Ast *mainbody) {
       return 0;
     }
     
-      
-    Ast_RewriteOptimisation_eqlist(eqs);        
+
+    // DEBUG: 13 Apr 2024
+    // Improvement plan:
+    // To check the syntax, the compilation should be done first.
+    // Next, if the rewriting deals with at least one ap pair,
+    // the compilation should be redo.
+    // But, this rewriting optimisation is really needed?
+    // This must be required for rules, but this is a top level program,
+    // and it is executed just one time...
+    //
+    //    Ast_RewriteOptimisation_eqlist(eqs);
+
+    
     //    ast_puts(eqs);puts("");
     
     if (Ast_eqs_has_agentID(eqs, AST_ANNOTATION_L)) {
@@ -6874,11 +6885,11 @@ int check_invalid_occurrence(Ast *ast) {
   if (ast->id == AST_NAME) {
     int sym_id = NameTable_get_id(ast->left->sym);
 
-    
     if (IS_GNAMEID(sym_id)) {
       // already exists as a global
       VALUE aheap = IdTable_get_heap(sym_id);
 
+      
       /*
       // it is connected with something.
       if (NAME(aheap)->port != (VALUE)NULL) {
@@ -11132,13 +11143,16 @@ int exec(Ast *at) {
   // aplist
   at = at->right;
 
+  
+  /*
   //   for aplists
-  //          puts(""); ast_puts(at); puts("");
-  //          Ast_RewriteOptimisation_eqlist(at);
-  //          puts(""); ast_puts(at); puts("");
-  //	  //          exit(1);
-
-  Ast_RewriteOptimisation_eqlist(at);
+            puts(""); ast_puts(at); puts("");
+            Ast_RewriteOptimisation_eqlist(at);
+            puts(""); ast_puts(at); puts("");
+  	            exit(1);
+  */
+  
+  // Ast_RewriteOptimisation_eqlist(at);
 	
   // Syntax error check
   {

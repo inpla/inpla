@@ -1,5 +1,45 @@
 # Change log
 
+### v0.12.3 (released on 18 Apr 2024)
+
+#### Polished (minor)
+- **Substitution optimisation for main active pairs is switched off**: When main active pairs are given, substitution optimisation is applied to them first. Duplicate names are substituted, and then compilation starts. Syntax errors are detected at this compilation step. It works well to remove redundancy of substitutable active pairs from the compilation results. However, for the given active pairs where names occur three times, it causes some strange behaviour. For example, a user expects to have a cyclic net with a connection by the following active pairs:
+
+  ```
+  >>> alpha(x)~x, main~x;
+  ```
+
+  Of course, it should be rejected, but it can be accepted because `x` is substituted and it becomes `main~alpha(x)`:
+
+  ```
+  >>> ifce;
+  main x
+  
+  Connections:
+  main ->alpha(x)
+  x -><EMPTY>
+  ```
+
+  The problem is that we can have three times occurrences of the same name if it is a variable of attributes, so the occurrence check must be done after the compilation without substitution optimisation:
+
+  ```
+  >>> r ~ (a+a+a) where a=1;
+  ```
+
+  So, substitution optimisation is now switched off for the main active pairs,  although this is an ad hoc fix. The occurrence count check has also been fixed. It now works correctly:
+
+  ```
+  Inpla 0.12.3 : Interaction nets as a programming language [built: 18 Apr 2024]
+  >>> alpha(x)~x, main~x;
+  1:ERROR: The name `x' occurs more than twice.
+  ```
+
+  Of course, the optimisation is still applied to active pairs in the rule definitions. I think, the effect is quite small because the substitution is only done once and the cost is very small compared to the whole computation.
+
+  
+
+
+
 ### v0.12.2 (released on 16 Mar 2024)
 
 #### New Features
