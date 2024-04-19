@@ -9,7 +9,7 @@
   >>> alpha(x)~x, main~x;
   ```
 
-  Of course, it should be rejected, but it can be accepted because `x` is substituted and it becomes `main~alpha(x)`:
+  Of course, it should be rejected, but it can be accepted because `x` is substituted and it becomes `main~alpha(x)`, even though it is not what the user wants:
 
   ```
   >>> ifce;
