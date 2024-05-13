@@ -17,7 +17,7 @@ Inpla is a multi-threaded parallel interpreter of interaction nets. Once you wri
 
 |                | Haskell  |   OCaml   |   SML    | Python | Inpla8 | Inpla8r |
 | -------------- | :------: | :------: | :----: | :----: | :------: | :------: |
-| n-queens 12 | [**0.23**](comparison/Haskell/nqueen-12.hs) | [0.44](comparison/OCaml/nqueen12.ml) | [0.60](comparison/SML/ack3-11.sml) | [3.79](comparison/Python/nqueen-12.py) | [0.55](comparison/Inpla/src/nqueen-12.in) | [0.41](comparison/Inpla/src/nqueen-12-reuse.in) |
+| n-queens 12 | [**0.23**](comparison/Haskell/nqueen-12.hs) | [0.44](comparison/OCaml/nqueen12.ml) | [0.60](comparison/SML/nqueen-12.sml) | [3.79](comparison/Python/nqueen-12.py) | [0.55](comparison/Inpla/src/nqueen-12.in) | [0.41](comparison/Inpla/src/nqueen-12-reuse.in) |
 | ack(3,11)    |   [2.37](comparison/Haskell/ack3-11.hs)   | [0.57](comparison/OCaml/ack3_11.ml) | [**0.42**](comparison/SML/ack3-11.sml) |   [-](comparison/Python/ack3-11.py)    |  [0.92](comparison/Inpla/src/ack-stream_3-11.in)  |   [0.70](comparison/Inpla/src/ack-stream_3-11-reuse.in)   |
 | fib 38       |   [1.61](comparison/Haskell/fib-38.hs)   | [**0.15**](comparison/OCaml/fib38.ml) | [0.27](comparison/SML/fib-38.sml) |  [9.27](comparison/Python/fib-38.py)  |  [0.43](comparison/Inpla/src/fib-38.in)  |   [0.45](comparison/Inpla/src/fib-38-reuse.in)   |
 | bsort 20000 |  [5.03](comparison/Haskell/bsort-20000.hs)  |  [6.47](comparison/OCaml/bsort20000.ml)  |  [2.39](comparison/SML/bsort-20000.sml)  | [20.02](comparison/Python/bsort-20000.py) |  [2.38](comparison/Inpla/src/bsort-20000.in)  | [**1.46**](comparison/Inpla/src/bsort-20000-reuse.in) |
