@@ -22,8 +22,8 @@
 
 // ----------------------------------------------
   
-#define VERSION "0.12.3"
-#define BUILT_DATE  "18 Apr 2024"
+#define VERSION "0.12.4"
+#define BUILT_DATE  "6 June 2024"
 
 // ------------------------------------------------------------------
 
@@ -36,6 +36,15 @@
 
 
 
+// For global optionss  ---------------------------------
+typedef struct {
+  int verbose_memory_use;  // default is 0 (NOT enable)
+} GlobalOptions_t;
+ 
+static GlobalOptions_t GlobalOptions = {
+  .verbose_memory_use = 0,
+};
+  
 
   
   
@@ -86,6 +95,9 @@ void puts_aplist(EQList *at);
 
 int exec(Ast *st);
 int destroy(void);
+
+
+void puts_memory_stat(void);
 
 
  
@@ -178,7 +190,7 @@ static char *Errormsg = NULL;
 
 %token NOT AND OR
 %token INT LET IN END IF THEN ELSE WHERE RAND DEF
-%token INTERFACE IFCE PRNAT FREE EXIT
+%token INTERFACE IFCE PRNAT FREE EXIT MEMSTAT
 %token END_OF_FILE USE
 
 %type <ast> body astterm astterm_item nameterm agentterm astparam astparams
@@ -391,6 +403,11 @@ command:
     fflush(stdout);
   }
  }
+
+| MEMSTAT ';'
+{
+  puts_memory_stat();
+}
 ;
 
 
@@ -1472,6 +1489,21 @@ void myfree2(VALUE ptr, VALUE ptr2) {
 #endif
 
 
+
+void puts_memory_usage(Heap *agent_heap, Heap *name_heap) {
+  //    printf("Using a total of %lu agent nodes and %lu name nodes.\n\n",
+    printf("Using %lu agent nodes and %lu name nodes.\n\n",   
+	   Heap_GetNum_Usage_forAgent(agent_heap),
+	   Heap_GetNum_Usage_forName(name_heap));
+}
+
+
+
+
+
+
+
+
 //-----------------------------------------------------------
 // Pretty printing for terms
 //-----------------------------------------------------------
@@ -2244,14 +2276,14 @@ void flush_name_port0(VALUE ptr) {
   }      
   
 
-#ifdef VERBOSE_NODE_USE
-#ifndef THREAD  
-  printf("(%lu agents and %lu names nodes are used.)\n", 
-	 Heap_GetNum_Usage_forAgent(&VM.agentHeap),
-	 Heap_GetNum_Usage_forName(&VM.nameHeap));
-#endif
+#ifndef THREAD
+  if (GlobalOptions.verbose_memory_use) {
+    puts_memory_usage(&VM.agentHeap, &VM.nameHeap);
+  }
 #endif
 
+
+    
 }
 
 void free_Names_ast(Ast *ast) {
@@ -2269,6 +2301,14 @@ void free_Names_ast(Ast *ast) {
 }
 
 
+
+void puts_memory_stat(void) {
+#ifndef THREAD
+    puts_memory_usage(&VM.agentHeap, &VM.nameHeap);
+#else
+    puts("Not supported in the multi-threaded version.");
+#endif
+}
 
 
 
@@ -11076,14 +11116,14 @@ typedef struct {
   EQ *eqs;
   int eqs_index;
   int size;
-  int enabled;  // 0: not Enabled, 1: Enabled.  
+  int enable;  // 0: not Enable, 1: Enable.  
 } WHNF_Info; 
 WHNF_Info WHNFinfo;
 
 void Init_WHNFinfo(void) {
   WHNFinfo.eqs_index = 0;
   WHNFinfo.size = WHNF_UNUSED_STACK_SIZE;
-  WHNFinfo.enabled = 0;  // not Enabled
+  WHNFinfo.enable = 0;  // not Enable
 
   WHNFinfo.eqs = malloc(sizeof(EQ) * WHNF_UNUSED_STACK_SIZE);
   if (WHNFinfo.eqs == NULL) {
@@ -11254,7 +11294,7 @@ int exec(Ast *at) {
 
   
   // WHNF: Unused equations are stacked to be execution targets again.  
-  if (WHNFinfo.enabled) {    
+  if (WHNFinfo.enable) {    
     for (int i=0; i < WHNFinfo.eqs_index ; i++) {
       MYPUSH(&VM, WHNFinfo.eqs[i].l, WHNFinfo.eqs[i].r);
     }
@@ -11273,7 +11313,7 @@ int exec(Ast *at) {
 
   // EXECUTION LOOP
 
-  if (!WHNFinfo.enabled) {
+  if (!WHNFinfo.enable) {
     // no-stategy execution
     
     VALUE t1, t2;
@@ -11300,12 +11340,13 @@ int exec(Ast *at) {
   printf("(%d mkAgent calls)\n", NumberOfMkAgent);
 #endif
 
-#ifdef VERBOSE_NODE_USE
-  printf("(%lu agents and %lu names nodes are used.)\n", 
-	 Heap_GetNum_Usage_forAgent(&VM.agentHeap),
-	 Heap_GetNum_Usage_forName(&VM.nameHeap));
-#endif	 
 
+  if (GlobalOptions.verbose_memory_use) {
+    puts_memory_usage(&VM.agentHeap, &VM.nameHeap);
+  }
+
+
+  
 #ifdef COUNT_CNCT
   printf("JMP_CNCT:%d true:%d ratio:%.2f%%\n",
 	 Count_cnct, Count_cnct_true, Count_cnct_true*100.0/Count_cnct);
@@ -11715,8 +11756,13 @@ int main(int argc, char *argv[])
 	
 	printf(" -h               Print this help message\n");
 
-	printf(" -foptimise-tail-calls  Enable tail call optimisation     (Default:    disable)\n");
+	printf(" -foptimise-tail-calls   Enable tail call optimisation    (Default:    disable)\n");
 
+	
+#ifndef THREAD  
+	printf(" -fverbose-memory-usage  Show memory usage                (Default:    disable)\n");
+#endif
+	
 	puts("");
 
 
@@ -11863,6 +11909,13 @@ int main(int argc, char *argv[])
 	}
 
 
+#ifndef THREAD
+	if (!strcmp(argv[i], "-fverbose-memory-usage")) {
+	  GlobalOptions.verbose_memory_use = 1;
+	  break;
+	}	
+#endif
+	
 	// for files
 	if (strcmp(argv[i], "-f")) {
 	  printf("ERROR: Unknown option: `%s'\n", argv[i]);
@@ -11920,7 +11973,7 @@ int main(int argc, char *argv[])
         break;
 #else
       case 'w':
-        WHNFinfo.enabled = 1;
+        WHNFinfo.enable = 1;
         break;	  
 #endif
 	  
@@ -11962,7 +12015,7 @@ int main(int argc, char *argv[])
   }
 
 #ifndef THREAD
-  if (WHNFinfo.enabled) {
+  if (WHNFinfo.enable) {
     printf("Inpla %s (Weak Strategy) : Interaction nets as a programming language", VERSION);
     printf(" [%s]\n", BUILT_DATE);
   } else {

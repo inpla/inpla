@@ -1,5 +1,40 @@
 # Change log
 
+### v0.12.4 (released on 6 June 2024)
+
+#### New Features
+
+- **A command to get memory usage information**: A new command `memstat` is has been prepared to show memory usage information. This is only available in the single thread mode. Below is an example of this command:
+
+  ```
+  Inpla 0.12.4 : Interaction nets as a programming language [built: 6 June 2024]
+  >>> n~S(Z);
+  (0 interactions, 0.00 sec)
+  >>> memstat;
+  Using 2 agent nodes and 1 name nodes.
+  
+  >>>
+  ```
+
+  Inpla can handle cyclic nets that cannot be observed from the interface. These nets are invisible, but still there. This command shows this as follows:
+
+  ```
+  >>> free ifce;
+  >>> memstat;
+  Using 0 agent nodes and 0 name nodes.
+  
+  >>> x~A(x);
+  (0 interactions, 0.00 sec)
+  >>> ifce;
+  <NO-INTERFACE>
+  >>> memstat;
+  Using 1 agent nodes and 1 name nodes.
+  
+  >>>
+  ```
+
+
+
 ### v0.12.3 (released on 18 Apr 2024)
 
 #### Polished (minor)

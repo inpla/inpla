@@ -117,6 +117,7 @@ int yycolumn = 1;
 
 <INITIAL>"prnat" return(PRNAT);
 <INITIAL>"free" return(FREE);
+<INITIAL>"memstat" return(MEMSTAT);
 <INITIAL>"exit" return(EXIT);
 
 <INITIAL>"rand" return(RAND);

@@ -612,14 +612,18 @@ Inpla has the following commands:
   The *name1* ... *name_n* and connected terms from these are disposed. To dispose all living names and connected terms, type `free ifce;`, where the `ifce` is an abbreviation of *interface* that is called for the set of names that live and occur once.
   
 * *name1* ... *name_n* `;`  
-  Put terms connected from the *name1* ... *name_n*.
+  Output terms connected from the *name1* ... *name_n*.
   
 * `ifce;`
 
-  Put every term connected from the interface.
+  Output every term connected from the interface.
 
 * `prnat` *name*`;`    
-  Put a term connected from the *name* as a natural number.
+  Output a term connected from the *name* as a natural number.
+  
+* `memstat`;
+  
+  Output memory usage information for agent and name nodes. Only available in the single thread mode.
   
 * `use` `"`*filename*`";`  
   Read the file whose name is *filename*. 
