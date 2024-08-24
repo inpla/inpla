@@ -1,5 +1,28 @@
 # Change log
 
+### v0.12.5 (released on 24 August 2024)
+
+#### Bug fix
+
+- **Large nets are acceptable**: For example, the following net was not acceptable due to excessive use of registers:
+
+  ```
+  Inpla 0.12.4 : Interaction nets as a programming language [built: 6 June 2024]
+  >>> r~[A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,R,S,T,U,V,W,X,Y,Z];
+  SYSTEM ERROR: CmEnv.localNamePtr exceeded VM_REG_SIZE.
+  ```
+
+  In the previous versions, we used the Bytecodes compiler in the one-pass method, and each allocated register was referenced only once, so the number of registers could easily exceed the total size. Therefore, the large net could not be accepted. In the current two-pass compiler, these are optimised to be re-allocated. So, it is sufficient to check the size limit of occupied registers during the two-pass optimisation process. Now, the net is acceptable:
+
+  ```
+  Inpla 0.12.5 : Interaction nets as a programming language [built: 24 Aug. 2024]
+  >>> r~[A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,R,S,T,U,V,W,X,Y,Z];
+  (0 interactions, 0.00 sec)
+  >>>
+  ```
+
+
+
 ### v0.12.4 (released on 6 June 2024)
 
 #### New Features

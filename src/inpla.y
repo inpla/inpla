@@ -22,8 +22,8 @@
 
 // ----------------------------------------------
   
-#define VERSION "0.12.4"
-#define BUILT_DATE  "6 June 2024"
+#define VERSION "0.12.5"
+#define BUILT_DATE  "24 Aug. 2024"
 
 // ------------------------------------------------------------------
 
@@ -37,6 +37,8 @@
 
 
 // For global optionss  ---------------------------------
+
+#ifndef THREAD
 typedef struct {
   int verbose_memory_use;  // default is 0 (NOT enable)
 } GlobalOptions_t;
@@ -44,7 +46,7 @@ typedef struct {
 static GlobalOptions_t GlobalOptions = {
   .verbose_memory_use = 0,
 };
-  
+#endif  
 
   
   
@@ -3620,10 +3622,12 @@ int CmEnv_set_symbol_as_name(char *name) {
     
     result = CmEnv.localNamePtr;
     CmEnv.localNamePtr++;
+    /*
     if (CmEnv.localNamePtr > VM_REG_SIZE) {
       puts("SYSTEM ERROR: CmEnv.localNamePtr exceeded VM_REG_SIZE.");
       exit(-1);
     }
+    */
     
     return result;
   }
@@ -3668,11 +3672,13 @@ int CmEnv_set_as_INTVAR(char *name) {
     }
 
     CmEnv.localNamePtr++;
+    /*
     if (CmEnv.localNamePtr > VM_REG_SIZE) {
       puts("SYSTEM ERROR: CmEnv.localNamePtr exceeded VM_REG_SIZE.");
       exit(-1);
     }
-
+    */
+    
     return result;
   }
   return -1;
@@ -3720,11 +3726,12 @@ int CmEnv_newvar(void) {
   int result;
   result = CmEnv.localNamePtr;
   CmEnv.localNamePtr++;
+  /*
   if (CmEnv.localNamePtr > VM_REG_SIZE) {
     puts("SYSTEM ERROR: CmEnv.localNamePtr exceeded VM_REG_SIZE.");
     exit(-1);
   }
-
+  */
   return result;
 }
 
@@ -6494,7 +6501,10 @@ int Compile_term_on_ast(Ast *ptr, int target) {
     
   case AST_OPCONS:
     ptr = ptr->right;
+
+    /* A register of the element
     alloc[0] = Compile_term_on_ast(ptr->left, -1);
+    */
     alloc[1] = Compile_term_on_ast(ptr->right->left, -1);
 
     
@@ -6503,18 +6513,24 @@ int Compile_term_on_ast(Ast *ptr, int target) {
 
 #ifdef USE_MKAGENT_N
       mkagent = OP_MKAGENT2;
+      
+      alloc[0] = Compile_term_on_ast(ptr->left, -1);
       IMCode_genCode4(mkagent, ID_CONS, alloc[0], alloc[1], result);
 
 #else
       // expanded operations
       IMCode_genCode2(OP_MKAGENT0, ID_CONS, result);
+      
+      alloc[0] = Compile_term_on_ast(ptr->left, -1);
       IMCode_genCode3(OP_LOADP, alloc[0], 0, result);
+      
       IMCode_genCode3(OP_LOADP, alloc[1], 1, result);
 #endif
       
     } else {
       result = target;
 
+      alloc[0] = Compile_term_on_ast(ptr->left, -1);
       
       // OLD Version with OP_REUSEAGENT2
       //#definen OLD_REUSEAGENT
