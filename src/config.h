@@ -66,9 +66,6 @@
 // ------------------------------------------------
 // Comment out definitions if not needed.
 
-// Use MKAGENTn codes
-//#define USE_MKAGENT_N
-
 
 //  
 // Optimisation of the intermediate codes
@@ -93,10 +90,6 @@
 #define OPTIMISE_TWO_ADDRESS
 
 #ifdef OPTIMISE_TWO_ADDRESS
-#define OPTIMISE_TWO_ADDRESS_MKAGENT1 // For MKAGENT1
-#define OPTIMISE_TWO_ADDRESS_MKAGENT2 // For MKAGENT2
-#define OPTIMISE_TWO_ADDRESS_MKAGENT3 // For MKAGENT3
-#define OPTIMISE_TWO_ADDRESS_MKAGENT4 // For MKAGENT4
 
 //#define OPTIMISE_TWO_ADDRESS_UNARY // For Unary operator like INC, DEC
                                      // (Unfinished)
@@ -115,10 +108,6 @@
 //#define DEBUG_NETS        // Show compiled codes for nets.
 //#define DEBUG_EXPR_COMPILE_ERROR // Show AST of an expression
                                      // comes with compile errors.
-
-//#define OLD_REUSEAGENT    // Use the old mechanism to reuse agents.
-                            // Thus, `REUSEAGENTn' is used
-                            // instead of `CHID_L`, `LOADP_L` and so on.
 
 
 

@@ -16,13 +16,13 @@ bash ./sptestInpla.sh src/isort-20000.in '-foptimise-tail-calls'
 bash ./sptestInpla.sh src/isort-20000-reuse.in
 
 bash ./sptestInpla.sh src/qsort-260000.in '-foptimise-tail-calls'
-bash ./sptestInpla.sh src/qsort-260000-reuse.in '-Xms 17 -Xmt 0'
+bash ./sptestInpla.sh src/qsort-260000-reuse.in
 
 bash ./sptestInpla.sh src/msort-260000.in '-foptimise-tail-calls'
-bash ./sptestInpla.sh src/msort-260000-reuse.in '-Xms 18 -Xmt 0'
+bash ./sptestInpla.sh src/msort-260000-reuse.in
 
 bash ./sptestInpla.sh src/qsort-800000.in '-foptimise-tail-calls'
-bash ./sptestInpla.sh src/qsort-800000-reuse.in '-Xms 18 -Xmt 0'
+bash ./sptestInpla.sh src/qsort-800000-reuse.in
 
 bash ./sptestInpla.sh src/msort-800000.in '-foptimise-tail-calls'
-bash ./sptestInpla.sh src/msort-800000-reuse.in '-Xms 18 -Xmt 0'
+bash ./sptestInpla.sh src/msort-800000-reuse.in

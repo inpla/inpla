@@ -22,8 +22,8 @@
 
 // ----------------------------------------------
   
-#define VERSION "0.12.5"
-#define BUILT_DATE  "24 Aug. 2024"
+#define VERSION "0.13.0"
+#define BUILT_DATE  "3 September 2024"
 
 // ------------------------------------------------------------------
 
@@ -2466,13 +2466,8 @@ typedef enum {
 
   OP_MKNAME, OP_MKGNAME,
   
-  OP_MKAGENT0, OP_MKAGENT1, OP_MKAGENT2, OP_MKAGENT3,
-  OP_MKAGENT4, OP_MKAGENT5,
+  OP_MKAGENT,
   
-  OP_REUSEAGENT0, OP_REUSEAGENT1, OP_REUSEAGENT2, OP_REUSEAGENT3,
-  OP_REUSEAGENT4, OP_REUSEAGENT5,
-  
-
   OP_RET, OP_RET_FREE_LR, OP_RET_FREE_L, OP_RET_FREE_R,
 
   OP_LOADI, OP_LOAD, OP_LOADP, OP_LOADP_L, OP_LOADP_R, OP_CHID_L, OP_CHID_R,
@@ -2606,12 +2601,8 @@ void IMCode_puts(int n) {
     "PUSH", "PUSHI", "MYPUSH",
     "MKNAME", "MKGNAME",
 
-    "MKAGENT0", "MKAGENT1", "MKAGENT2", "MKAGENT3",
-    "MKAGENT4", "MKAGENT5", 
-
-    "REUSEAGENT0", "REUSEAGENT1", "REUSEAGENT2",
-    "REUSEAGENT3", "REUSEAGENT4", "REUSEAGENT5", 
-
+    "MKAGENT",
+    
     "RET", "RET_FREE_LR", "RET_FREE_L", "RET_FREE_R", 
 
     "LOADI", "LOAD", "LOADP", "LOADP_L", "LOADP_R", "CHID_L", "CHID_R",
@@ -2674,80 +2665,16 @@ void IMCode_puts(int n) {
 	     IdTable_get_name(imcode->operand1));
       break;
 
-    case OP_MKAGENT0:
+    case OP_MKAGENT:
       printf("%s id%ld var%ld\n", string_opcode[imcode->opcode],
 	     imcode->operand1, imcode->operand2);
       break;
 
-    case OP_MKAGENT1:
-      printf("%s id%ld var%ld var%ld\n", string_opcode[imcode->opcode],
-	     imcode->operand1, imcode->operand2, imcode->operand3);
-      break;
+      
 
-    case OP_MKAGENT2:
-      printf("%s id%ld var%ld var%ld var%ld\n", string_opcode[imcode->opcode],
-	     imcode->operand1, imcode->operand2,
-	     imcode->operand3, imcode->operand4);
-      break;
 
-    case OP_MKAGENT3:
-      printf("%s id%ld var%ld var%ld var%ld var%ld\n", string_opcode[imcode->opcode],
-	     imcode->operand1, imcode->operand2,
-	     imcode->operand3, imcode->operand4, imcode->operand5);
-      break;
-
-    case OP_MKAGENT4:
-      printf("%s id%ld var%ld var%ld var%ld var%ld var%ld \n", string_opcode[imcode->opcode],
-	     imcode->operand1, imcode->operand2,
-	     imcode->operand3, imcode->operand4, imcode->operand5,
-	     imcode->operand6);
-      break;
-
-    case OP_MKAGENT5:
-      printf("%s id%ld var%ld var%ld var%ld var%ld var%ld var%ld \n", string_opcode[imcode->opcode],
-	     imcode->operand1, imcode->operand2,
-	     imcode->operand3, imcode->operand4, imcode->operand5,
-	     imcode->operand6, imcode->operand7);
-      break;
 
       
-    case OP_REUSEAGENT0:
-      printf("%s var%ld id%ld\n", string_opcode[imcode->opcode],
-	     imcode->operand1, imcode->operand2);
-      break;
-
-    case OP_REUSEAGENT1:
-      printf("%s var%ld id%ld var%ld\n", string_opcode[imcode->opcode],
-	     imcode->operand1, imcode->operand2, imcode->operand3);
-      break;
-
-    case OP_REUSEAGENT2:
-      printf("%s var%ld id%ld var%ld var%ld\n", string_opcode[imcode->opcode],
-	     imcode->operand1, imcode->operand2,
-	     imcode->operand3, imcode->operand4);
-      break;
-
-    case OP_REUSEAGENT3:
-      printf("%s var%ld id%ld var%ld var%ld var%ld\n", string_opcode[imcode->opcode],
-	     imcode->operand1, imcode->operand2,
-	     imcode->operand3, imcode->operand4, imcode->operand5);
-      break;
-
-    case OP_REUSEAGENT4:
-      printf("%s var%ld id%ld var%ld var%ld var%ld var%ld\n", string_opcode[imcode->opcode],
-	     imcode->operand1, imcode->operand2,
-	     imcode->operand3, imcode->operand4, imcode->operand5,
-	     imcode->operand6);
-      break;
-
-    case OP_REUSEAGENT5:
-      printf("%s var%ld id%ld var%ld var%ld var%ld var%ld var%ld\n",
-	     string_opcode[imcode->opcode],
-	     imcode->operand1, imcode->operand2,
-	     imcode->operand3, imcode->operand4, imcode->operand5,
-	     imcode->operand6, imcode->operand7);
-      break;
-
 
     case OP_LABEL:
       printf("%s%ld:\n", string_opcode[imcode->opcode],
@@ -2933,154 +2860,12 @@ void VMCode_puts(void **code, int n) {
 	     IdTable_get_name((unsigned long)code[i+1]));
       i+=2;
 
-    } else if (code[i] == CodeAddr[OP_MKAGENT0]) {
-#ifdef USE_MKAGENT_N
-      printf("mkagent0 id%lu reg%lu\n", 
-	     (unsigned long)code[i+1],
-	     (unsigned long)code[i+2]);
-#else
+    } else if (code[i] == CodeAddr[OP_MKAGENT]) {
       printf("mkagent id:%lu reg%lu\n", 
 	     (unsigned long)code[i+1],
 	     (unsigned long)code[i+2]);
-#endif
       
       i+=2;
-
-    } else if (code[i] == CodeAddr[OP_MKAGENT1]) {
-#if !defined(OPTIMISE_TWO_ADDRESS) || !defined(OPTIMISE_TWO_ADDRESS_MKAGENT1)
-      printf("mkagent1 id%lu reg%lu reg%lu\n", 
-	     (unsigned long)code[i+1],
-	     (unsigned long)code[i+2],
-	     (unsigned long)code[i+3]);
-      i+=3;
-#else
-      printf("mkagent1 id%lu reg%lu\n", 
-	     (unsigned long)code[i+1],
-	     (unsigned long)code[i+2]);
-      i+=2;
-#endif      
-
-    } else if (code[i] == CodeAddr[OP_MKAGENT2]) {
-#if !defined(OPTIMISE_TWO_ADDRESS) || !defined(OPTIMISE_TWO_ADDRESS_MKAGENT2)
-      printf("mkagent2 id%lu reg%lu reg%lu reg%lu\n", 
-	     (unsigned long)code[i+1],
-	     (unsigned long)code[i+2],
-	     (unsigned long)code[i+3],
-	     (unsigned long)code[i+4]);
-      i+=4;
-#else
-      printf("mkagent2 id%lu reg%lu reg%lu\n", 
-	     (unsigned long)code[i+1],
-	     (unsigned long)code[i+2],
-	     (unsigned long)code[i+3]);
-      i+=3;
-#endif      
-      
-    } else if (code[i] == CodeAddr[OP_MKAGENT3]) {
-#if !defined(OPTIMISE_TWO_ADDRESS) || !defined(OPTIMISE_TWO_ADDRESS_MKAGENT3)
-      printf("mkagent3 id%lu reg%lu reg%lu reg%lu reg%lu\n", 
-	     (unsigned long)code[i+1],
-	     (unsigned long)code[i+2],
-	     (unsigned long)code[i+3],
-	     (unsigned long)code[i+4],
-	     (unsigned long)code[i+5]);
-      i+=5;
-#else
-      printf("mkagent3 id%lu reg%lu reg%lu reg%lu\n", 
-	     (unsigned long)code[i+1],
-	     (unsigned long)code[i+2],
-	     (unsigned long)code[i+3],
-	     (unsigned long)code[i+4]);
-      i+=4;      
-#endif
-      
-    } else if (code[i] == CodeAddr[OP_MKAGENT4]) {
-#if !defined(OPTIMISE_TWO_ADDRESS) || !defined(OPTIMISE_TWO_ADDRESS_MKAGENT4)
-      printf("mkagent4 id%lu reg%lu reg%lu reg%lu reg%lu reg%lu\n", 
-	     (unsigned long)code[i+1],
-	     (unsigned long)code[i+2],
-	     (unsigned long)code[i+3],
-	     (unsigned long)code[i+4],
-	     (unsigned long)code[i+5],
-	     (unsigned long)code[i+6]);
-      i+=6;
-#else
-      printf("mkagent4 id%lu reg%lu reg%lu reg%lu reg%lu\n", 
-	     (unsigned long)code[i+1],
-	     (unsigned long)code[i+2],
-	     (unsigned long)code[i+3],
-	     (unsigned long)code[i+4],
-	     (unsigned long)code[i+5]);
-      i+=5;
-#endif
-      
-    } else if (code[i] == CodeAddr[OP_MKAGENT5]) {
-      printf("mkagent5 id%lu reg%lu reg%lu reg%lu reg%lu reg%lu reg%lu\n", 
-	     (unsigned long)code[i+1],
-	     (unsigned long)code[i+2],
-	     (unsigned long)code[i+3],
-	     (unsigned long)code[i+4],
-	     (unsigned long)code[i+5],
-	     (unsigned long)code[i+6],
-	     (unsigned long)code[i+7]);
-      i+=7;
-      
-    } else if (code[i] == CodeAddr[OP_REUSEAGENT0]) {
-      printf("reuseagent0 reg%lu as id=%lu", 
-	     (unsigned long)code[i+1],
-	     (unsigned long)code[i+2]);
-      puts("");
-      i+=2;
-
-    } else if (code[i] == CodeAddr[OP_REUSEAGENT1]) {
-      printf("reuseagent0 reg%lu as id=%lu", 
-	     (unsigned long)code[i+1],
-	     (unsigned long)code[i+2]);
-      printf(" reg%lu", (unsigned long)code[i+3]);
-      puts("");
-      i+=3;
-      
-    } else if (code[i] == CodeAddr[OP_REUSEAGENT2]) {
-      printf("reuseagent2 reg%lu as id=%lu", 
-	     (unsigned long)code[i+1],
-	     (unsigned long)code[i+2]);
-      printf(" reg%lu", (unsigned long)code[i+3]);
-      printf(" reg%lu", (unsigned long)code[i+4]);
-      puts("");
-      i+=4;
-
-    } else if (code[i] == CodeAddr[OP_REUSEAGENT3]) {
-      printf("reuseagent3 reg%lu as id=%lu", 
-	     (unsigned long)code[i+1],
-	     (unsigned long)code[i+2]);
-      printf(" reg%lu", (unsigned long)code[i+3]);
-      printf(" reg%lu", (unsigned long)code[i+4]);
-      printf(" reg%lu", (unsigned long)code[i+5]);
-      puts("");
-      i+=5;
-      
-    } else if (code[i] == CodeAddr[OP_REUSEAGENT4]) {
-      printf("reuseagent4 reg%lu as id=%lu", 
-	     (unsigned long)code[i+1],
-	     (unsigned long)code[i+2]);
-      printf(" reg%lu", (unsigned long)code[i+3]);
-      printf(" reg%lu", (unsigned long)code[i+4]);
-      printf(" reg%lu", (unsigned long)code[i+5]);
-      printf(" reg%lu", (unsigned long)code[i+6]);
-      puts("");
-      i+=6;
-
-    } else if (code[i] == CodeAddr[OP_REUSEAGENT5]) {
-      printf("reuseagent5 reg%lu as id=%lu", 
-	     (unsigned long)code[i+1],
-	     (unsigned long)code[i+2]);
-      printf(" reg%lu", (unsigned long)code[i+3]);
-      printf(" reg%lu", (unsigned long)code[i+4]);
-      printf(" reg%lu", (unsigned long)code[i+5]);
-      printf(" reg%lu", (unsigned long)code[i+6]);
-      printf(" reg%lu", (unsigned long)code[i+7]);
-      puts("");
-      i+=7;
       
     } else if (code[i] == CodeAddr[OP_PUSH]) {
       printf("push reg%lu reg%lu\n",
@@ -4032,55 +3817,9 @@ int CmEnv_Optimise_check_occurence_in_block(int localvar,
       
     case OP_MKNAME:
     case OP_MKGNAME:
+    case OP_MKAGENT:
       break;
 
-    case OP_MKAGENT5:
-      // OP_MKAGENT5 id src1 src2 src3 src4 src5 dest
-      if (imcode->operand6 == localvar) {
-	return 1;
-      }
-    case OP_MKAGENT4:
-      if (imcode->operand5 == localvar) {
-	return 1;
-      }
-    case OP_MKAGENT3:
-      if (imcode->operand4 == localvar) {
-	return 1;
-      }
-    case OP_MKAGENT2:
-      if (imcode->operand3 == localvar) {
-	return 1;
-      }
-    case OP_MKAGENT1:
-      if (imcode->operand2 == localvar) {
-	return 1;
-      }
-    case OP_MKAGENT0:
-      break;
-
-
-    case OP_REUSEAGENT5:
-      if (imcode->operand7 == localvar) {
-	return 1;
-      }
-    case OP_REUSEAGENT4:
-      if (imcode->operand6 == localvar) {
-	return 1;
-      }
-    case OP_REUSEAGENT3:
-      if (imcode->operand5 == localvar) {
-	return 1;
-      }
-    case OP_REUSEAGENT2:
-      if (imcode->operand4 == localvar) {
-	return 1;
-      }
-    case OP_REUSEAGENT1:
-      if (imcode->operand3 == localvar) {
-	return 1;
-      }
-    case OP_REUSEAGENT0:
-      break;
 
 
     case OP_PUSH:
@@ -4337,75 +4076,9 @@ int CmEnv_Optimise_VMCode_CopyPropagation(int target_imcode_addr) {
 
     case OP_MKNAME:
     case OP_MKGNAME:
+    case OP_MKAGENT:
       break;
 
-
-    case OP_MKAGENT5:
-      if (imcode->operand6 == load_to) {
-	imcode->operand6 = load_from;
-	IMCode[target_imcode_addr].opcode = OP_DEAD_CODE;
-	return 1;
-      }
-    case OP_MKAGENT4:
-      if (imcode->operand5 == load_to) {
-	imcode->operand5 = load_from;
-	IMCode[target_imcode_addr].opcode = OP_DEAD_CODE;
-	return 1;
-      }
-    case OP_MKAGENT3:
-      if (imcode->operand4 == load_to) {
-	imcode->operand4 = load_from;
-	IMCode[target_imcode_addr].opcode = OP_DEAD_CODE;
-	return 1;
-      }
-    case OP_MKAGENT2:
-      if (imcode->operand3 == load_to) {
-	imcode->operand3 = load_from;
-	IMCode[target_imcode_addr].opcode = OP_DEAD_CODE;
-	return 1;
-      }
-    case OP_MKAGENT1:
-      if (imcode->operand2 == load_to) {
-	imcode->operand2 = load_from;
-	IMCode[target_imcode_addr].opcode = OP_DEAD_CODE;
-	return 1;
-      }
-    case OP_MKAGENT0:
-      break;
-
-
-    case OP_REUSEAGENT5:
-      if (imcode->operand7 == load_to) {
-	imcode->operand7 = load_from;
-	IMCode[target_imcode_addr].opcode = OP_DEAD_CODE;
-	return 1;
-      }
-    case OP_REUSEAGENT4:
-      if (imcode->operand6 == load_to) {
-	imcode->operand6 = load_from;
-	IMCode[target_imcode_addr].opcode = OP_DEAD_CODE;
-	return 1;
-      }
-    case OP_REUSEAGENT3:
-      if (imcode->operand5 == load_to) {
-	imcode->operand5 = load_from;
-	IMCode[target_imcode_addr].opcode = OP_DEAD_CODE;
-	return 1;
-      }
-    case OP_REUSEAGENT2:
-      if (imcode->operand4 == load_to) {
-	imcode->operand4 = load_from;
-	IMCode[target_imcode_addr].opcode = OP_DEAD_CODE;
-	return 1;
-      }
-    case OP_REUSEAGENT1:
-      if (imcode->operand3 == load_to) {
-	imcode->operand3 = load_from;
-	IMCode[target_imcode_addr].opcode = OP_DEAD_CODE;
-	return 1;
-      }
-    case OP_REUSEAGENT0:
-      break;
 
 
     case OP_LOADP:
@@ -4608,8 +4281,8 @@ int CmEnv_generate_VMCode(void **code) {
       break;
     }
       
-    case OP_MKAGENT0: {
-      //      printf("OP_MKAGENT0 id var%d:%d\n", 
+    case OP_MKAGENT: {
+      //      printf("OP_MKAGENT id var%d:%d\n", 
       //	     imcode->operand1, imcode->operand2);
       long dest = imcode->operand2;
 
@@ -4622,445 +4295,8 @@ int CmEnv_generate_VMCode(void **code) {
       code[addr++] = (void *)(unsigned long)dest;
       break;
     }
-    case OP_MKAGENT1: {
-      //      printf("OP_MKAGENT1 id%d var%d var%d\n", 
-      //	     imcode->operand1, imcode->operand2, imcode->operand3);
-      long src1 = imcode->operand2;
-      long dest = imcode->operand3;
-
-#ifdef OPTIMISE_IMCODE
-      src1 = CmEnv_using_reg(src1);
-      if (!CmEnv_Optimise_check_occurence_in_block(imcode->operand2, line_num))
-	CmEnv_free_reg(src1);
-      
-#if !defined(OPTIMISE_TWO_ADDRESS) || !defined(OPTIMISE_TWO_ADDRESS_MKAGENT1)
-      dest = CmEnv_get_newreg(dest);
-#else
-      int new_reg = CmEnv_assign_reg(dest, src1);
-      if (new_reg > 0) {
-	code[addr++] = CodeAddr[OP_LOAD];
-	code[addr++] = (void *)(unsigned long)src1;
-	code[addr++] = (void *)(unsigned long)new_reg;
-      }      
-#endif
-#endif
-
-      
-      code[addr++] = CodeAddr[imcode->opcode];
-      code[addr++] = (void *)(unsigned long)imcode->operand1;
-      code[addr++] = (void *)(unsigned long)src1;      
-#if !defined(OPTIMISE_TWO_ADDRESS) || !defined(OPTIMISE_TWO_ADDRESS_MKAGENT1)
-      code[addr++] = (void *)(unsigned long)dest;
-#endif
-      
-      break;
-    }
-    case OP_MKAGENT2: {
-      //      printf("OP_MKAGENT2 id%d var%d var%d var%d\n", 
-      //	     imcode->operand1, imcode->operand2,
-      //	     imcode->operand3, imcode->operand4);
-
-      long src1 = imcode->operand2;
-      long src2 = imcode->operand3;
-      long dest = imcode->operand4;
-
-
-#ifdef OPTIMISE_IMCODE
-      src2 = CmEnv_using_reg(src2);
-      if ((!CmEnv_Optimise_check_occurence_in_block(imcode->operand3, line_num))
-	  && (imcode->operand2 != imcode->operand3)) {
-	CmEnv_free_reg(src2);	
-      }
-      
-#if !defined(OPTIMISE_TWO_ADDRESS) || !defined(OPTIMISE_TWO_ADDRESS_MKAGENT2)
-      dest = CmEnv_get_newreg(dest);
-#else
-      int new_reg = CmEnv_assign_reg(dest, src2);
-      if (new_reg > 0) {
-	code[addr++] = CodeAddr[OP_LOAD];
-	code[addr++] = (void *)(unsigned long)src2;
-	code[addr++] = (void *)(unsigned long)new_reg;
-      }                  
-#endif
-
-      src1 = CmEnv_using_reg(src1);
-      if (!CmEnv_Optimise_check_occurence_in_block(imcode->operand2, line_num))
-	CmEnv_free_reg(src1);
-
-
-#endif
-
-      
-      code[addr++] = CodeAddr[imcode->opcode];
-      code[addr++] = (void *)(unsigned long)imcode->operand1;
-      code[addr++] = (void *)(unsigned long)src1;      
-      code[addr++] = (void *)(unsigned long)src2;      
-#if !defined(OPTIMISE_TWO_ADDRESS) || !defined(OPTIMISE_TWO_ADDRESS_MKAGENT2)
-      code[addr++] = (void *)(unsigned long)dest;      
-#endif
-      
-      break;
-    }
-    case OP_MKAGENT3: {
-      //      printf("OP_MKAGENT3 id%d var%d var%d var%d var%d \n", 
-      //	     imcode->operand1, imcode->operand2,
-      //	     imcode->operand3, imcode->operand4, imcode->operand5);
-      long src1 = imcode->operand2;
-      long src2 = imcode->operand3;
-      long src3 = imcode->operand4;
-      long dest = imcode->operand5;
       
 
-#ifdef OPTIMISE_IMCODE
-      src3 = CmEnv_using_reg(src3);
-      if (!CmEnv_Optimise_check_occurence_in_block(imcode->operand4, line_num))
-	CmEnv_free_reg(src3);
-	  
-#if !defined(OPTIMISE_TWO_ADDRESS) || !defined(OPTIMISE_TWO_ADDRESS_MKAGENT3)
-      dest = CmEnv_get_newreg(dest);
-#else
-      int new_reg = CmEnv_assign_reg(dest, src3);
-      if (new_reg > 0) {
-	code[addr++] = CodeAddr[OP_LOAD];
-	code[addr++] = (void *)(unsigned long)src3;
-	code[addr++] = (void *)(unsigned long)new_reg;
-      }                  
-#endif
-      
-      
-      src1 = CmEnv_using_reg(src1);
-      if ((!CmEnv_Optimise_check_occurence_in_block(imcode->operand2, line_num))
-	  && (imcode->operand2 != imcode->operand3)
-	  && (imcode->operand2 != imcode->operand4))
-	CmEnv_free_reg(src1);
-      
-      src2 = CmEnv_using_reg(src2);
-      if ((!CmEnv_Optimise_check_occurence_in_block(imcode->operand3, line_num))
-	  && (imcode->operand3 != imcode->operand4))
-	CmEnv_free_reg(src2);
-      
-#endif
-      
-      code[addr++] = CodeAddr[imcode->opcode];
-      code[addr++] = (void *)(unsigned long)imcode->operand1;
-      code[addr++] = (void *)(unsigned long)src1;      
-      code[addr++] = (void *)(unsigned long)src2;            
-      code[addr++] = (void *)(unsigned long)src3;      
-#if !defined(OPTIMISE_TWO_ADDRESS) || !defined(OPTIMISE_TWO_ADDRESS_MKAGENT3)
-      code[addr++] = (void *)(unsigned long)dest;      
-#endif
-      
-      break;
-    }
-    case OP_MKAGENT4:  {
-      //      printf("OP_MKAGENT4 var%d id%d var%d var%d var%d var%d\n", 
-      //	     imcode->operand1, imcode->operand2,
-      //	     imcode->operand3, imcode->operand4, imcode->operand5);
-      long src1 = imcode->operand2;
-      long src2 = imcode->operand3;
-      long src3 = imcode->operand4;
-      long src4 = imcode->operand5;
-      long dest = imcode->operand6;
-
-#ifdef OPTIMISE_IMCODE
-      src4 = CmEnv_using_reg(src4);
-      if (!CmEnv_Optimise_check_occurence_in_block(imcode->operand5, line_num))
-	CmEnv_free_reg(src4);
-
-#if !defined(OPTIMISE_TWO_ADDRESS) || !defined(OPTIMISE_TWO_ADDRESS_MKAGENT4)
-      dest = CmEnv_get_newreg(dest);
-#else
-      int new_reg = CmEnv_assign_reg(dest, src4);
-      if (new_reg > 0) {
-	code[addr++] = CodeAddr[OP_LOAD];
-	code[addr++] = (void *)(unsigned long)src4;
-	code[addr++] = (void *)(unsigned long)new_reg;
-      }                  
-#endif
-
-      
-      src1 = CmEnv_using_reg(src1);
-      if ((!CmEnv_Optimise_check_occurence_in_block(imcode->operand2, line_num))
-	  && (imcode->operand2 != imcode->operand3)
-	  && (imcode->operand2 != imcode->operand4)
-	  && (imcode->operand2 != imcode->operand5))
-	CmEnv_free_reg(src1);
-
-      src2 = CmEnv_using_reg(src2);
-      if ((!CmEnv_Optimise_check_occurence_in_block(imcode->operand3, line_num))
-	  && (imcode->operand3 != imcode->operand4)
-	  && (imcode->operand3 != imcode->operand5))
-	CmEnv_free_reg(src2);
-
-      src3 = CmEnv_using_reg(src3);
-      if ((!CmEnv_Optimise_check_occurence_in_block(imcode->operand4, line_num))
-	  && (imcode->operand4 != imcode->operand5))
-	CmEnv_free_reg(src3);
-#endif
-
-      
-      code[addr++] = CodeAddr[imcode->opcode];
-      code[addr++] = (void *)(unsigned long)imcode->operand1;
-      code[addr++] = (void *)(unsigned long)src1;      
-      code[addr++] = (void *)(unsigned long)src2;            
-      code[addr++] = (void *)(unsigned long)src3;      
-      code[addr++] = (void *)(unsigned long)src4;      
-#if !defined(OPTIMISE_TWO_ADDRESS) || !defined(OPTIMISE_TWO_ADDRESS_MKAGENT4)
-      code[addr++] = (void *)(unsigned long)dest;      
-#endif
-      break;
-    }      
-    case OP_MKAGENT5: {
-      //      printf("OP_MKAGENT5 var%d id%d var%d var%d var%d var%d\n", 
-      //	     imcode->operand1, imcode->operand2,
-      //	     imcode->operand3, imcode->operand4, imcode->operand5);
-      long src1 = imcode->operand2;
-      long src2 = imcode->operand3;
-      long src3 = imcode->operand4;
-      long src4 = imcode->operand5;
-      long src5 = imcode->operand6;
-      long dest = imcode->operand7;
-
-#ifdef OPTIMISE_IMCODE
-      src1 = CmEnv_using_reg(src1);
-      if ((!CmEnv_Optimise_check_occurence_in_block(imcode->operand2, line_num))
-	  && (imcode->operand2 != imcode->operand3)
-	  && (imcode->operand2 != imcode->operand4)
-	  && (imcode->operand2 != imcode->operand5)
-	  && (imcode->operand2 != imcode->operand6))
-	CmEnv_free_reg(src1);
-
-      src2 = CmEnv_using_reg(src2);
-      if ((!CmEnv_Optimise_check_occurence_in_block(imcode->operand3, line_num))
-	  && (imcode->operand3 != imcode->operand4)
-	  && (imcode->operand3 != imcode->operand5)
-	  && (imcode->operand3 != imcode->operand6))
-	CmEnv_free_reg(src2);
-
-      src3 = CmEnv_using_reg(src3);
-      if ((!CmEnv_Optimise_check_occurence_in_block(imcode->operand4, line_num))
-	  && (imcode->operand4 != imcode->operand5)
-	  && (imcode->operand4 != imcode->operand6))
-	CmEnv_free_reg(src3);
-
-      src4 = CmEnv_using_reg(src4);
-      if ((!CmEnv_Optimise_check_occurence_in_block(imcode->operand5, line_num))
-	  && (imcode->operand5 != imcode->operand6))
-	CmEnv_free_reg(src4);
-
-      src5 = CmEnv_using_reg(src5);
-      if (!CmEnv_Optimise_check_occurence_in_block(imcode->operand6, line_num))
-	CmEnv_free_reg(src5);
-      
-      dest = CmEnv_get_newreg(dest);
-#endif
-      
-      code[addr++] = CodeAddr[imcode->opcode];
-      code[addr++] = (void *)(unsigned long)imcode->operand1;
-      code[addr++] = (void *)(unsigned long)src1;      
-      code[addr++] = (void *)(unsigned long)src2;            
-      code[addr++] = (void *)(unsigned long)src3;      
-      code[addr++] = (void *)(unsigned long)src4;      
-      code[addr++] = (void *)(unsigned long)src5;      
-      code[addr++] = (void *)(unsigned long)dest;      
-      break;
-    }      
-
-
-    case OP_REUSEAGENT0: {
-      //      printf("OP_REUSEAGENT0 var%d id%d\n", 
-      //	     imcode->operand1, imcode->operand2);
-      int dest = imcode->operand1;
-
-#ifdef OPTIMISE_IMCODE
-#endif
-
-      code[addr++] = CodeAddr[imcode->opcode];
-      code[addr++] = (void *)(unsigned long)dest;
-      code[addr++] = (void *)(unsigned long)imcode->operand2;
-      break;
-    }
-      
-    case OP_REUSEAGENT1: {
-      //      printf("OP_REUSEAGENT1 var%d id%d var%d\n", 
-      //	     imcode->operand1, imcode->operand2, imcode->operand3);
-      long dest = imcode->operand1;
-      long src1 = imcode->operand3;
-
-#ifdef OPTIMISE_IMCODE
-      src1 = CmEnv_using_reg(src1);
-      if (!CmEnv_Optimise_check_occurence_in_block(imcode->operand3, line_num))
-	CmEnv_free_reg(src1);
-#endif
-
-      code[addr++] = CodeAddr[imcode->opcode];
-      code[addr++] = (void *)(unsigned long)dest;      
-      code[addr++] = (void *)(unsigned long)imcode->operand2;
-      code[addr++] = (void *)(unsigned long)src1;      
-      break;
-    }
-      
-    case OP_REUSEAGENT2: {
-      long dest = imcode->operand1;
-      long src1 = imcode->operand3;
-      long src2 = imcode->operand4;
-
-
-#ifdef OPTIMISE_IMCODE
-      src1 = CmEnv_using_reg(src1);
-      if ((!CmEnv_Optimise_check_occurence_in_block(imcode->operand3, line_num))
-	  && (imcode->operand3 != imcode->operand4)) {
-	CmEnv_free_reg(src1);
-      }
-
-      src2 = CmEnv_using_reg(src2);
-      if (!CmEnv_Optimise_check_occurence_in_block(imcode->operand4, line_num))
-	CmEnv_free_reg(src2);
-#endif
-      
-      code[addr++] = CodeAddr[imcode->opcode];
-      code[addr++] = (void *)(unsigned long)dest;      
-      code[addr++] = (void *)(unsigned long)imcode->operand2;
-      code[addr++] = (void *)(unsigned long)src1;      
-      code[addr++] = (void *)(unsigned long)src2;      
-      
-      break;
-    }
-      
-    case OP_REUSEAGENT3: {
-      //      printf("OP_REUSEAGENT3 var%d id%d var%d var%d var%d\n", 
-      //	     imcode->operand1, imcode->operand2,
-      //	     imcode->operand3, imcode->operand4, imcode->operand5);
-      long dest = imcode->operand1;
-      long src1 = imcode->operand3;
-      long src2 = imcode->operand4;
-      long src3 = imcode->operand5;
-      
-
-#ifdef OPTIMISE_IMCODE
-      src1 = CmEnv_using_reg(src1);
-      if ((!CmEnv_Optimise_check_occurence_in_block(imcode->operand3, line_num))
-	  && (imcode->operand3 != imcode->operand4)
-	  && (imcode->operand3 != imcode->operand5))
-	CmEnv_free_reg(src1);
-      
-      src2 = CmEnv_using_reg(src2);
-      if ((!CmEnv_Optimise_check_occurence_in_block(imcode->operand4, line_num))
-	  && (imcode->operand4 != imcode->operand5))
-	CmEnv_free_reg(src2);
-      
-      src3 = CmEnv_using_reg(src3);
-      if (!CmEnv_Optimise_check_occurence_in_block(imcode->operand5, line_num))
-	CmEnv_free_reg(src3);	  
-#endif
-      
-      code[addr++] = CodeAddr[imcode->opcode];
-      code[addr++] = (void *)(unsigned long)dest;      
-      code[addr++] = (void *)(unsigned long)imcode->operand2;
-      code[addr++] = (void *)(unsigned long)src1;      
-      code[addr++] = (void *)(unsigned long)src2;            
-      code[addr++] = (void *)(unsigned long)src3;      
-      
-      break;
-    }
-      
-    case OP_REUSEAGENT4: {
-      //      printf("OP_REUSEAGENT3 var%d id%d var%d var%d var%d\n", 
-      //	     imcode->operand1, imcode->operand2,
-      //	     imcode->operand3, imcode->operand4, imcode->operand5);
-      long dest = imcode->operand1;
-      long src1 = imcode->operand3;
-      long src2 = imcode->operand4;
-      long src3 = imcode->operand5;
-      long src4 = imcode->operand6;
-
-#ifdef OPTIMISE_IMCODE
-      src1 = CmEnv_using_reg(src1);
-      if ((!CmEnv_Optimise_check_occurence_in_block(imcode->operand3, line_num))
-	  && (imcode->operand3 != imcode->operand4)
-	  && (imcode->operand3 != imcode->operand5)
-	  && (imcode->operand3 != imcode->operand6))
-	CmEnv_free_reg(src1);
-
-      src2 = CmEnv_using_reg(src2);
-      if ((!CmEnv_Optimise_check_occurence_in_block(imcode->operand4, line_num))
-	  && (imcode->operand4 != imcode->operand5)
-	  && (imcode->operand4 != imcode->operand6))
-	CmEnv_free_reg(src2);
-
-      src3 = CmEnv_using_reg(src3);
-      if ((!CmEnv_Optimise_check_occurence_in_block(imcode->operand5, line_num))
-	  && (imcode->operand5 != imcode->operand6))
-	CmEnv_free_reg(src3);
-
-      src4 = CmEnv_using_reg(src4);
-      if (!CmEnv_Optimise_check_occurence_in_block(imcode->operand6, line_num))
-	CmEnv_free_reg(src4);
-#endif
-
-      
-      code[addr++] = CodeAddr[imcode->opcode];
-      code[addr++] = (void *)(unsigned long)dest;      
-      code[addr++] = (void *)(unsigned long)imcode->operand2;
-      code[addr++] = (void *)(unsigned long)src1;      
-      code[addr++] = (void *)(unsigned long)src2;            
-      code[addr++] = (void *)(unsigned long)src3;      
-      code[addr++] = (void *)(unsigned long)src4;      
-      break;
-    }      
-    case OP_REUSEAGENT5: {
-      //      printf("OP_REUSEAGENT3 var%d id%d var%d var%d var%d\n", 
-      //	     imcode->operand1, imcode->operand2,
-      //	     imcode->operand3, imcode->operand4, imcode->operand5);
-      long dest = imcode->operand1;
-      long src1 = imcode->operand3;
-      long src2 = imcode->operand4;
-      long src3 = imcode->operand5;
-      long src4 = imcode->operand6;
-      long src5 = imcode->operand7;
-
-#ifdef OPTIMISE_IMCODE
-      src1 = CmEnv_using_reg(src1);
-      if ((!CmEnv_Optimise_check_occurence_in_block(imcode->operand3, line_num))
-	  && (imcode->operand3 != imcode->operand4)
-	  && (imcode->operand3 != imcode->operand5)
-	  && (imcode->operand3 != imcode->operand6)
-	  && (imcode->operand3 != imcode->operand7))
-	CmEnv_free_reg(src1);
-
-      src2 = CmEnv_using_reg(src2);
-      if ((!CmEnv_Optimise_check_occurence_in_block(imcode->operand4, line_num))
-	  && (imcode->operand4 != imcode->operand5)
-	  && (imcode->operand4 != imcode->operand6)
-	  && (imcode->operand4 != imcode->operand7))
-	CmEnv_free_reg(src2);
-
-      src3 = CmEnv_using_reg(src3);
-      if ((!CmEnv_Optimise_check_occurence_in_block(imcode->operand5, line_num))
-	  && (imcode->operand5 != imcode->operand6)
-	  && (imcode->operand5 != imcode->operand7))
-	CmEnv_free_reg(src3);
-
-      src4 = CmEnv_using_reg(src4);
-      if ((!CmEnv_Optimise_check_occurence_in_block(imcode->operand6, line_num))
-	  && (imcode->operand6 != imcode->operand7))
-	CmEnv_free_reg(src4);
-
-      src5 = CmEnv_using_reg(src5);
-      if (!CmEnv_Optimise_check_occurence_in_block(imcode->operand7, line_num))
-	CmEnv_free_reg(src5);      
-#endif
-      
-      code[addr++] = CodeAddr[imcode->opcode];
-      code[addr++] = (void *)(unsigned long)dest;      
-      code[addr++] = (void *)(unsigned long)imcode->operand2;
-      code[addr++] = (void *)(unsigned long)src1;      
-      code[addr++] = (void *)(unsigned long)src2;            
-      code[addr++] = (void *)(unsigned long)src3;      
-      code[addr++] = (void *)(unsigned long)src4;      
-      code[addr++] = (void *)(unsigned long)src5;      
-      break;
-    }      
 
       
       
@@ -6471,15 +5707,11 @@ int Compile_term_on_ast(Ast *ptr, int target) {
   case AST_NIL:
     if (target == -1) {      
       result = CmEnv_newvar();
-      mkagent = OP_MKAGENT0;
+      mkagent = OP_MKAGENT;
       IMCode_genCode2(mkagent, ID_NIL, result);
     } else {
       result = target;
 
-#ifdef OLD_REUSEAGENT
-      mkagent = OP_REUSEAGENT0;
-      IMCode_genCode2(mkagent, result, ID_NIL);
-#else
       if (target == VM_OFFSET_ANNOTATE_L) {      
 	if (CmEnv.idL != ID_NIL) {
 	  IMCode_genCode1(OP_CHID_L, ID_NIL);
@@ -6489,7 +5721,6 @@ int Compile_term_on_ast(Ast *ptr, int target) {
 	  IMCode_genCode1(OP_CHID_R, ID_NIL);
 	}	
       }      
-#endif
       
     }
 
@@ -6511,33 +5742,18 @@ int Compile_term_on_ast(Ast *ptr, int target) {
     if (target == -1) {      
       result = CmEnv_newvar();
 
-#ifdef USE_MKAGENT_N
-      mkagent = OP_MKAGENT2;
-      
-      alloc[0] = Compile_term_on_ast(ptr->left, -1);
-      IMCode_genCode4(mkagent, ID_CONS, alloc[0], alloc[1], result);
-
-#else
       // expanded operations
-      IMCode_genCode2(OP_MKAGENT0, ID_CONS, result);
+      IMCode_genCode2(OP_MKAGENT, ID_CONS, result);
       
       alloc[0] = Compile_term_on_ast(ptr->left, -1);
       IMCode_genCode3(OP_LOADP, alloc[0], 0, result);
       
       IMCode_genCode3(OP_LOADP, alloc[1], 1, result);
-#endif
       
     } else {
       result = target;
 
       alloc[0] = Compile_term_on_ast(ptr->left, -1);
-      
-      // OLD Version with OP_REUSEAGENT2
-      //#definen OLD_REUSEAGENT
-#ifdef OLD_REUSEAGENT
-      mkagent = OP_REUSEAGENT2;
-      IMCode_genCode4(mkagent, result, ID_CONS, alloc[0], alloc[1]);
-#else
       
       if (target == VM_OFFSET_ANNOTATE_L) {      
 	if (CmEnv.idL != ID_CONS) {
@@ -6558,7 +5774,6 @@ int Compile_term_on_ast(Ast *ptr, int target) {
 	  }
 	}
       }
-#endif
       
     }
 
@@ -6578,111 +5793,59 @@ int Compile_term_on_ast(Ast *ptr, int target) {
       result = alloc[0];
       
     } else {
-      
-      // normal case
-      ptr=ptr->right;
-      for (i=0; i< arity; i++) {
-	alloc[i] = Compile_term_on_ast(ptr->left, -1);
-	ptr = ast_getTail(ptr);
-      }
 
+      ptr=ptr->right;
+
+      // normal case
       if (target == -1) {      
 	result = CmEnv_newvar();
+
+	IMCode_genCode2(OP_MKAGENT, GET_TUPLEID(arity), result);
+
+	
+	for (i=0; i<arity; i++) {
+	  alloc[0] = Compile_term_on_ast(ptr->left, -1);
+	  ptr = ast_getTail(ptr);
+	  IMCode_genCode3(OP_LOADP, alloc[0], i, result);
+	}
+	
       } else {
+
 	result = target;
-      }
           
-      switch (arity) {
-      case 0:
-	if (target == -1) {
-	  mkagent = OP_MKAGENT0;
-	  IMCode_genCode2(mkagent, GET_TUPLEID(arity), result);
-	} else {
-	  mkagent = OP_REUSEAGENT0;
-	  IMCode_genCode2(mkagent, result, GET_TUPLEID(arity));
-	}
-	break;
-      
-      
-      case 2:
-	if (target == -1) {
-#ifdef USE_MKAGENT_N
-	  mkagent = OP_MKAGENT2;
-	  IMCode_genCode4(mkagent, GET_TUPLEID(arity),
-			  alloc[0], alloc[1], result);
-#else
-	  // expanded operations
-	  IMCode_genCode2(OP_MKAGENT0, GET_TUPLEID(arity), result);
-	  IMCode_genCode3(OP_LOADP, alloc[0], 0, result);
-	  IMCode_genCode3(OP_LOADP, alloc[1], 1, result);	  
-#endif	  
-	} else {
-	  mkagent = OP_REUSEAGENT2;
-	  IMCode_genCode4(mkagent, result, GET_TUPLEID(arity),
-			  alloc[0], alloc[1]);
-	}
-	break;
-      
-      case 3:
-	if (target == -1) {
-#ifdef USE_MKAGENT_N
-	  mkagent = OP_MKAGENT3;
-	  IMCode_genCode5(mkagent, GET_TUPLEID(arity),
-			  alloc[0], alloc[1], alloc[2], result);
-#else
-	  // expanded operations
-	  IMCode_genCode2(OP_MKAGENT0, GET_TUPLEID(arity), result);
-	  IMCode_genCode3(OP_LOADP, alloc[0], 0, result);
-	  IMCode_genCode3(OP_LOADP, alloc[1], 1, result);
-	  IMCode_genCode3(OP_LOADP, alloc[2], 2, result);
-#endif	  
-	} else {
-	  mkagent = OP_REUSEAGENT3;
-	  IMCode_genCode5(mkagent, result, GET_TUPLEID(arity),
-			  alloc[0], alloc[1], alloc[2]);
-	}
-	break;
-
-      case 4:
-	if (target == -1) {
-#ifdef USE_MKAGENT_N
-	  mkagent = OP_MKAGENT4;
-	  IMCode_genCode6(mkagent, GET_TUPLEID(arity),
-			  alloc[0], alloc[1], alloc[2], alloc[3], result);
-#else
-	  // expanded operations
-	  IMCode_genCode2(OP_MKAGENT0, GET_TUPLEID(arity), result);
-	  IMCode_genCode3(OP_LOADP, alloc[0], 0, result);
-	  IMCode_genCode3(OP_LOADP, alloc[1], 1, result);
-	  IMCode_genCode3(OP_LOADP, alloc[2], 2, result);	  
-	  IMCode_genCode3(OP_LOADP, alloc[3], 3, result);	  
-#endif	  
-	} else {
-	  mkagent = OP_REUSEAGENT4;
-	  IMCode_genCode6(mkagent, result, GET_TUPLEID(arity),
-			  alloc[0], alloc[1], alloc[2], alloc[3]);
-	}
-	break;
-
-#if MAX_PORT > 4	
-      default:
-	// We support upto 5-tuples.
-	if (target == -1) {
-	  mkagent = OP_MKAGENT5;
-	  IMCode_genCode7(mkagent, GET_TUPLEID(arity),
-			  alloc[0], alloc[1], alloc[2], alloc[3], alloc[4],
-			  result);
+	
+	if (target == VM_OFFSET_ANNOTATE_L) {
+	  if (CmEnv.idL != GET_TUPLEID(arity)) {
+	    IMCode_genCode1(OP_CHID_L, GET_TUPLEID(arity));
+	  }
+	  for (i=0; i<arity; i++) {
+	    alloc[0] = Compile_term_on_ast(ptr->left, -1);
+	    ptr = ast_getTail(ptr);
+	    
+	    if (alloc[0] != VM_OFFSET_METAVAR_L(i)) {	    
+	      IMCode_genCode2(OP_LOADP_L, alloc[0], i);
+	    }
+	  }
 	  
 	} else {
-	  mkagent = OP_REUSEAGENT5;
-	  IMCode_genCode7(mkagent, result, GET_TUPLEID(arity),
-			  alloc[0], alloc[1], alloc[2], alloc[3], alloc[4]);
-	}
-#endif
+	  if (CmEnv.idR != GET_TUPLEID(arity)) {
+	    IMCode_genCode1(OP_CHID_R, GET_TUPLEID(arity));
+	  }
+	  for (i=0; i<arity; i++) {
+	    alloc[0] = Compile_term_on_ast(ptr->left, -1);
+	    ptr = ast_getTail(ptr);
+	    
+	    if (alloc[0] != VM_OFFSET_METAVAR_R(i)) {	    
+	      IMCode_genCode2(OP_LOADP_R, alloc[0], i);
+	    }
+	  }
+	}	    
+      
 	
       }
       
     }
+
     
     return result;
     break;
@@ -6705,7 +5868,9 @@ int Compile_term_on_ast(Ast *ptr, int target) {
       //      printf("id=%d\n", id);
       alloc[0] = CmEnv_newvar();
       IMCode_genCode2(OP_LOADI, id, alloc[0]);
-      IMCode_genCode3(OP_MKAGENT1, ID_PERCENT, alloc[0], result);
+      //
+      IMCode_genCode2(OP_MKAGENT, ID_PERCENT, result);
+      IMCode_genCode3(OP_LOADP, alloc[0], 0, result);
     }
     return result;
     break;
@@ -6713,19 +5878,24 @@ int Compile_term_on_ast(Ast *ptr, int target) {
     
     
   case AST_AGENT:
-    if (target == -1) {      
-      result = CmEnv_newvar();
-    } else {
-      result = target;
-    }
-    
     int id = IdTable_getid_builtin_funcAgent(ptr);
 
     if (id == -1) {
       id = NameTable_get_set_id_with_IdTable_forAgent((char *)ptr->left->sym);
     }
 
+    // Get the arity
     arity=0;
+    {
+      Ast *arg = ptr->right;
+      for (i=0; i<MAX_PORT; i++) {
+	if (arg == NULL) break;
+	arity++;
+	arg = ast_getTail(arg);
+      }
+    }
+      
+    /*
     ptr=ptr->right;
     for (i=0; i<MAX_PORT; i++) {
       if (ptr == NULL) break;
@@ -6733,134 +5903,65 @@ int Compile_term_on_ast(Ast *ptr, int target) {
       arity++;
       ptr = ast_getTail(ptr);
     }
+    */
+
     
     IdTable_set_arity(id, arity);
 
+    ptr=ptr->right;
     
-    // OLD_REUSEAGENT: Old version with REUSEAGENTn
-#ifndef OLD_REUSEAGENT    
-    if (target != -1) {
-      // reuse agent by LOADP_L and LOADP_R
-      //      if (CmEnv.reg_agentL == VM_OFFSET_ANNOTATE_L) {
+    if (target == -1) {
+      result = CmEnv_newvar();
+      
+      IMCode_genCode2(OP_MKAGENT, id, result);
+
+      for (i=0; i<arity; i++) {
+	alloc[0] = Compile_term_on_ast(ptr->left, -1);
+	ptr = ast_getTail(ptr);
+	
+	IMCode_genCode3(OP_LOADP, alloc[0], i, result);
+      }
+    } else {
+      
+      result = target;
+    
       if (target == VM_OFFSET_ANNOTATE_L) {      
 	if (CmEnv.idL != id) {
 	  IMCode_genCode1(OP_CHID_L, id);
 	}
 	for (i=0; i<arity; i++) {
+	  alloc[0] = Compile_term_on_ast(ptr->left, -1);
+	  ptr = ast_getTail(ptr);
 	  
-	  //	  IMCode_genCode2(OP_LOADP_L, alloc[i], i);
-	  if (alloc[i] != VM_OFFSET_METAVAR_L(i)) {
-	    
-	    IMCode_genCode2(OP_LOADP_L, alloc[i], i);
-	  } else {
-	    IMCode_genCode0(OP_DEAD_CODE);
+	  if (alloc[0] != VM_OFFSET_METAVAR_L(i)) {	    
+	    IMCode_genCode2(OP_LOADP_L, alloc[0], i);
 	  }
 	}
+
+	
       } else {
 	
 	if (CmEnv.idR != id) {
 	  IMCode_genCode1(OP_CHID_R, id);
 	}
 	for (i=0; i<arity; i++) {
-	  if (alloc[i] != VM_OFFSET_METAVAR_R(i)) {
-	    IMCode_genCode2(OP_LOADP_R, alloc[i], i);
-	  } else {
-	    IMCode_genCode0(OP_DEAD_CODE);
+	  alloc[0] = Compile_term_on_ast(ptr->left, -1);
+	  ptr = ast_getTail(ptr);
+	  
+	  if (alloc[0] != VM_OFFSET_METAVAR_R(i)) {
+	    IMCode_genCode2(OP_LOADP_R, alloc[0], i);
 	  }
 	}
       }
-      return result;
+      
     }
-#endif
-
-#ifndef USE_MKAGENT_N
-    if (target == -1) {
-	IMCode_genCode2(OP_MKAGENT0, id, result);
-	for (i=0; i<arity; i++) {
-	  IMCode_genCode3(OP_LOADP, alloc[i], i, result);
-	}
-	return result;
-    }
-#endif    
     
-    switch (arity) {
-    case 0:
-      if (target == -1) {
-	mkagent = OP_MKAGENT0;
-	IMCode_genCode2(mkagent, id, result);
-      } else {
-	mkagent = OP_REUSEAGENT0;
-	IMCode_genCode2(mkagent, result, id);
-      }
-      break;
-      
-    case 1:
-      if (target == -1) {
-	mkagent = OP_MKAGENT1;
-	IMCode_genCode3(mkagent, id, alloc[0], result);
-      } else {
-	mkagent = OP_REUSEAGENT1;
-	IMCode_genCode3(mkagent, result, id, alloc[0]);
-      }
-      break;
-      
-    case 2:
-      if (target == -1) {
-	mkagent = OP_MKAGENT2;
-	IMCode_genCode4(mkagent, id, alloc[0], alloc[1], result);
-      } else {
-	mkagent = OP_REUSEAGENT2;
-	IMCode_genCode4(mkagent, result, id, alloc[0], alloc[1]);
-      }
-      break;
-      
-    case 3:
-      if (target == -1) {
-	mkagent = OP_MKAGENT3;
-	IMCode_genCode5(mkagent, id, alloc[0], alloc[1], alloc[2], result);
-      } else {
-	mkagent = OP_REUSEAGENT3;
-	IMCode_genCode5(mkagent, result, id, alloc[0], alloc[1], alloc[2]);
-      }
-      break;
-
-    case 4:
-      if (target == -1) {
-	mkagent = OP_MKAGENT4;
-	IMCode_genCode6(mkagent, id, alloc[0], alloc[1], alloc[2],
-			alloc[3], result);
-      } else {
-	mkagent = OP_REUSEAGENT4;
-	IMCode_genCode6(mkagent, result, id, alloc[0], alloc[1], alloc[2],
-			alloc[3]);
-      }
-      break;
-
-#if MAX_PORT > 4
-    default:
-      if (target == -1) {
-	mkagent = OP_MKAGENT5;
-	IMCode_genCode7(mkagent, id, alloc[0], alloc[1], alloc[2],
-			alloc[3], alloc[4], result);
-
-	for (i=5; i<arity; i++) {
-	  IMCode_genCode3(OP_LOADP, alloc[i], i, result);
-	}
-	
-      } else {
-	mkagent = OP_REUSEAGENT5;
-	IMCode_genCode7(mkagent, result, id, alloc[0], alloc[1], alloc[2],
-			alloc[3], alloc[4]);
-	for (i=5; i<arity; i++) {
-	  IMCode_genCode3(OP_LOADP, alloc[i], i, result);
-	}
-	
-      }
-#endif      
-    }
     
     return result;
     break;
+
+
+
 
     
   case AST_ANNOTATION_L:
@@ -8627,10 +7728,7 @@ void *exec_code(int mode, VirtualMachine * restrict vm, void * restrict *code) {
   static const void *table[] = {
     &&E_PUSH, &&E_PUSHI, &&E_MYPUSH,
     &&E_MKNAME, &&E_MKGNAME,
-    &&E_MKAGENT0, &&E_MKAGENT1, &&E_MKAGENT2,
-    &&E_MKAGENT3, &&E_MKAGENT4, &&E_MKAGENT5,
-    &&E_REUSEAGENT0 ,&&E_REUSEAGENT1, &&E_REUSEAGENT2,
-    &&E_REUSEAGENT3, &&E_REUSEAGENT4, &&E_REUSEAGENT5,
+    &&E_MKAGENT, 
     &&E_RET, &&E_RET_FREE_LR, &&E_RET_FREE_L, &&E_RET_FREE_R,
     &&E_LOADI, &&E_LOAD, &&E_LOADP,
     &&E_LOADP_L, &&E_LOADP_R, &&E_CHID_L, &&E_CHID_R, 
@@ -8685,190 +7783,14 @@ void *exec_code(int mode, VirtualMachine * restrict vm, void * restrict *code) {
   goto *code[++pc];
 
   
- E_MKAGENT0:
-  //    puts("mkagent0 id dest");
+ E_MKAGENT:
+  //    puts("mkagent id dest");
   i = (unsigned long)code[++pc];
   reg[(unsigned long)code[++pc]] = make_Agent(vm, i);
   goto *code[++pc];
 
   
- E_MKAGENT1:
-#if !defined(OPTIMISE_TWO_ADDRESS) || !defined(OPTIMISE_TWO_ADDRESS_MKAGENT1)
-  //    puts("mkagent1 id src1 dest");
-  a1 = make_Agent(vm, (unsigned long)code[++pc]);
-  AGENT(a1)->port[0] = reg[(unsigned long)code[++pc]];
-  reg[(unsigned long)code[++pc]] = a1;
-#else
-  //    puts("mkagent1 id dest");
-
-  a1 = make_Agent(vm, (unsigned long)code[++pc]);
-  AGENT(a1)->port[0] = reg[(unsigned long)code[++pc]];
-  reg[(unsigned long)code[pc]] = a1;
-#endif  
   
-  goto *code[++pc];
-
-  
- E_MKAGENT2:
-#if !defined(OPTIMISE_TWO_ADDRESS) || !defined(OPTIMISE_TWO_ADDRESS_MKAGENT2)
-  //      puts("mkagent2 id src1 src2 dest");
-  
-  a1 = make_Agent(vm, (unsigned long)code[++pc]);
-  {
-    volatile VALUE *a1port = AGENT(a1)->port;
-    a1port[0] = reg[(unsigned long)code[++pc]];
-    a1port[1] = reg[(unsigned long)code[++pc]];
-  }
-  reg[(unsigned long)code[++pc]] = a1;
-#else
-  //    puts("mkagent2 id src1 dest");
-  a1 = make_Agent(vm, (unsigned long)code[++pc]);
-  {
-    volatile VALUE *a1port = AGENT(a1)->port;
-    a1port[0] = reg[(unsigned long)code[++pc]];
-    a1port[1] = reg[(unsigned long)code[++pc]];
-  }
-  reg[(unsigned long)code[pc]] = a1;
-#endif
-  
-  goto *code[++pc];
-
-
- E_MKAGENT3:
-#if !defined(OPTIMISE_TWO_ADDRESS) || !defined(OPTIMISE_TWO_ADDRESS_MKAGENT3)
-  //    puts("mkagent3 id src1 src2 src3 dest");
-  
-  a1 = make_Agent(vm, (unsigned long)code[++pc]);
-  {
-    volatile VALUE *a1port = AGENT(a1)->port;
-    a1port[0] = reg[(unsigned long)code[++pc]];
-    a1port[1] = reg[(unsigned long)code[++pc]];
-    a1port[2] = reg[(unsigned long)code[++pc]];
-  }
-  reg[(unsigned long)code[++pc]] = a1;
-#else
-  //    puts("mkagent3 id src1 src2 dest");
-  a1 = make_Agent(vm, (unsigned long)code[++pc]);
-  {
-    volatile VALUE *a1port = AGENT(a1)->port;
-    a1port[0] = reg[(unsigned long)code[++pc]];
-    a1port[1] = reg[(unsigned long)code[++pc]];
-    a1port[2] = reg[(unsigned long)code[++pc]];
-  }
-  reg[(unsigned long)code[pc]] = a1;  
-#endif  
-  goto *code[++pc];
-
-  
- E_MKAGENT4:
-#if !defined(OPTIMISE_TWO_ADDRESS) || !defined(OPTIMISE_TWO_ADDRESS_MKAGENT4)
-  //    puts("mkagent4 id src1 src2 src3 src4 dest");
-  a1 = make_Agent(vm, (unsigned long)code[++pc]);
-  {
-    volatile VALUE *a1port = AGENT(a1)->port;
-    a1port[0] = reg[(unsigned long)code[++pc]];
-    a1port[1] = reg[(unsigned long)code[++pc]];
-    a1port[2] = reg[(unsigned long)code[++pc]];
-    a1port[3] = reg[(unsigned long)code[++pc]];
-  }
-  reg[(unsigned long)code[++pc]] = a1;
-#else
-  //    puts("mkagent4 id src1 src2 src3 src4 dest");
-  a1 = make_Agent(vm, (unsigned long)code[++pc]);
-  {
-    volatile VALUE *a1port = AGENT(a1)->port;
-    a1port[0] = reg[(unsigned long)code[++pc]];
-    a1port[1] = reg[(unsigned long)code[++pc]];
-    a1port[2] = reg[(unsigned long)code[++pc]];
-    a1port[3] = reg[(unsigned long)code[++pc]];
-  }
-  reg[(unsigned long)code[pc]] = a1;
-#endif
-  goto *code[++pc];
-
- E_MKAGENT5:
-  //    puts("mkagent5 id src1 src2 src3 src4 src5 dest");
-  a1 = make_Agent(vm, (unsigned long)code[++pc]);
-  {
-    volatile VALUE *a1port = AGENT(a1)->port;
-    a1port[0] = reg[(unsigned long)code[++pc]];
-    a1port[1] = reg[(unsigned long)code[++pc]];
-    a1port[2] = reg[(unsigned long)code[++pc]];
-    a1port[3] = reg[(unsigned long)code[++pc]];
-    a1port[4] = reg[(unsigned long)code[++pc]];
-  }
-  reg[(unsigned long)code[++pc]] = a1;
-  goto *code[++pc];
-
-  
-
- E_REUSEAGENT0:
-  //    puts("reuseagent target id");
-  a1 = reg[(unsigned long)code[++pc]];
-  AGENT(a1)->basic.id = (unsigned long)code[++pc];  
-  goto *code[++pc];
-
- E_REUSEAGENT1:
- //    puts("reuseagent target id src1");
-  a1 = reg[(unsigned long)code[++pc]];
-  AGENT(a1)->basic.id = (unsigned long)code[++pc];
-  AGENT(a1)->port[0] = reg[(unsigned long)code[++pc]];
-  
-  goto *code[++pc];
-  
-
- E_REUSEAGENT2:
- //    puts("reuseagent target id src1 src2");
-  a1 = reg[(unsigned long)code[++pc]];
-  AGENT(a1)->basic.id = (unsigned long)code[++pc];
-  {
-    volatile VALUE *a1port = AGENT(a1)->port;
-    a1port[0] = reg[(unsigned long)code[++pc]];
-    a1port[1] = reg[(unsigned long)code[++pc]];
-  }    
-  goto *code[++pc];
-
-
- E_REUSEAGENT3:
- //    puts("reuseagent target id src1 src2 src3");
-  a1 = reg[(unsigned long)code[++pc]];
-  AGENT(a1)->basic.id = (unsigned long)code[++pc];
-  {
-    volatile VALUE *a1port = AGENT(a1)->port;
-    a1port[0] = reg[(unsigned long)code[++pc]];
-    a1port[1] = reg[(unsigned long)code[++pc]];
-    a1port[2] = reg[(unsigned long)code[++pc]];
-  }  
-  goto *code[++pc];
-
- E_REUSEAGENT4:
- //    puts("reuseagent target id src1 src2 src3 src4");
-  a1 = reg[(unsigned long)code[++pc]];
-  AGENT(a1)->basic.id = (unsigned long)code[++pc];
-  {
-    volatile VALUE *a1port = AGENT(a1)->port;
-    a1port[0] = reg[(unsigned long)code[++pc]];
-    a1port[1] = reg[(unsigned long)code[++pc]];
-    a1port[2] = reg[(unsigned long)code[++pc]];
-    a1port[3] = reg[(unsigned long)code[++pc]];
-  }  
-  goto *code[++pc];
-
- E_REUSEAGENT5:
- //    puts("reuseagent target id src1 src2 src3 src4 src5");
-  a1 = reg[(unsigned long)code[++pc]];
-  AGENT(a1)->basic.id = (unsigned long)code[++pc];
-  {
-    volatile VALUE *a1port = AGENT(a1)->port;
-    a1port[0] = reg[(unsigned long)code[++pc]];
-    a1port[1] = reg[(unsigned long)code[++pc]];
-    a1port[2] = reg[(unsigned long)code[++pc]];
-    a1port[3] = reg[(unsigned long)code[++pc]];
-    a1port[4] = reg[(unsigned long)code[++pc]];
-  }  
-  goto *code[++pc];
-
-
 
  E_PUSH:
   //    puts("push reg reg");
@@ -9577,133 +8499,6 @@ void *exec_code(int mode, VirtualMachine * restrict vm, void * restrict *code) {
 
 
 
-
-void exec_code_fib(VirtualMachine * restrict vm) {
-  VALUE a1;
-  VALUE *reg = vm->reg;
-
-
-  // 0000: jmpneq0 reg12 $4
-  {
-    long i = reg[12];
-    if (FIX2INT(i)) {
-      goto LABEL_0007;
-    }
-  }  
-  
-  // 0003: pushi reg1 $0
-  {
-    VALUE a1 = reg[1];    
-    VALUE a2 = INT2FIX(0);
-    PUSH(vm, a1, a2);    
-  }  
-  
-  // 0006: ret_free_l
-  free_Agent(reg[VM_OFFSET_ANNOTATE_L]);
-  return;
-
-  // 0007: eqi_r0 reg12 $1
-LABEL_0007:
-  {
-    long i = reg[12];
-    long j = INT2FIX(1);
-
-    if (i==j) {
-      reg[0] = 1;
-    } else {
-      reg[0] = 0;
-    }
-  }
-  
-  // 0010: jmpeq0_r0 $4
-  {
-    long i = reg[0];
-    if (!i) {
-      goto LABEL_0016;
-    }
-  }
-
-  
-  // 0012: pushi reg1 $1
-  {
-    VALUE a1 = reg[1];    
-    VALUE a2 = INT2FIX(1);
-    PUSH(vm, a1, a2);    
-  }  
-  
-  // 0015: ret_free_l
-  free_Agent(reg[VM_OFFSET_ANNOTATE_L]);
-  return;
-
-  
-  // 0016: mkname reg13
-LABEL_0016:
-  reg[13] = make_Name(vm);
-
-  
-  // 0018: reuseagent2 reg11 as id=18 reg1 reg13
-  a1 = reg[11];
-  AGENT(a1)->basic.id = 18;
-  {
-    /*
-    volatile VALUE *a1port = AGENT(a1)->port;
-    a1port[0] = reg[1];
-    a1port[1] = reg[13];
-    */
-    AGENT(a1)->port[0] = reg[1];
-    AGENT(a1)->port[1] = reg[13];
-  }    
-
-  
-  // 0023: mkagent1 id:28 reg11 reg14
-  a1 = make_Agent(vm, 28);
-  AGENT(a1)->port[0] = reg[11];
-  reg[14] = a1;
-
-  
-  // 0027: dec reg12 reg15
-  {
-    long i = FIX2INT(reg[12]);
-    
-    reg[15] = INT2FIX(--i);
-  }
-
-  
-  // 0030: push reg14 reg15
-  {
-    VALUE a1 = reg[14];
-    VALUE a2 = reg[15];
-    PUSH(vm, a1, a2);
-  }
-
-  
-  // 0033: mkagent1 id:28 reg13 reg13
-  a1 = make_Agent(vm, 28);
-  AGENT(a1)->port[0] = reg[13];
-  reg[13] = a1;
-
-  
-  // 0037: subi reg12 $2 reg14
-  {
-    long i = FIX2INT(reg[12]);
-    long j = 2;
-    
-    reg[14] = INT2FIX(i-j);
-  }
-
-  
-  // 0041: push reg13 reg14
-  {
-    VALUE a1 = reg[13];
-    VALUE a2 = reg[14];
-    PUSH(vm, a1, a2);
-  }
-
-  
-  // 0044: ret  
-  return;
-  
-}
 
 
 

@@ -1,5 +1,64 @@
 # Change log
 
+### v0.13.0 (released on 3 September 2024)
+
+|              | v0.12.2 |         | ->   | v0.13.0  |          |
+| ------------ | :-----: | :-----: | ---- | -------- | -------- |
+|              | Inpla8  | Inpra8r |      | Inpla8   | Inpla8r  |
+| n-queens 12  |  0.55   |  0.41   |      | 0.55     | 0.44     |
+| ack(3,11)    |  0.92   |  0.70   |      | **0.90** | 0.72     |
+| fib 38       |  0.43   |  0.45   |      | 0.46     | 0.46     |
+| bsort 20000  |  2.38   |  1.46   |      | 2.41     | 1.54     |
+| isort 20000  |  0.32   |  0.33   |      | 0.33     | 0.35     |
+| qsort 260000 |  0.15   |  0.12   |      | 0.15     | **0.11** |
+| msort 260000 |  0.14   |  0.18   |      | 0.14     | **0.13** |
+
+#### Polished
+
+* **Compile method is changed**:  A given net is compiled into bytecodes by using a compile function. This follows a depth-first search algorithm. For instance, `A(t1,t2,t3)` is compiled as follows:
+
+  ```
+  compile(A(t1, t2, t3)) 
+  --> compile(t1, reg13)  // t1 is compiled and the result is stored on reg[13]
+      compile(t2, reg14)  // t2 is compiled and the result is stored on reg[14]
+  	compile(t3, reg15)  // t3 is compiled and the result is stored on reg[15]
+  	MKAGENT ID_A reg16      // reg[16] := A
+  	LOADP reg13, 0, reg16   // reg[16].port[0] := reg13
+  	LOADP reg14, 1, reg16   // reg[16].port[1] := reg14
+  	LOADP reg15, 2, reg16   // reg[16].port[2] := reg15
+  ```
+
+  The information in `reg13` is not used after connecting to the agent `A`. So, if `compile(t1, reg13)` is moved just before the connection operation, we can have more the chance of reusing the registers:
+
+  ```
+  compile(A(t1,t2,t3))
+  --> MKAGENT ID_A reg16      // reg[16] := A
+      compile(t1, reg13)    // <-- it is moved to just before LOADP reg13,0,reg16
+  	LOADP reg13, 0, reg16   // reg[16].port[0] := reg13
+      compile(t2, reg13)    // reg13 is reused!
+  	LOADP reg13, 1, reg16   // reg[16].port[0] := reg13
+      compile(t3, reg13)    // reg13 is reused!
+  	LOADP reg13, 2, reg16   // reg[16].port[0] := reg13
+  ```
+
+  As the above table shows, in some cases, such as with quicksort and merge sort, using this method will improve execution speed. In other cases, it will be slightly slower. This could be within the margin of error, but I will take this approach because we can expect an effect from using cache memory.
+
+- **Cleaning up unused definitions**: The following options are removed from `config.h` because they are no longer used. As a result, the source file `inpla.y` also becomes tidier:
+
+  ```
+  //#define USE_MKAGENT_N
+  //#define OPTIMISE_TWO_ADDRESS_MKAGENT1 // For MKAGENT1
+  //#define OPTIMISE_TWO_ADDRESS_MKAGENT2 // For MKAGENT2
+  //#define OPTIMISE_TWO_ADDRESS_MKAGENT3 // For MKAGENT3
+  //#define OPTIMISE_TWO_ADDRESS_MKAGENT4 // For MKAGENT4
+  //#define OLD_REUSEAGENT
+  ```
+
+  
+
+
+
+
 ### v0.12.5 (released on 24 August 2024)
 
 #### Bug fix
