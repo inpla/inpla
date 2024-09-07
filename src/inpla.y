@@ -22,8 +22,8 @@
 
 // ----------------------------------------------
   
-#define VERSION "0.13.0"
-#define BUILT_DATE  "3 September 2024"
+#define VERSION "0.13.0-1"
+#define BUILT_DATE  "7 September 2024"
 
 // ------------------------------------------------------------------
 
@@ -5681,7 +5681,7 @@ int Compile_term_on_ast(Ast *ptr, int target) {
   int result, mkagent;
   int i, arity;
 
-  int alloc[MAX_PORT];
+  int alloc;
 
   if (ptr == NULL) {
     return -1;
@@ -5736,7 +5736,6 @@ int Compile_term_on_ast(Ast *ptr, int target) {
     /* A register of the element
     alloc[0] = Compile_term_on_ast(ptr->left, -1);
     */
-    alloc[1] = Compile_term_on_ast(ptr->right->left, -1);
 
     
     if (target == -1) {      
@@ -5745,23 +5744,26 @@ int Compile_term_on_ast(Ast *ptr, int target) {
       // expanded operations
       IMCode_genCode2(OP_MKAGENT, ID_CONS, result);
       
-      alloc[0] = Compile_term_on_ast(ptr->left, -1);
-      IMCode_genCode3(OP_LOADP, alloc[0], 0, result);
+      alloc = Compile_term_on_ast(ptr->left, -1);
+      IMCode_genCode3(OP_LOADP, alloc, 0, result);
       
-      IMCode_genCode3(OP_LOADP, alloc[1], 1, result);
+      alloc = Compile_term_on_ast(ptr->right->left, -1);
+      IMCode_genCode3(OP_LOADP, alloc, 1, result);
       
     } else {
       result = target;
 
-      alloc[0] = Compile_term_on_ast(ptr->left, -1);
       
       if (target == VM_OFFSET_ANNOTATE_L) {      
 	if (CmEnv.idL != ID_CONS) {
 	  IMCode_genCode1(OP_CHID_L, ID_CONS);
 	}
 	for (i=0; i<2; i++) {
-	  if (alloc[i] != VM_OFFSET_METAVAR_L(i)) {	    
-	    IMCode_genCode2(OP_LOADP_L, alloc[i], i);
+	  alloc = Compile_term_on_ast(ptr->left, -1);
+	  ptr = ast_getTail(ptr);
+	  
+	  if (alloc != VM_OFFSET_METAVAR_L(i)) {	    
+	    IMCode_genCode2(OP_LOADP_L, alloc, i);
 	  }
 	}
       } else {
@@ -5769,8 +5771,11 @@ int Compile_term_on_ast(Ast *ptr, int target) {
 	  IMCode_genCode1(OP_CHID_R, ID_CONS);
 	}
 	for (i=0; i<2; i++) {
-	  if (alloc[i] != VM_OFFSET_METAVAR_R(i)) {	    
-	    IMCode_genCode2(OP_LOADP_R, alloc[i], i);
+	  alloc = Compile_term_on_ast(ptr->left, -1);
+	  ptr = ast_getTail(ptr);
+	  
+	  if (alloc != VM_OFFSET_METAVAR_R(i)) {	    
+	    IMCode_genCode2(OP_LOADP_R, alloc, i);
 	  }
 	}
       }
@@ -5789,8 +5794,8 @@ int Compile_term_on_ast(Ast *ptr, int target) {
       // The case of the single tuple such as `(A)'.
       // The `A' is recognised as not an argument, but as a first-class object.
       ptr=ptr->right;
-      alloc[0] = Compile_term_on_ast(ptr->left, target);      
-      result = alloc[0];
+      alloc = Compile_term_on_ast(ptr->left, target);      
+      result = alloc;
       
     } else {
 
@@ -5804,9 +5809,9 @@ int Compile_term_on_ast(Ast *ptr, int target) {
 
 	
 	for (i=0; i<arity; i++) {
-	  alloc[0] = Compile_term_on_ast(ptr->left, -1);
+	  alloc = Compile_term_on_ast(ptr->left, -1);
 	  ptr = ast_getTail(ptr);
-	  IMCode_genCode3(OP_LOADP, alloc[0], i, result);
+	  IMCode_genCode3(OP_LOADP, alloc, i, result);
 	}
 	
       } else {
@@ -5819,11 +5824,11 @@ int Compile_term_on_ast(Ast *ptr, int target) {
 	    IMCode_genCode1(OP_CHID_L, GET_TUPLEID(arity));
 	  }
 	  for (i=0; i<arity; i++) {
-	    alloc[0] = Compile_term_on_ast(ptr->left, -1);
+	    alloc = Compile_term_on_ast(ptr->left, -1);
 	    ptr = ast_getTail(ptr);
 	    
-	    if (alloc[0] != VM_OFFSET_METAVAR_L(i)) {	    
-	      IMCode_genCode2(OP_LOADP_L, alloc[0], i);
+	    if (alloc != VM_OFFSET_METAVAR_L(i)) {	    
+	      IMCode_genCode2(OP_LOADP_L, alloc, i);
 	    }
 	  }
 	  
@@ -5832,11 +5837,11 @@ int Compile_term_on_ast(Ast *ptr, int target) {
 	    IMCode_genCode1(OP_CHID_R, GET_TUPLEID(arity));
 	  }
 	  for (i=0; i<arity; i++) {
-	    alloc[0] = Compile_term_on_ast(ptr->left, -1);
+	    alloc = Compile_term_on_ast(ptr->left, -1);
 	    ptr = ast_getTail(ptr);
 	    
-	    if (alloc[0] != VM_OFFSET_METAVAR_R(i)) {	    
-	      IMCode_genCode2(OP_LOADP_R, alloc[0], i);
+	    if (alloc != VM_OFFSET_METAVAR_R(i)) {	    
+	      IMCode_genCode2(OP_LOADP_R, alloc, i);
 	    }
 	  }
 	}	    
@@ -5866,11 +5871,11 @@ int Compile_term_on_ast(Ast *ptr, int target) {
 	
       }
       //      printf("id=%d\n", id);
-      alloc[0] = CmEnv_newvar();
-      IMCode_genCode2(OP_LOADI, id, alloc[0]);
+      alloc = CmEnv_newvar();
+      IMCode_genCode2(OP_LOADI, id, alloc);
       //
       IMCode_genCode2(OP_MKAGENT, ID_PERCENT, result);
-      IMCode_genCode3(OP_LOADP, alloc[0], 0, result);
+      IMCode_genCode3(OP_LOADP, alloc, 0, result);
     }
     return result;
     break;
@@ -5916,10 +5921,10 @@ int Compile_term_on_ast(Ast *ptr, int target) {
       IMCode_genCode2(OP_MKAGENT, id, result);
 
       for (i=0; i<arity; i++) {
-	alloc[0] = Compile_term_on_ast(ptr->left, -1);
+	alloc = Compile_term_on_ast(ptr->left, -1);
 	ptr = ast_getTail(ptr);
 	
-	IMCode_genCode3(OP_LOADP, alloc[0], i, result);
+	IMCode_genCode3(OP_LOADP, alloc, i, result);
       }
     } else {
       
@@ -5930,11 +5935,11 @@ int Compile_term_on_ast(Ast *ptr, int target) {
 	  IMCode_genCode1(OP_CHID_L, id);
 	}
 	for (i=0; i<arity; i++) {
-	  alloc[0] = Compile_term_on_ast(ptr->left, -1);
+	  alloc = Compile_term_on_ast(ptr->left, -1);
 	  ptr = ast_getTail(ptr);
 	  
-	  if (alloc[0] != VM_OFFSET_METAVAR_L(i)) {	    
-	    IMCode_genCode2(OP_LOADP_L, alloc[0], i);
+	  if (alloc != VM_OFFSET_METAVAR_L(i)) {	    
+	    IMCode_genCode2(OP_LOADP_L, alloc, i);
 	  }
 	}
 
@@ -5945,11 +5950,11 @@ int Compile_term_on_ast(Ast *ptr, int target) {
 	  IMCode_genCode1(OP_CHID_R, id);
 	}
 	for (i=0; i<arity; i++) {
-	  alloc[0] = Compile_term_on_ast(ptr->left, -1);
+	  alloc = Compile_term_on_ast(ptr->left, -1);
 	  ptr = ast_getTail(ptr);
 	  
-	  if (alloc[0] != VM_OFFSET_METAVAR_R(i)) {
-	    IMCode_genCode2(OP_LOADP_R, alloc[0], i);
+	  if (alloc != VM_OFFSET_METAVAR_R(i)) {
+	    IMCode_genCode2(OP_LOADP_R, alloc, i);
 	  }
 	}
       }
@@ -6004,7 +6009,10 @@ int Compile_term_on_ast(Ast *ptr, int target) {
 
 
 
+// Checks for variable occurrences in equations in rules.
+// When this function is called, meta names have been stored in CmEnv.
 
+// Japanese:
 // rule の中の eqs をコンパイルするときに使う
 // この関数が呼ばれる前に、rule agents の meta names は
 // Environment に積まれている。

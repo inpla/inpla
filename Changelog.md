@@ -1,5 +1,12 @@
 # Change log
 
+### v0.13.0-1 (released on 7 September 2024)
+#### Polished
+- **The source code of the compile function is cleaned up more**: Some parts of the compile function were not changed in the previous version. They are now cleaned up.
+
+  
+
+
 ### v0.13.0 (released on 3 September 2024)
 
 |              | v0.12.2 |         | ->   | v0.13.0  |          |
@@ -15,7 +22,7 @@
 
 #### Polished
 
-* **Compile method is changed**:  A given net is compiled into bytecodes by using a compile function. This follows a depth-first search algorithm. For instance, `A(t1,t2,t3)` is compiled as follows:
+- **Compile method is changed**:  A given net is compiled into bytecodes by using a compile function. This follows a depth-first search algorithm. For instance, `A(t1,t2,t3)` is compiled as follows:
 
   ```
   compile(A(t1, t2, t3)) 
