@@ -10678,8 +10678,8 @@ int main(int argc, char *argv[])
 	  tp = strtok(argv[i], "=");
 	    
 	  // parsing for an identifier
-	  snprintf(varname, sizeof(varname)-1, "%s", tp);
-	  if ((varname == NULL) || (varname[0] < 'A') || (varname[0] > 'Z')) {
+	  int len=snprintf(varname, sizeof(varname)-1, "%s", tp);
+	  if ((len == 0) || (varname[0] < 'A') || (varname[0] > 'Z')) {
       	    puts("ERROR: `id' in the format `id=value' must start from a capital letter.");
       	    exit(-1);
 	  }
@@ -10688,8 +10688,8 @@ int main(int argc, char *argv[])
 	  tp = strtok(NULL, "=");
 
 	  // parsing for a number
-	  snprintf(val, sizeof(val)-1, "%s", tp);
-	  if (val == NULL) {
+	  len=snprintf(val, sizeof(val)-1, "%s", tp);
+	  if (len == 0) {
 	    puts("ERROR: `value' in the format `id=value' must an integer value.");
 	    exit(-1);	      
 	  }
