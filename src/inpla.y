@@ -22,8 +22,8 @@
 
 // ----------------------------------------------
   
-#define VERSION "0.13.0-1"
-#define BUILT_DATE  "7 September 2024"
+#define VERSION "0.13.0-2"
+#define BUILT_DATE  "12 September 2024"
 
 // ------------------------------------------------------------------
 
@@ -5883,86 +5883,88 @@ int Compile_term_on_ast(Ast *ptr, int target) {
     
     
   case AST_AGENT:
-    int id = IdTable_getid_builtin_funcAgent(ptr);
-
-    if (id == -1) {
-      id = NameTable_get_set_id_with_IdTable_forAgent((char *)ptr->left->sym);
-    }
-
-    // Get the arity
-    arity=0;
     {
-      Ast *arg = ptr->right;
-      for (i=0; i<MAX_PORT; i++) {
-	if (arg == NULL) break;
+      int id = IdTable_getid_builtin_funcAgent(ptr);
+
+      if (id == -1) {
+	id = NameTable_get_set_id_with_IdTable_forAgent((char *)ptr->left->sym);
+      }
+
+      // Get the arity
+      arity=0;
+      {
+	Ast *arg = ptr->right;
+	for (i=0; i<MAX_PORT; i++) {
+	  if (arg == NULL) break;
+	  arity++;
+	  arg = ast_getTail(arg);
+	}
+      }
+      
+      /*
+	ptr=ptr->right;
+	for (i=0; i<MAX_PORT; i++) {
+	if (ptr == NULL) break;
+	alloc[i] = Compile_term_on_ast(ptr->left, -1);
 	arity++;
-	arg = ast_getTail(arg);
-      }
-    }
-      
-    /*
-    ptr=ptr->right;
-    for (i=0; i<MAX_PORT; i++) {
-      if (ptr == NULL) break;
-      alloc[i] = Compile_term_on_ast(ptr->left, -1);
-      arity++;
-      ptr = ast_getTail(ptr);
-    }
-    */
-
-    
-    IdTable_set_arity(id, arity);
-
-    ptr=ptr->right;
-    
-    if (target == -1) {
-      result = CmEnv_newvar();
-      
-      IMCode_genCode2(OP_MKAGENT, id, result);
-
-      for (i=0; i<arity; i++) {
-	alloc = Compile_term_on_ast(ptr->left, -1);
 	ptr = ast_getTail(ptr);
-	
-	IMCode_genCode3(OP_LOADP, alloc, i, result);
-      }
-    } else {
-      
-      result = target;
-    
-      if (target == VM_OFFSET_ANNOTATE_L) {      
-	if (CmEnv.idL != id) {
-	  IMCode_genCode1(OP_CHID_L, id);
 	}
+      */
+
+    
+      IdTable_set_arity(id, arity);
+
+      ptr=ptr->right;
+    
+      if (target == -1) {
+	result = CmEnv_newvar();
+      
+	IMCode_genCode2(OP_MKAGENT, id, result);
+
 	for (i=0; i<arity; i++) {
 	  alloc = Compile_term_on_ast(ptr->left, -1);
 	  ptr = ast_getTail(ptr);
-	  
-	  if (alloc != VM_OFFSET_METAVAR_L(i)) {	    
-	    IMCode_genCode2(OP_LOADP_L, alloc, i);
-	  }
+	
+	  IMCode_genCode3(OP_LOADP, alloc, i, result);
 	}
+      } else {
+      
+	result = target;
+    
+	if (target == VM_OFFSET_ANNOTATE_L) {      
+	  if (CmEnv.idL != id) {
+	    IMCode_genCode1(OP_CHID_L, id);
+	  }
+	  for (i=0; i<arity; i++) {
+	    alloc = Compile_term_on_ast(ptr->left, -1);
+	    ptr = ast_getTail(ptr);
+	  
+	    if (alloc != VM_OFFSET_METAVAR_L(i)) {	    
+	      IMCode_genCode2(OP_LOADP_L, alloc, i);
+	    }
+	  }
 
 	
-      } else {
+	} else {
 	
-	if (CmEnv.idR != id) {
-	  IMCode_genCode1(OP_CHID_R, id);
-	}
-	for (i=0; i<arity; i++) {
-	  alloc = Compile_term_on_ast(ptr->left, -1);
-	  ptr = ast_getTail(ptr);
+	  if (CmEnv.idR != id) {
+	    IMCode_genCode1(OP_CHID_R, id);
+	  }
+	  for (i=0; i<arity; i++) {
+	    alloc = Compile_term_on_ast(ptr->left, -1);
+	    ptr = ast_getTail(ptr);
 	  
-	  if (alloc != VM_OFFSET_METAVAR_R(i)) {
-	    IMCode_genCode2(OP_LOADP_R, alloc, i);
+	    if (alloc != VM_OFFSET_METAVAR_R(i)) {
+	      IMCode_genCode2(OP_LOADP_R, alloc, i);
+	    }
 	  }
 	}
-      }
       
+      }
+    
+    
+      return result;
     }
-    
-    
-    return result;
     break;
 
 

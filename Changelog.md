@@ -1,6 +1,33 @@
 # Change log
 
+### v0.13.0-2 (released on 12 September 2024)
+
+#### Polished
+
+- **Fix a compilation error**: It has been reported that in some environments the compilation stops with an error: `a label can only be part of a statement and a declaration is not a statement`. It causes the following case followed by variable declaration at line 5886:
+
+  ```
+  case AST_AGENT:
+    int id = IdTable_getid_builtin_funcAgent(ptr);
+    ...
+  ```
+
+  It is fixed by adding brackets like this:
+
+  ```
+  case AST_AGENT:
+    {
+       int id = IdTable_getid_builtin_funcAgent(ptr);
+       ...
+    }
+  ```
+
+  I hope that it will work in many environments.
+
+
+
 ### v0.13.0-1 (released on 7 September 2024)
+
 #### Polished
 - **The source code of the compile function is cleaned up more**: Some parts of the compile function were not changed in the previous version. They are now cleaned up.
 
