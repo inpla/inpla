@@ -412,7 +412,7 @@ It is possible to have attributes as calculation results of arithmetic operation
 <let-clause> ::= <name> '=' <arithmetic expression>
 ```
 
-The symbol of addition, subtraction, multiplication, division, modulo are `+`, `-`, `*`, `/` and `%`, respectively. Relational operations `<`, `<=`, `>` and `>=` return 1 for True, 0 for False. Logical operations Not `!` (`not`), And `&&` (`and`)  and Or `||` (`or`) are also available where only `0` is regarded as False.
+The symbol of addition, subtraction, multiplication, division, modulo are `+`, `-`, `*`, `/` and `%`, respectively. Relational operations `==`, `!=` `<`, `<=`, `>` and `>=` return 1 for True, 0 for False. Logical operations Not `!` (`not`), And `&&` (`and`)  and Or `||` (`or`) are also available where only `0` is regarded as False.
 
 * Example: an expression using `where`:
 
