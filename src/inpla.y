@@ -22,8 +22,8 @@
 
 // ----------------------------------------------
   
-#define VERSION "0.13.0-2"
-#define BUILT_DATE  "12 September 2024"
+#define VERSION "0.14.0(dev)"
+#define BUILT_DATE  "20 December 2025"
 
 // ------------------------------------------------------------------
 
@@ -9929,8 +9929,14 @@ int check_ast_arity(Ast *ast) {
 
 
 #ifndef THREAD
+// -----------------------------------------
+// Execution WITHOUT threads
+// -----------------------------------------
 
 
+// ----------------------------------
+// for WHNF
+// ----------------------------------
 #define WHNF_UNUSED_STACK_SIZE 100
 typedef struct {
   // EQStack
@@ -9943,14 +9949,19 @@ WHNF_Info WHNFinfo;
 
 void Init_WHNFinfo(void) {
   WHNFinfo.eqs_index = 0;
-  WHNFinfo.size = WHNF_UNUSED_STACK_SIZE;
+  WHNFinfo.size = 0;
   WHNFinfo.enable = 0;  // not Enable
 
+}
+
+void WHNFInfo_populate_stack(void) {
+  WHNFinfo.size = WHNF_UNUSED_STACK_SIZE;
   WHNFinfo.eqs = malloc(sizeof(EQ) * WHNF_UNUSED_STACK_SIZE);
   if (WHNFinfo.eqs == NULL) {
     printf("WHNFinfo.eqs: Malloc error\n");
     exit(-1);
   }
+  
 }
   
 void WHNFInfo_push_equation(VALUE t1, VALUE t2) {
@@ -9969,21 +9980,110 @@ void WHNF_execution_loop(void) {
 
   while (EQStack_Pop(&VM, &t1, &t2)) {
 
+    printf("pop:");
     puts_term(t1); printf("~"); puts_term(t2); puts("");
     
     if ((NameTable_check_if_term_has_gname(t1) == 1) ||
 	(NameTable_check_if_term_has_gname(t2) == 1)) {
 
+      printf("--> Executed.\n");
       eval_equation(&VM, t1, t2);
 	
     } else {
       
+      printf("--> Not executed and pushed to the stack.\n");
       WHNFInfo_push_equation(t1, t2);
     }
   }
   
 }
 
+
+// ----------------------------------
+// for simulation on multi-threads
+// ----------------------------------
+typedef struct {
+  // EQStack
+  EQ *eqs;
+  int eqs_index;
+  int size;
+  int threads_num;  // -1: not Enable. 0: Maximum. 1..n: n-threads.  
+} Simulation_Info; 
+Simulation_Info SimulationInfo;
+
+
+void Init_SimulationInfo(void) {
+  SimulationInfo.eqs_index = 0;
+  SimulationInfo.size = 0;
+  SimulationInfo.threads_num = -1;  // not Enable
+}
+
+void SimulationInfo_populate_stack(int size) {
+  SimulationInfo.size = size;
+  SimulationInfo.threads_num = size;
+  
+  SimulationInfo.eqs = malloc(sizeof(EQ) * size);
+  if (SimulationInfo.eqs == NULL) {
+    printf("SimulationInfo.eqs: Malloc error\n");
+    exit(-1);
+  }  
+}
+
+void SimulationInfo_push_equation(VALUE t1, VALUE t2) {
+  SimulationInfo.eqs[SimulationInfo.eqs_index].l = t1;
+  SimulationInfo.eqs[SimulationInfo.eqs_index].r = t2;
+  SimulationInfo.eqs_index++;
+  if (SimulationInfo.eqs_index > SimulationInfo.size) {
+    printf("ERROR: SimulationInfo.eqs stack becomes full.\n");
+    exit(-1);
+  }
+}
+
+void SimulationInfo_execution_loop(void) {
+  VALUE t1, t2;
+  unsigned long step=1;
+
+  printf("step,exec(%d),stacked\n", SimulationInfo.threads_num);
+
+  while (1) {
+    int i;
+    for (i=0; i<SimulationInfo.threads_num; i++) {
+      if (EQStack_Pop(&VM, &t1, &t2)) {
+	SimulationInfo_push_equation(t1,t2);
+      } else {
+	break;
+      }
+    }
+    
+    if ((i==0) && (VM.nextPtr_eqStack == -1)) {
+      // no executable and stacked AP
+      printf("%ld,0,0\n", step);
+      return; // Loop termination
+    }
+    
+    // one step execution by n-threads
+    printf("%ld,%d,%d\n", step, i, VM.nextPtr_eqStack+1);
+    
+    // Execute the popped APs
+    for (i=0; i < SimulationInfo.eqs_index ; i++) {
+      printf("\t\t;");
+      puts_term(SimulationInfo.eqs[i].l);
+      printf("~");
+      puts_term(SimulationInfo.eqs[i].r);
+      puts("");
+      
+      eval_equation(&VM, SimulationInfo.eqs[i].l, SimulationInfo.eqs[i].r);
+    }
+    SimulationInfo.eqs_index = 0;
+
+    step++;
+
+    printf("\t\t;");
+    printf("%lu interactions\n",VM_Get_InteractionCount(&VM));
+    
+  }
+}
+// ----------------------------------------------------
 
 
 
@@ -10114,7 +10214,7 @@ int exec(Ast *at) {
 #endif
 
   
-  // WHNF: Unused equations are stacked to be execution targets again.  
+  // WHNF: Reactivate unused equations for execution.  
   if (WHNFinfo.enable) {    
     for (int i=0; i < WHNFinfo.eqs_index ; i++) {
       MYPUSH(&VM, WHNFinfo.eqs[i].l, WHNFinfo.eqs[i].r);
@@ -10130,24 +10230,28 @@ int exec(Ast *at) {
   VM_Clear_InteractionCount(&VM);
 #endif
 
+  // bookmark
 
 
   // EXECUTION LOOP
-
-  if (!WHNFinfo.enable) {
-    // no-stategy execution
+  if (WHNFinfo.enable) {
+    // WHNF stragety
+    WHNF_execution_loop();
     
+  } else if (SimulationInfo.threads_num >= 0) {
+    // Simulation mode
+    SimulationInfo_execution_loop();
+    
+  } else {
+    // Normal operation
     VALUE t1, t2;
     while (EQStack_Pop(&VM, &t1, &t2)) {
       eval_equation(&VM, t1, t2);   
-    }
-    
-  } else {
-    // WHNF stragety
-    WHNF_execution_loop();
-  }	
-    
+    } 
+  } 
 
+
+  
   time=stop_timer(&t);
 #ifdef COUNT_INTERACTION
   printf("(%lu interactions, %.2f sec)\n", VM_Get_InteractionCount(&VM),
@@ -10178,7 +10282,12 @@ int exec(Ast *at) {
   return 1;
 }
 
+
+
 #else
+// ---------------------------------------------------
+// Execution by multi-threads
+// ---------------------------------------------------
 
 // For setting the number of CPUs.
 // it is calculated by using sysconf(_SC_NPROSSEORS_CONF) in tpool_init
@@ -10519,6 +10628,7 @@ int main(int argc, char *argv[])
   
 #ifndef THREAD
   Init_WHNFinfo();
+  Init_SimulationInfo();
 #endif
 
   ast_heapInit();
@@ -10786,15 +10896,19 @@ int main(int argc, char *argv[])
             exit(-1);
           }
         } else {
-          printf("ERROR: The option `-t' needs a number of threads.");
+          printf("ERROR: The option `-t' needs a number of threads.\n");
           exit(-1);
         }
   
         MaxThreadsNum=param;
         break;
-#else
+#endif
+
+#ifndef THREAD
       case 'w':
         WHNFinfo.enable = 1;
+	WHNFInfo_populate_stack();
+	
         break;	  
 #endif
 	  
@@ -10803,6 +10917,28 @@ int main(int argc, char *argv[])
 	CmEnv.put_compiled_codes = 1;
 	break;
 
+
+#ifndef THREAD
+      case 's':
+	{
+	  int num;
+	  i++;
+	  if (i < argc) {
+	    num = atoi(argv[i]);
+	  } else {
+	    printf("ERROR: The option '-s' needs a number of threads.\n");
+	    exit(1);
+	  }
+
+	  if (num == 0) {
+	    printf("ERROR: '-s 0' isn't supported for now.\n");
+	    exit(1);
+	  }
+	    
+	  SimulationInfo_populate_stack(num);
+	  break;
+	}
+#endif
 	
       default:
         printf("ERROR: Unrecognized option %s\n", argv[i]);
@@ -10839,6 +10975,11 @@ int main(int argc, char *argv[])
   if (WHNFinfo.enable) {
     printf("Inpla %s (Weak Strategy) : Interaction nets as a programming language", VERSION);
     printf(" [%s]\n", BUILT_DATE);
+    
+  } else if (SimulationInfo.threads_num >= 0) {
+    printf("Inpla %s (Simulation Mode) : Interaction nets as a programming language", VERSION);
+    printf(" [%s]\n", BUILT_DATE);
+    
   } else {
     printf("Inpla %s : Interaction nets as a programming language", VERSION);
     printf(" [built: %s]\n", BUILT_DATE);
