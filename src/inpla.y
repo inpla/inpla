@@ -22,8 +22,8 @@
 
 // ----------------------------------------------
   
-#define VERSION "0.14.0(dev)"
-#define BUILT_DATE  "20 December 2025"
+#define VERSION "0.14.0 (dev2)"
+#define BUILT_DATE  "28 December 2025"
 
 // ------------------------------------------------------------------
 
@@ -10003,41 +10003,39 @@ void WHNF_execution_loop(void) {
 // for simulation on multi-threads
 // ----------------------------------
 typedef struct {
-  // EQStack
-  EQ *eqs;
-  int eqs_index;
-  int size;
-  int threads_num;  // -1: not Enable. 0: Maximum. 1..n: n-threads.  
+  // VM
+  VirtualMachine *vm;  // use only for EQStack
+  //
+  int threads_num;  // -1: not Enable. 0: Maximum. 1..n: n-threads.
+  int verbose_stacked_eq; // not Enable (default)   1: Enable
 } Simulation_Info; 
 Simulation_Info SimulationInfo;
 
 
 void Init_SimulationInfo(void) {
-  SimulationInfo.eqs_index = 0;
-  SimulationInfo.size = 0;
   SimulationInfo.threads_num = -1;  // not Enable
+  SimulationInfo.verbose_stacked_eq = 0;  // not Enable
+  SimulationInfo.vm = NULL;
 }
 
-void SimulationInfo_populate_stack(int size) {
-  SimulationInfo.size = size;
-  SimulationInfo.threads_num = size;
-  
-  SimulationInfo.eqs = malloc(sizeof(EQ) * size);
-  if (SimulationInfo.eqs == NULL) {
+void SimulationInfo_prepare_stack(int stack_size) {
+
+  SimulationInfo.vm = malloc(sizeof(VirtualMachine));
+  if (SimulationInfo.vm == NULL) {
     printf("SimulationInfo.eqs: Malloc error\n");
     exit(-1);
-  }  
+  }
+  VM_EQStack_Init(SimulationInfo.vm, stack_size);
+
+  
+  
 }
 
-void SimulationInfo_push_equation(VALUE t1, VALUE t2) {
-  SimulationInfo.eqs[SimulationInfo.eqs_index].l = t1;
-  SimulationInfo.eqs[SimulationInfo.eqs_index].r = t2;
-  SimulationInfo.eqs_index++;
-  if (SimulationInfo.eqs_index > SimulationInfo.size) {
-    printf("ERROR: SimulationInfo.eqs stack becomes full.\n");
-    exit(-1);
-  }
+void SimulationInfo_set_threads_num(int num) {
+  SimulationInfo.threads_num = num;
 }
+
+
 
 void SimulationInfo_execution_loop(void) {
   VALUE t1, t2;
@@ -10046,40 +10044,66 @@ void SimulationInfo_execution_loop(void) {
   printf("step,exec(%d),stacked\n", SimulationInfo.threads_num);
 
   while (1) {
-    int i;
-    for (i=0; i<SimulationInfo.threads_num; i++) {
-      if (EQStack_Pop(&VM, &t1, &t2)) {
-	SimulationInfo_push_equation(t1,t2);
-      } else {
-	break;
+
+    int i=0;
+    if (SimulationInfo.threads_num > 0) {
+
+      // Limited threads num
+      for (i=0; i<SimulationInfo.threads_num; i++) {
+	if (EQStack_Pop(&VM, &t1, &t2)) {
+	  VM_EQStack_Push(SimulationInfo.vm, t1,t2);
+	} else {
+	  break;
+	}
       }
+      
+      if ((i==0) && (VM.nextPtr_eqStack == -1)) {
+	// no executable and no stacked AP
+	//printf("%ld,0,0\n", step);
+	return; // Loop termination
+      }
+
+      
+    } else {
+
+      // Unlimited
+      while (EQStack_Pop(&VM, &t1, &t2)) {
+	  VM_EQStack_Push(SimulationInfo.vm, t1,t2);
+	  i++;
+      }
+      if (SimulationInfo.vm->nextPtr_eqStack == -1) {
+	// no stacked AP
+	//printf("%ld,0,0\n", step);
+	return; // Loop termination	
+      }
+
+
+      
     }
-    
-    if ((i==0) && (VM.nextPtr_eqStack == -1)) {
-      // no executable and stacked AP
-      printf("%ld,0,0\n", step);
-      return; // Loop termination
-    }
-    
+
     // one step execution by n-threads
     printf("%ld,%d,%d\n", step, i, VM.nextPtr_eqStack+1);
     
+    
     // Execute the popped APs
-    for (i=0; i < SimulationInfo.eqs_index ; i++) {
-      printf("\t\t;");
-      puts_term(SimulationInfo.eqs[i].l);
-      printf("~");
-      puts_term(SimulationInfo.eqs[i].r);
-      puts("");
+    while (VM_EQStack_Pop(SimulationInfo.vm, &t1, &t2)) {
+      if (SimulationInfo.verbose_stacked_eq) {
+	printf("\t\t;");
+	puts_term(t1);
+	printf("~");
+	puts_term(t2);
+	puts("");
+      }
       
-      eval_equation(&VM, SimulationInfo.eqs[i].l, SimulationInfo.eqs[i].r);
+      eval_equation(&VM, t1, t2);
     }
-    SimulationInfo.eqs_index = 0;
 
     step++;
 
-    printf("\t\t;");
-    printf("%lu interactions\n",VM_Get_InteractionCount(&VM));
+    if (SimulationInfo.verbose_stacked_eq) {
+      printf("\t\t;");
+      printf("%lu interactions\n",VM_Get_InteractionCount(&VM));
+    }
     
   }
 }
@@ -10680,6 +10704,12 @@ int main(int argc, char *argv[])
 
 #else
 	printf(" -w               Enable Weak Reduction strategy          (Default:    disable)\n");
+	printf(" -s <num>         Simulate parallel execution with <num> threads\n");
+	printf("                    0: unlimited                          (Default: disable)\n");
+	printf(" -fverbose-simulation-info\n");
+	printf("                  Outputs active pairs selected for execution when using -s\n");
+
+	
 #endif
 
 	printf(" -c               Enable output of compiled codes         (Default:    disable)\n");
@@ -10845,6 +10875,13 @@ int main(int argc, char *argv[])
 	  GlobalOptions.verbose_memory_use = 1;
 	  break;
 	}	
+
+
+	if (!strcmp(argv[i], "-fverbose-simulation-info")) {
+	  SimulationInfo.verbose_stacked_eq = 1;
+	  break;
+	}	
+
 #endif
 	
 	// for files
@@ -10930,12 +10967,9 @@ int main(int argc, char *argv[])
 	    exit(1);
 	  }
 
-	  if (num == 0) {
-	    printf("ERROR: '-s 0' isn't supported for now.\n");
-	    exit(1);
-	  }
 	    
-	  SimulationInfo_populate_stack(num);
+	  SimulationInfo_prepare_stack(max_EQStack);
+	  SimulationInfo_set_threads_num(num);
 	  break;
 	}
 #endif
