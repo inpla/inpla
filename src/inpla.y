@@ -22,8 +22,8 @@
 
 // ----------------------------------------------
   
-#define VERSION "0.14.0 (dev2)"
-#define BUILT_DATE  "28 December 2025"
+#define VERSION "0.14.0 (dev3)"
+#define BUILT_DATE  "11 January 2026"
 
 // ------------------------------------------------------------------
 
@@ -10016,6 +10016,10 @@ void Init_SimulationInfo(void) {
   SimulationInfo.threads_num = -1;  // not Enable
   SimulationInfo.verbose_stacked_eq = 0;  // not Enable
   SimulationInfo.vm = NULL;
+
+  // set stderr as non-buffered
+  setvbuf(stderr, NULL, _IONBF, 0);
+  
 }
 
 void SimulationInfo_prepare_stack(int stack_size) {
@@ -10036,12 +10040,87 @@ void SimulationInfo_set_threads_num(int num) {
 }
 
 
+typedef struct {
+  int idL;
+  int idR;
+} IdPair;
 
+
+int SimulationInfo_getid(VALUE ptr) {
+    if (IS_FIXNUM(ptr)) {
+      return ID_INT;
+    }
+
+    if (IS_NAMEID(BASIC(ptr)->id)) {
+      if (NAME(ptr)->port == (VALUE)NULL) {
+	return ID_NAME;
+      }
+      return SimulationInfo_getid(NAME(ptr)->port);
+    }
+
+    return BASIC(ptr)->id;
+}
+
+  
 void SimulationInfo_execution_loop(void) {
   VALUE t1, t2;
   unsigned long step=1;
 
-  printf("step,exec(%d),stacked\n", SimulationInfo.threads_num);
+
+  fprintf(stderr,"step,exec(%d),stacked", SimulationInfo.threads_num);
+
+  
+  // Get sorts of all rules
+  int ruleCount[NUM_AGENTS][NUM_AGENTS];
+  int rule_num = 0;
+  
+  for (int idL=0; idL<NUM_AGENTS; idL++) {
+    for (int idR=0; idR<NUM_AGENTS; idR++) {
+      if (idL < idR) {
+	ruleCount[idL][idR] = 0;
+	continue;
+      }
+      int result;
+      RuleTable_get_code(idL, idR, &result);
+      ruleCount[idL][idR] = result;
+      if (result) {
+	rule_num++;
+      }
+    }
+  }
+
+  IdPair *idPair;
+  idPair = malloc(sizeof(IdPair)*rule_num);
+  if (idPair == NULL) {
+    printf("SimulationInfo: Malloc error for idPair\n");
+    exit(-1);
+  }
+  
+  // Initialise idPair
+  int idx=0;
+  for (int idL=0; idL<NUM_AGENTS; idL++) {
+    for (int idR=0; idR<NUM_AGENTS; idR++) {
+      if (idL < idR) continue;
+      
+      if (ruleCount[idL][idR]) {
+	idPair[idx].idL = idL;
+	idPair[idx].idR = idR;
+	idx++;
+	fprintf(stderr, ",(%s~%s)",
+		IdTable_get_name(idL), IdTable_get_name(idR));
+      }
+    }
+  }
+  fprintf(stderr, "\n");
+
+
+  //  for (int i=0; i<rule_num; i++) {
+  //    printf("(%d,%d), ", idPair[i].idL, idPair[i].idR);
+  //  }
+  //  exit(1);
+  
+  
+
 
   while (1) {
 
@@ -10082,7 +10161,12 @@ void SimulationInfo_execution_loop(void) {
     }
 
     // one step execution by n-threads
-    printf("%ld,%d,%d\n", step, i, VM.nextPtr_eqStack+1);
+    fprintf(stderr, "%ld,%d,%d", step, i, VM.nextPtr_eqStack+1);
+    
+    // Clear ruleCount
+    for (int i=0; i<rule_num; i++) {
+      ruleCount[idPair[i].idL][idPair[i].idR] = 0;
+    }
     
     
     // Execute the popped APs
@@ -10094,16 +10178,37 @@ void SimulationInfo_execution_loop(void) {
 	puts_term(t2);
 	puts("");
       }
+
+      int idL, idR;
+      idL = SimulationInfo_getid(t1);
+      idR = SimulationInfo_getid(t2);
+      if ((idL != ID_NAME) && (idR != ID_NAME)) {
+	if (idL < idR) {
+	  int tmp = idL;
+	  idL = idR;
+	  idR = tmp;
+	}
+	
+	ruleCount[idL][idR]++;
+      }
       
       eval_equation(&VM, t1, t2);
     }
 
+    for (int i=0; i<rule_num; i++) {
+      fprintf(stderr, ",%d", ruleCount[idPair[i].idL][idPair[i].idR]);
+    }
+    fprintf(stderr, "\n");
+
+    
     step++;
 
     if (SimulationInfo.verbose_stacked_eq) {
       printf("\t\t;");
       printf("%lu interactions\n",VM_Get_InteractionCount(&VM));
     }
+
+    fflush(NULL);
     
   }
 }
