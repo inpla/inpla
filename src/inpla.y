@@ -22,8 +22,8 @@
 
 // ----------------------------------------------
   
-#define VERSION "0.14.0 (dev3)"
-#define BUILT_DATE  "11 January 2026"
+#define VERSION "0.14.0 (dev4)"
+#define BUILT_DATE  "22 February 2026"
 
 // ------------------------------------------------------------------
 
@@ -10067,7 +10067,7 @@ void SimulationInfo_execution_loop(void) {
   unsigned long step=1;
 
 
-  fprintf(stderr,"step,exec(%d),stacked", SimulationInfo.threads_num);
+  fprintf(stderr,"step,exec(%d),stacked,agents", SimulationInfo.threads_num);
 
   
   // Get sorts of all rules
@@ -10160,8 +10160,9 @@ void SimulationInfo_execution_loop(void) {
       
     }
 
-    // one step execution by n-threads
+    // one step execution by n-threads    
     fprintf(stderr, "%ld,%d,%d", step, i, VM.nextPtr_eqStack+1);
+
     
     // Clear ruleCount
     for (int i=0; i<rule_num; i++) {
@@ -10195,6 +10196,10 @@ void SimulationInfo_execution_loop(void) {
       eval_equation(&VM, t1, t2);
     }
 
+
+    fprintf(stderr, ",%lu", 
+	    Heap_GetNum_Usage_forAgent(&VM.agentHeap));
+    
     for (int i=0; i<rule_num; i++) {
       fprintf(stderr, ",%d", ruleCount[idPair[i].idL][idPair[i].idR]);
     }
@@ -10211,6 +10216,9 @@ void SimulationInfo_execution_loop(void) {
     fflush(NULL);
     
   }
+
+  
+  
 }
 // ----------------------------------------------------
 
@@ -10383,8 +10391,17 @@ int exec(Ast *at) {
   
   time=stop_timer(&t);
 #ifdef COUNT_INTERACTION
-  printf("(%lu interactions, %.2f sec)\n", VM_Get_InteractionCount(&VM),
+  
+  printf("(%lu interactions, %.2f sec", VM_Get_InteractionCount(&VM),
 	 (double)(time)/1000000);
+
+  if (SimulationInfo.threads_num >= 0) {
+    printf(", %lu agents)\n", Heap_GetNum_Usage_forAgent(&VM.agentHeap));
+  } else {
+    printf(")\n");
+  }
+
+  
 #else
   printf("(%.2f sec)\n", 
 	 (double)(time)/1000000);
@@ -10399,7 +10416,6 @@ int exec(Ast *at) {
     puts_memory_usage(&VM.agentHeap, &VM.nameHeap);
   }
 
-
   
 #ifdef COUNT_CNCT
   printf("JMP_CNCT:%d true:%d ratio:%.2f%%\n",
@@ -10407,7 +10423,7 @@ int exec(Ast *at) {
   printf("  ind_op:%d ratio(ind/JMP_CNCT):%.2f%%\n",
 	 Count_cnct_indirect_op, Count_cnct_indirect_op*100.0/Count_cnct);
 #endif
-  
+
   return 1;
 }
 
