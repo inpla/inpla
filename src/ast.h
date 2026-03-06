@@ -46,6 +46,8 @@ Ast *ast_makeSymbol(char *name);
 Ast *ast_makeInt(long num);
 Ast *ast_makeAST(AST_ID id, Ast *left, Ast *right);
 Ast *ast_makeTuple(Ast *tuple);
+Ast *ast_reverseList(Ast *l);
+Ast *ast_addFirst(Ast *l, Ast *p);
 Ast *ast_addLast(Ast *l, Ast *p);
 Ast *ast_getNth(Ast *p,int nth);
 Ast *ast_getTail(Ast *p);

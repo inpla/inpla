@@ -208,16 +208,41 @@ Ast *ast_paramToCons(Ast *ast) {
   if (ast == NULL) {
     return ast_makeAST(AST_NIL, NULL, NULL);
   }
-
-  Ast *head = ast->left;
-  Ast *tail = ast->right;
-  Ast *ret = ast_makeAST(AST_OPCONS, NULL,
-			 ast_makeList2(head, ast_paramToCons(tail)));
-  return ret;
   
+  Ast *head = NULL, *tail = NULL, *current = ast;
+  while (current != NULL) {
+        head = current->left;
+        tail = current->right;
+        current->id = AST_OPCONS;
+        current->left = NULL;
+        if (tail == NULL) {
+            current->right = ast_makeList2(head, ast_makeAST(AST_NIL, NULL, NULL));
+            break;
+        }
+        else {
+            current->right = ast_makeList2(head, tail);
+            current = tail;
+        }
+  }
+  return ast;
 }
 
+Ast *ast_reverseList(Ast *l) {
+    Ast *prev = NULL;
+    Ast *current = l;
+    Ast *next = NULL;
+    while (current != NULL) {
+        next = current->right;
+        current->right = prev;
+        prev = current;
+        current = next;
+    }
+    return prev;
+}
 
+Ast *ast_addFirst(Ast *l, Ast *p) {
+    return ast_makeAST(AST_LIST, p, l);
+}
 
 Ast *ast_addLast(Ast *l, Ast *p)
 {

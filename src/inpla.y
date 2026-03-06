@@ -195,7 +195,7 @@ static char *Errormsg = NULL;
 %token INTERFACE IFCE PRNAT FREE EXIT MEMSTAT
 %token END_OF_FILE USE
 
-%type <ast> body astterm astterm_item nameterm agentterm astparam astparams
+%type <ast> body astterm astterm_item nameterm agentterm astparam astparams_rev astparams
 val_declare
 rule 
 ap aplist
@@ -513,9 +513,13 @@ astparam
 | '(' astparams ')' { $$ = $2; }
 ;
 
-astparams
+astparams_rev
 : astterm { $$ = ast_makeList1($1); }
-| astparams ',' astterm { $$ = ast_addLast($1, $3); }
+| astparams_rev ',' astterm { $$ = ast_addFirst($1, $3); }
+;
+
+astparams
+: astparams_rev { $$ = ast_reverseList($1); }
 ;
 
 ap
