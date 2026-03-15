@@ -292,10 +292,16 @@ Electronic Communications of the EASST, Volume 73: Graph Computation Models - Se
 
 ## Related Work
 
-* [Train: Translator of a functional language to interaction nets (Inpla notation)](https://github.com/inpla/train)
 * [High-order Virtual Machine (HVM)](https://github.com/Kindelia/HVM)
-* [Language, interpreter and compiler for interaction nets](https://github.com/szeiger/interact)
 * [HINet: Interaction Nets in Haskell](http://www.cas.mcmaster.ca/~kahl/Haskell/HINet/)
+* [A Rust-Based Interaction Combinator Runtime](https://github.com/Gadersd/ic)
+* [Language, interpreter and compiler for interaction nets](https://github.com/szeiger/interact)
+* [Interaction Nets in OCaml](https://github.com/nikolaushuber/ocaml_inets)
+* [ingpu - an experimental GPU-based interaction nets evaluator](https://github.com/euschn/ingpu)
+
+#### My repository
+
+- [Train: Translator of a functional language to interaction nets (Inpla notation)](https://github.com/inpla/train)
 
 
 
