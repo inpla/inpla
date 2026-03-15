@@ -6,7 +6,7 @@
 
 Inpla is a multi-threaded parallel interpreter of interaction nets. Once you write programs for sequential execution, it works also in multi-threaded parallel execution. Each thread is managed on each CPU-core with POSIX-thread library. 
 
-* The current version is 0.13.0-2, released on **12 September 2024**. (See [Changelog.md](Changelog.md) for details.) 
+* The current version is 0.13.1, released on **15 March 2026**. (See [Changelog.md](Changelog.md) for details.) 
 * The below graph shows speed-up ratio to threads numbers for programs in the following benchmark table.
 
 ![speedup-ratio](pic/benchmark_reuse_v0.13.0.png)
@@ -267,10 +267,11 @@ Inpla is a multi-threaded parallel interpreter of interaction nets. Once you wri
 [Gentle_introduction_Inpla.md](Gentle_introduction_Inpla.md) explains how to make programs in Inpla step by step. Please look it over!
 
 
-
 ## Updates
 
 See [Changelog.md](Changelog.md) for details.
+
+
 
 
 
@@ -291,16 +292,10 @@ Electronic Communications of the EASST, Volume 73: Graph Computation Models - Se
 
 ## Related Work
 
+* [Train: Translator of a functional language to interaction nets (Inpla notation)](https://github.com/inpla/train)
 * [High-order Virtual Machine (HVM)](https://github.com/Kindelia/HVM)
-* [HINet: Interaction Nets in Haskell](http://www.cas.mcmaster.ca/~kahl/Haskell/HINet/)
-* [A Rust-Based Interaction Combinator Runtime](https://github.com/Gadersd/ic)
 * [Language, interpreter and compiler for interaction nets](https://github.com/szeiger/interact)
-* [Interaction Nets in OCaml](https://github.com/nikolaushuber/ocaml_inets)
-* [ingpu - an experimental GPU-based interaction nets evaluator](https://github.com/euschn/ingpu)
-
-#### My repository
-
-- [Train: Translator of a functional language to interaction nets (Inpla notation)](https://github.com/inpla/train)
+* [HINet: Interaction Nets in Haskell](http://www.cas.mcmaster.ca/~kahl/Haskell/HINet/)
 
 
 

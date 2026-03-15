@@ -412,7 +412,7 @@ It is possible to have attributes as calculation results of arithmetic operation
 <let-clause> ::= <name> '=' <arithmetic expression>
 ```
 
-The symbol of addition, subtraction, multiplication, division, modulo are `+`, `-`, `*`, `/` and `%`, respectively. Relational operations `==`, `!=` `<`, `<=`, `>` and `>=` return 1 for True, 0 for False. Logical operations Not `!` (`not`), And `&&` (`and`)  and Or `||` (`or`) are also available where only `0` is regarded as False.
+The symbol of addition, subtraction, multiplication, division, modulo are `+`, `-`, `*`, `/` and `%`, respectively. Relational operations `==`, `!=`, `<`, `<=`, `>` and `>=` return 1 for True, 0 for False. Logical operations Not `!` (`not`), And `&&` (`and`)  and Or `||` (`or`) are also available where only `0` is regarded as False.
 
 * Example: an expression using `where`:
 
@@ -764,7 +764,7 @@ In interaction rule definitions, we can specify how active pair agents are reuse
   (r, foo(r)) >< (result, s) -->* foo(result)~s.
   
   // where the following rule has been defined as a built-in:
-  // (a1,a2) ><> (b1,b2) => a1~b1, a2~b2.   
+  // (a1,a2) >< (b1,b2) => a1~b1, a2~b2.   
   ```
 * **Map function operation**: So, the map function operation can be realised by a built-in `Map` agent with the following already defined rules:
   ```

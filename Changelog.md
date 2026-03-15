@@ -1,5 +1,13 @@
 # Change log
 
+### v0.13.1 (released on 15 March 2026)
+
+#### Polished
+
+- **Improved the parsing method for lists**: My naive code for list parsing, which took O(n^2), has been improved to O(n) by [Daniel-Zaripov](https://github.com/Danil-Zaripov). Really good!
+
+  
+
 ### v0.13.0-2 (released on 12 September 2024)
 
 #### Polished
