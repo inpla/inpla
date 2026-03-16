@@ -22,8 +22,8 @@
 
 // ----------------------------------------------
   
-#define VERSION "0.13.1"
-#define BUILT_DATE  "15 March 2026"
+#define VERSION "0.13.2"
+#define BUILT_DATE  "16 March 2026"
 
 // ------------------------------------------------------------------
 
@@ -222,9 +222,9 @@ abr_annotate
  //%left ADD SUB
  //%left MULT DIV
 
-       // For error message information
-       %define parse.error verbose
-       %locations
+// For error message information
+%define parse.error verbose
+%locations
 
 
 %%
@@ -2839,8 +2839,10 @@ void IMCode_puts(int n) {
 
 
 
+// The following is now defined in config.h
+//#define MAX_VMCODE_SEQUENCE 1024  // The code size of each rule in RuleTable
+//#define MAX_EXEC_VMCODE_SEQUENCE 1000000 // For top-level execution
 
-#define MAX_VMCODE_SEQUENCE 1024  
 void VMCode_puts(void **code, int n) {
   int line = 0;
   
@@ -4214,7 +4216,7 @@ int CmEnv_Optimise_VMCode_CopyPropagation(int target_imcode_addr) {
 
 #define MAX_LABEL 50
 #define MAX_BACKPATCH MAX_LABEL*2
-int CmEnv_generate_VMCode(void **code) {
+int CmEnv_generate_VMCode(void **code, int max_size) {
   int addr = 0;
   struct IMCode_tag *imcode;
 
@@ -4227,6 +4229,13 @@ int CmEnv_generate_VMCode(void **code) {
 #endif	
   
   for (int line_num=0; line_num<IMCode_n; line_num++) {
+
+    if (addr >= max_size - 10) {
+      fprintf(stderr, "ERROR[CmEnv_generate_VMCode]: VMCode buffer overflow!\n");
+      exit(-1);
+    }
+
+    
     imcode = &IMCode[line_num];    
 
     // DEBUG
@@ -5743,6 +5752,7 @@ int Compile_term_on_ast(Ast *ptr, int target) {
 
     
     if (target == -1) {      
+      /*
       result = CmEnv_newvar();
 
       // expanded operations
@@ -5753,6 +5763,17 @@ int Compile_term_on_ast(Ast *ptr, int target) {
       
       alloc = Compile_term_on_ast(ptr->right->left, -1);
       IMCode_genCode3(OP_LOADP, alloc, 1, result);
+      */
+
+      int head_alloc, tail_alloc;
+      tail_alloc = Compile_term_on_ast(ptr->right->left, -1);
+      head_alloc = Compile_term_on_ast(ptr->left, -1);
+
+      result = CmEnv_newvar();
+      IMCode_genCode2(OP_MKAGENT, ID_CONS, result);
+      IMCode_genCode3(OP_LOADP, head_alloc, 0, result);
+      IMCode_genCode3(OP_LOADP, tail_alloc, 1, result);
+      
       
     } else {
       result = target;
@@ -7332,7 +7353,7 @@ int make_rule_oneway(Ast *ast) {
 
   //              #define DEBUG_MKRULE  
 #ifndef DEBUG_MKRULE  
-  gencode_num += CmEnv_generate_VMCode(&code[2]);
+  gencode_num += CmEnv_generate_VMCode(&code[2], MAX_VMCODE_SEQUENCE);
 #else
 
   //int here_flag = is_tco;
@@ -7345,7 +7366,7 @@ int make_rule_oneway(Ast *ast) {
     IMCode_puts(0);
   }
   
-  gencode_num += CmEnv_generate_VMCode(&code[2]);
+  gencode_num += CmEnv_generate_VMCode(&code[2], MAX_VMCODE_SEQUENCE);
 
   
   if (here_flag) {
@@ -9857,11 +9878,6 @@ label_exec_agent_a1_a2:
 
 
 
-
-
-
-
-
 void select_kind_of_push(Ast *ast, int p1, int p2) {  
   int sym_id = NameTable_get_id(ast->left->sym);
   
@@ -9933,8 +9949,14 @@ int check_ast_arity(Ast *ast) {
 
 
 #ifndef THREAD
+// -----------------------------------------
+// Execution WITHOUT threads
+// -----------------------------------------
 
 
+// ----------------------------------
+// for WHNF
+// ----------------------------------
 #define WHNF_UNUSED_STACK_SIZE 100
 typedef struct {
   // EQStack
@@ -9947,14 +9969,19 @@ WHNF_Info WHNFinfo;
 
 void Init_WHNFinfo(void) {
   WHNFinfo.eqs_index = 0;
-  WHNFinfo.size = WHNF_UNUSED_STACK_SIZE;
+  WHNFinfo.size = 0;
   WHNFinfo.enable = 0;  // not Enable
 
+}
+
+void WHNFInfo_populate_stack(void) {
+  WHNFinfo.size = WHNF_UNUSED_STACK_SIZE;
   WHNFinfo.eqs = malloc(sizeof(EQ) * WHNF_UNUSED_STACK_SIZE);
   if (WHNFinfo.eqs == NULL) {
     printf("WHNFinfo.eqs: Malloc error\n");
     exit(-1);
   }
+  
 }
   
 void WHNFInfo_push_equation(VALUE t1, VALUE t2) {
@@ -9973,15 +10000,18 @@ void WHNF_execution_loop(void) {
 
   while (EQStack_Pop(&VM, &t1, &t2)) {
 
+    printf("pop:");
     puts_term(t1); printf("~"); puts_term(t2); puts("");
     
     if ((NameTable_check_if_term_has_gname(t1) == 1) ||
 	(NameTable_check_if_term_has_gname(t2) == 1)) {
 
+      printf("--> Executed.\n");
       eval_equation(&VM, t1, t2);
 	
     } else {
       
+      printf("--> Not executed and pushed to the stack.\n");
       WHNFInfo_push_equation(t1, t2);
     }
   }
@@ -9989,13 +10019,240 @@ void WHNF_execution_loop(void) {
 }
 
 
+// ----------------------------------
+// for simulation on multi-threads
+// ----------------------------------
+typedef struct {
+  // VM
+  VirtualMachine *vm;  // use only for EQStack
+  //
+  int threads_num;  // -1: not Enable. 0: Maximum. 1..n: n-threads.
+  int verbose_stacked_eq; // not Enable (default)   1: Enable
+} Simulation_Info; 
+Simulation_Info SimulationInfo;
+
+
+void Init_SimulationInfo(void) {
+  SimulationInfo.threads_num = -1;  // not Enable
+  SimulationInfo.verbose_stacked_eq = 0;  // not Enable
+  SimulationInfo.vm = NULL;
+
+  // set stderr as non-buffered
+  setvbuf(stderr, NULL, _IONBF, 0);
+  
+}
+
+void SimulationInfo_prepare_stack(int stack_size) {
+
+  SimulationInfo.vm = malloc(sizeof(VirtualMachine));
+  if (SimulationInfo.vm == NULL) {
+    printf("SimulationInfo.eqs: Malloc error\n");
+    exit(-1);
+  }
+  VM_EQStack_Init(SimulationInfo.vm, stack_size);
+
+  
+  
+}
+
+void SimulationInfo_set_threads_num(int num) {
+  SimulationInfo.threads_num = num;
+}
+
+
+typedef struct {
+  int idL;
+  int idR;
+} IdPair;
+
+
+int SimulationInfo_getid(VALUE ptr) {
+    if (IS_FIXNUM(ptr)) {
+      return ID_INT;
+    }
+
+    if (IS_NAMEID(BASIC(ptr)->id)) {
+      if (NAME(ptr)->port == (VALUE)NULL) {
+	return ID_NAME;
+      }
+      return SimulationInfo_getid(NAME(ptr)->port);
+    }
+
+    return BASIC(ptr)->id;
+}
+
+  
+void SimulationInfo_execution_loop(void) {
+  VALUE t1, t2;
+  unsigned long step=1;
+
+
+  fprintf(stderr,"step,exec(%d),stacked,agents", SimulationInfo.threads_num);
+
+  
+  // Get sorts of all rules
+  int ruleCount[NUM_AGENTS][NUM_AGENTS];
+  int rule_num = 0;
+  
+  for (int idL=0; idL<NUM_AGENTS; idL++) {
+    for (int idR=0; idR<NUM_AGENTS; idR++) {
+      if (idL < idR) {
+	ruleCount[idL][idR] = 0;
+	continue;
+      }
+      int result;
+      RuleTable_get_code(idL, idR, &result);
+      ruleCount[idL][idR] = result;
+      if (result) {
+	rule_num++;
+      }
+    }
+  }
+
+  IdPair *idPair;
+  idPair = malloc(sizeof(IdPair)*rule_num);
+  if (idPair == NULL) {
+    printf("SimulationInfo: Malloc error for idPair\n");
+    exit(-1);
+  }
+  
+  // Initialise idPair
+  int idx=0;
+  for (int idL=0; idL<NUM_AGENTS; idL++) {
+    for (int idR=0; idR<NUM_AGENTS; idR++) {
+      if (idL < idR) continue;
+      
+      if (ruleCount[idL][idR]) {
+	idPair[idx].idL = idL;
+	idPair[idx].idR = idR;
+	idx++;
+	fprintf(stderr, ",(%s~%s)",
+		IdTable_get_name(idL), IdTable_get_name(idR));
+      }
+    }
+  }
+  fprintf(stderr, "\n");
+
+
+  //  for (int i=0; i<rule_num; i++) {
+  //    printf("(%d,%d), ", idPair[i].idL, idPair[i].idR);
+  //  }
+  //  exit(1);
+  
+  
+
+
+  while (1) {
+
+    int i=0;
+    if (SimulationInfo.threads_num > 0) {
+
+      // Limited threads num
+      for (i=0; i<SimulationInfo.threads_num; i++) {
+	if (EQStack_Pop(&VM, &t1, &t2)) {
+	  VM_EQStack_Push(SimulationInfo.vm, t1,t2);
+	} else {
+	  break;
+	}
+      }
+      
+      if ((i==0) && (VM.nextPtr_eqStack == -1)) {
+	// no executable and no stacked AP
+	//printf("%ld,0,0\n", step);
+	return; // Loop termination
+      }
+
+      
+    } else {
+
+      // Unlimited
+      while (EQStack_Pop(&VM, &t1, &t2)) {
+	  VM_EQStack_Push(SimulationInfo.vm, t1,t2);
+	  i++;
+      }
+      if (SimulationInfo.vm->nextPtr_eqStack == -1) {
+	// no stacked AP
+	//printf("%ld,0,0\n", step);
+	return; // Loop termination	
+      }
+
+
+      
+    }
+
+    // one step execution by n-threads    
+    fprintf(stderr, "%ld,%d,%d", step, i, VM.nextPtr_eqStack+1);
+
+    
+    // Clear ruleCount
+    for (int i=0; i<rule_num; i++) {
+      ruleCount[idPair[i].idL][idPair[i].idR] = 0;
+    }
+    
+    
+    // Execute the popped APs
+    while (VM_EQStack_Pop(SimulationInfo.vm, &t1, &t2)) {
+      if (SimulationInfo.verbose_stacked_eq) {
+	printf("\t\t;");
+	puts_term(t1);
+	printf("~");
+	puts_term(t2);
+	puts("");
+      }
+
+      int idL, idR;
+      idL = SimulationInfo_getid(t1);
+      idR = SimulationInfo_getid(t2);
+      if ((idL != ID_NAME) && (idR != ID_NAME)) {
+	if (idL < idR) {
+	  int tmp = idL;
+	  idL = idR;
+	  idR = tmp;
+	}
+	
+	ruleCount[idL][idR]++;
+      }
+      
+      eval_equation(&VM, t1, t2);
+    }
+
+
+    fprintf(stderr, ",%lu", 
+	    Heap_GetNum_Usage_forAgent(&VM.agentHeap));
+    
+    for (int i=0; i<rule_num; i++) {
+      fprintf(stderr, ",%d", ruleCount[idPair[i].idL][idPair[i].idR]);
+    }
+    fprintf(stderr, "\n");
+
+    
+    step++;
+
+    if (SimulationInfo.verbose_stacked_eq) {
+      printf("\t\t;");
+      printf("%lu interactions\n",VM_Get_InteractionCount(&VM));
+    }
+
+    fflush(NULL);
+    
+  }
+
+  
+  
+}
+// ----------------------------------------------------
+
 
 
 int exec(Ast *at) {
   // Ast at: (AST_BODY stmlist aplist)
 
-  unsigned long long t, time;    
-  void* code[MAX_VMCODE_SEQUENCE];
+  unsigned long long t, time;
+  void** code = (void**)malloc(sizeof(void*) * MAX_EXEC_VMCODE_SEQUENCE);
+  if (code == NULL) {
+    puts("Error: Malloc error for code in exec func.");
+    exit(-1);
+  }
   
   start_timer(&t);
 
@@ -10096,20 +10353,25 @@ int exec(Ast *at) {
     return 0;
   }
 
-#ifndef DEBUG_NETS
-  // for regular operation
-  CmEnv_retrieve_MKGNAME();
-  CmEnv_generate_VMCode(code);
 
-#else  
-  // for debug
+  // Generate codes for every global name
   CmEnv_retrieve_MKGNAME();
-  IMCode_puts(0); //exit(1);
   
-  int codenum = CmEnv_generate_VMCode(code);
-  VMCode_puts(code, codenum-2); //exit(1);
-  // end for debug
-#endif
+  if (CmEnv.put_compiled_codes) {
+    IMCode_puts(0); // put the 1pass result
+
+    int codenum = CmEnv_generate_VMCode(code, MAX_EXEC_VMCODE_SEQUENCE); // 2pass
+    VMCode_puts(code, codenum-2); // put the 2pass result
+
+    if (yyin != stdin) {
+      puts("");
+    }
+  } else {
+    CmEnv_generate_VMCode(code, MAX_EXEC_VMCODE_SEQUENCE); // 2pass
+
+  }
+  
+
   
 
   
@@ -10118,7 +10380,7 @@ int exec(Ast *at) {
 #endif
 
   
-  // WHNF: Unused equations are stacked to be execution targets again.  
+  // WHNF: Reactivate unused equations for execution.  
   if (WHNFinfo.enable) {    
     for (int i=0; i < WHNFinfo.eqs_index ; i++) {
       MYPUSH(&VM, WHNFinfo.eqs[i].l, WHNFinfo.eqs[i].r);
@@ -10128,34 +10390,48 @@ int exec(Ast *at) {
 
   
   exec_code(1, &VM, code);
+  free(code);
+
 
 
 #ifdef COUNT_INTERACTION
   VM_Clear_InteractionCount(&VM);
 #endif
 
+  // bookmark
 
 
   // EXECUTION LOOP
-
-  if (!WHNFinfo.enable) {
-    // no-stategy execution
+  if (WHNFinfo.enable) {
+    // WHNF stragety
+    WHNF_execution_loop();
     
+  } else if (SimulationInfo.threads_num >= 0) {
+    // Simulation mode
+    SimulationInfo_execution_loop();
+    
+  } else {
+    // Normal operation
     VALUE t1, t2;
     while (EQStack_Pop(&VM, &t1, &t2)) {
       eval_equation(&VM, t1, t2);   
-    }
-    
-  } else {
-    // WHNF stragety
-    WHNF_execution_loop();
-  }	
-    
+    } 
+  } 
 
+  
   time=stop_timer(&t);
 #ifdef COUNT_INTERACTION
-  printf("(%lu interactions, %.2f sec)\n", VM_Get_InteractionCount(&VM),
+  
+  printf("(%lu interactions, %.2f sec", VM_Get_InteractionCount(&VM),
 	 (double)(time)/1000000);
+
+  if (SimulationInfo.threads_num >= 0) {
+    printf(", %lu agents)\n", Heap_GetNum_Usage_forAgent(&VM.agentHeap));
+  } else {
+    printf(")\n");
+  }
+
+  
 #else
   printf("(%.2f sec)\n", 
 	 (double)(time)/1000000);
@@ -10165,11 +10441,9 @@ int exec(Ast *at) {
   printf("(%d mkAgent calls)\n", NumberOfMkAgent);
 #endif
 
-
   if (GlobalOptions.verbose_memory_use) {
     puts_memory_usage(&VM.agentHeap, &VM.nameHeap);
   }
-
 
   
 #ifdef COUNT_CNCT
@@ -10178,11 +10452,16 @@ int exec(Ast *at) {
   printf("  ind_op:%d ratio(ind/JMP_CNCT):%.2f%%\n",
 	 Count_cnct_indirect_op, Count_cnct_indirect_op*100.0/Count_cnct);
 #endif
-  
+
   return 1;
 }
 
+
+
 #else
+// ---------------------------------------------------
+// Execution by multi-threads
+// ---------------------------------------------------
 
 // For setting the number of CPUs.
 // it is calculated by using sysconf(_SC_NPROSSEORS_CONF) in tpool_init
@@ -10315,9 +10594,14 @@ int exec(Ast *at) {
   // Ast at: (AST_BODY stmlist aplist)
   
   unsigned long long t, time;
-
-  void* code[MAX_VMCODE_SEQUENCE];  
   int eqsnum = 0;
+
+  void** code = (void**)malloc(sizeof(void*) * MAX_EXEC_VMCODE_SEQUENCE);
+  if (code == NULL) {
+    puts("Error: Malloc error for code in exec func.");
+    exit(-1);
+  }
+
 
   
 #ifdef COUNT_INTERACTION
@@ -10398,6 +10682,24 @@ int exec(Ast *at) {
   }
 
 
+  // Generate codes for every global name
+  CmEnv_retrieve_MKGNAME();
+  
+  if (CmEnv.put_compiled_codes) {
+    IMCode_puts(0); // put the 1pass result
+
+    int codenum = CmEnv_generate_VMCode(code, MAX_EXEC_VMCODE_SEQUENCE); // 2pass
+    VMCode_puts(code, codenum-2); // put the 2pass result
+
+    if (yyin != stdin) {
+      puts("");
+    }
+  } else {
+    CmEnv_generate_VMCode(code, MAX_EXEC_VMCODE_SEQUENCE); // 2pass
+
+  }
+  
+  /*
 #ifndef DEBUG_NETS
   // for regular
   CmEnv_retrieve_MKGNAME();
@@ -10412,10 +10714,11 @@ int exec(Ast *at) {
   VMCode_puts(code, codenum-2); //exit(1);
   // end for debug
 #endif
+  */
   
       
   exec_code(1, VMs[0], code);
-
+  free(code);
 
   
   // Distribute equations to virtual machines
@@ -10523,6 +10826,7 @@ int main(int argc, char *argv[])
   
 #ifndef THREAD
   Init_WHNFinfo();
+  Init_SimulationInfo();
 #endif
 
   ast_heapInit();
@@ -10569,12 +10873,24 @@ int main(int argc, char *argv[])
 
 
 	
-#ifdef THREAD  
+#ifdef THREAD
 	printf(" -t <num>         Set the number of threads               (Default: %10d)\n", MaxThreadsNum);
 
 #else
 	printf(" -w               Enable Weak Reduction strategy          (Default:    disable)\n");
 #endif
+
+
+
+	
+#ifndef THREAD
+	printf(" -s <num>         [Experimental] Simulate parallel execution with <num> threads\n");
+	printf("                    0: unlimited\n");
+	printf(" -fverbose-simulation-info\n");
+	printf("                  Outputs active pairs selected for execution when using -s\n");
+#endif
+
+	
 
 	printf(" -c               Enable output of compiled codes         (Default:    disable)\n");
 
@@ -10739,6 +11055,13 @@ int main(int argc, char *argv[])
 	  GlobalOptions.verbose_memory_use = 1;
 	  break;
 	}	
+
+
+	if (!strcmp(argv[i], "-fverbose-simulation-info")) {
+	  SimulationInfo.verbose_stacked_eq = 1;
+	  break;
+	}	
+
 #endif
 	
 	// for files
@@ -10790,15 +11113,19 @@ int main(int argc, char *argv[])
             exit(-1);
           }
         } else {
-          printf("ERROR: The option `-t' needs a number of threads.");
+          printf("ERROR: The option `-t' needs a number of threads.\n");
           exit(-1);
         }
   
         MaxThreadsNum=param;
         break;
-#else
+#endif
+
+#ifndef THREAD
       case 'w':
         WHNFinfo.enable = 1;
+	WHNFInfo_populate_stack();
+	
         break;	  
 #endif
 	  
@@ -10806,6 +11133,29 @@ int main(int argc, char *argv[])
       case 'c':
 	CmEnv.put_compiled_codes = 1;
 	break;
+
+
+
+#ifndef THREAD
+	
+      case 's':
+	{
+	  int num;
+	  i++;
+	  if (i < argc) {
+	    num = atoi(argv[i]);
+	  } else {
+	    printf("ERROR: The option '-s' needs a number of threads.\n");
+	    exit(1);
+	  }
+
+	    
+	  SimulationInfo_prepare_stack(max_EQStack);
+	  SimulationInfo_set_threads_num(num);
+	  break;
+	}
+#endif
+
 
 	
       default:
@@ -10843,6 +11193,11 @@ int main(int argc, char *argv[])
   if (WHNFinfo.enable) {
     printf("Inpla %s (Weak Strategy) : Interaction nets as a programming language", VERSION);
     printf(" [%s]\n", BUILT_DATE);
+    
+  } else if (SimulationInfo.threads_num >= 0) {
+    printf("Inpla %s (Simulation Mode) : Interaction nets as a programming language", VERSION);
+    printf(" [%s]\n", BUILT_DATE);
+    
   } else {
     printf("Inpla %s : Interaction nets as a programming language", VERSION);
     printf(" [built: %s]\n", BUILT_DATE);

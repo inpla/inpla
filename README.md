@@ -6,7 +6,7 @@
 
 Inpla is a multi-threaded parallel interpreter of interaction nets. Once you write programs for sequential execution, it works also in multi-threaded parallel execution. Each thread is managed on each CPU-core with POSIX-thread library. 
 
-* The current version is 0.13.1, released on **15 March 2026**. (See [Changelog.md](Changelog.md) for details.) 
+* The current version is 0.13.2, released on **16 March 2026**. (See [Changelog.md](Changelog.md) for details.) 
 * The below graph shows speed-up ratio to threads numbers for programs in the following benchmark table.
 
 ![speedup-ratio](pic/benchmark_reuse_v0.13.0.png)
@@ -267,11 +267,10 @@ Inpla is a multi-threaded parallel interpreter of interaction nets. Once you wri
 [Gentle_introduction_Inpla.md](Gentle_introduction_Inpla.md) explains how to make programs in Inpla step by step. Please look it over!
 
 
+
 ## Updates
 
 See [Changelog.md](Changelog.md) for details.
-
-
 
 
 

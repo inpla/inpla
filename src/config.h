@@ -9,6 +9,24 @@
 #define MAX_PORT 5
 
 
+// ------------------------------------------------
+// Maximum Number of VMCode Sequence
+// ------------------------------------------------
+// MAX_VMCODE_SEQUENCE defines the maximum number of VM codes
+// for each rule. This value limits the code size stored in the RuleTable.
+// Default is 1024.
+#define MAX_VMCODE_SEQUENCE 1024
+
+// MAX_EXEC_VMCODE_SEQUENCE defines the maximum number of VM codes
+// for the top-level execution.
+// This buffer for this is dynamically allocated
+// at the start of the top-level execution
+// and de-allocated immediately after the compilation and execution finish.
+// Default is 1000000.
+#define MAX_EXEC_VMCODE_SEQUENCE 1000000
+
+
+
 
 // ------------------------------------------------
 // Heaps 

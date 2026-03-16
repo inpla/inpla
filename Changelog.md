@@ -1,5 +1,115 @@
 # Change log
 
+### v0.13.2 (released on 16 March 2026)
+
+#### Polished
+
+- **The compilation method for lists has been changed:** The compilation order for list structures (`AST_OPCONS`) has been inverted to a bottom-up approach to prevent register exhaustion. For example, a list like `[t1, t2]` is structured as `Cons(t1, Cons(t2, Nil))`. Previously, it was compiled top-down as follows:
+
+  ```
+  compile([t1, t2]) 
+  --> MKAGENT ID_CONS reg13     // reg[13] := Cons (Wait until the tail is compiled!)
+      compile(t1, reg14)        // reg[14] := t1
+      LOADP reg14, 0, reg13     // reg[13].port[0] := t1
+      compile([t2], reg15)      // Recursively compile the tail ([t2])
+      LOADP reg15, 1, reg13     // reg[13].port[1] := reg15
+      
+  --> MKAGENT ID_CONS reg13     // reg[13] := Cons (Wait until the tail is compiled!)
+      compile(t1, reg14)        // reg[14] := t1
+      LOADP reg14, 0, reg13     // reg[13].port[0] := t1
+        MKAGENT ID_CONS reg15     // reg[15] := Cons (Wait until the tail is compiled!)
+        compile(t2, reg16)        // reg[16] := t2
+        LOADP reg16, 0, reg15     // reg[15].port[0] := t2
+        compile([], reg17)        // reg[17] := []
+        LOADP reg17, 1, reg15     // reg[15].port[1] := []
+      LOADP reg15, 1, reg13     // reg[13].port[1] := reg15
+  
+  --> MKAGENT ID_CONS reg13     // reg[13] := Cons (Wait until the tail is compiled!)
+      compile(t1, reg14)        // reg[14] := t1
+      LOADP reg14, 0, reg13     // reg[13].port[0] := t1
+        MKAGENT ID_CONS reg15     // reg[15] := Cons (Wait until the tail is compiled!)
+        compile(t2, reg16)        // reg[16] := t2
+        LOADP reg16, 0, reg15     // reg[15].port[0] := t2
+          MKAGENT ID_NIL reg17      // reg[17] := []
+        LOADP reg17, 1, reg15     // reg[15].port[1] := []
+      LOADP reg15, 1, reg13     // reg[13].port[1] := reg15
+  ```
+
+  In this old approach, the register for the parent Cons cell (`reg13`) must be kept alive until the entire tail is compiled. For a very long list, this deep recursion consumed too many registers, causing the VM to run out of registers (yielding an `All registers run up` error).
+
+  To solve this, the compilation order is changed to compile the tail first:
+
+  ```
+  compile([t1, t2])
+  --> compile([t2], reg13)      // Compile the tail first (deep recursion probably)
+      compile(t1, reg14)        // Compile the head
+      MKAGENT ID_CONS reg15     // reg[15] := Cons
+      LOADP reg14, 0, reg15     // reg[15].port[0] := t1 (reg14 is reused!)
+      LOADP reg13, 1, reg15     // reg[15].port[1] := the tail (reg13 is reused!)
+  
+  -->   compile([], reg16)        // reg[16] := []
+        compile(t2, reg17)        // reg[17] := t2
+        MKAGENT ID_CONS reg18     // reg[18] := Cons
+        LOADP reg17, 0, reg18     // reg[18].port[0] := reg17 (reg17 is reused!)
+        LOADP reg16, 1, reg18     // reg[18].port[1] := reg16 (reg16 is reused!)
+      compile(t1, reg14)        // reg[14] := t1
+      MKAGENT ID_CONS reg15     // reg[15] := Cons
+      LOADP reg14, 0, reg15     // reg[15].port[0] := t1 (reg14 is reused!)
+      LOADP reg13, 1, reg15     // reg[15].port[1] := reg13 (reg13 is reused!)
+  
+  -->     MKAGENT ID_NIL reg16      // reg[16] := Nil
+        compile(t2, reg17)        // reg[17] := t2
+        MKAGENT ID_CONS reg18     // reg[18] := Cons
+        LOADP reg17, 0, reg18     // reg[18].port[0] := reg17 (reg17 is reused!)
+        LOADP reg16, 1, reg18     // reg[18].port[1] := reg16 (reg16 is reused!)
+      compile(t1, reg14)        // reg[14] := t1
+      MKAGENT ID_CONS reg15     // reg[15] := Cons
+      LOADP reg14, 0, reg15     // reg[15].port[0] := t1 (reg14 is reused!)
+      LOADP reg13, 1, reg15     // reg[15].port[1] := reg13 (reg13 is reused!)
+  
+  ==> Optimise
+      MKAGENT ID_NIL reg14      // reg[14] := Nil
+      compile(t2, reg15)        // reg[15] := t2
+      MKAGENT ID_CONS reg16     // reg[16] := Cons
+      LOADP reg15, 0, reg16     // reg[16].port[0] := reg15 (reg15 is reused)
+      LOADP reg14, 1, reg16     // reg[16].port[1] := reg14 (reg14 is reused)
+      compile(t1, reg14)        // reg[14] := t1
+      MKAGENT ID_CONS reg15     // reg[15] := Cons
+      LOADP reg14, 0, reg15     // reg[15].port[0] := t1 (reg14 is reused!)
+      LOADP reg16, 1, reg15     // reg[15].port[1] := reg16 (reg16 is reused!)
+  ```
+
+  Because the tail and head are evaluated before the parent Cons cell is created, they can be connected immediately. This allows the compiler's 2nd pass to reuse a small number of registers efficiently. With this approach, even extremely huge lists can now be compiled smoothly without exhausting the 64 VM registers.
+
+- **Parsing of large lists**: Previously, the maximum size of VM codes was strictly defined as 1024, which prevented parsing lists with a large number of elements (causing stack smashing). The buffer for the top-level execution is now dynamically allocated with a much larger size (e.g., 1,000,000) and de-allocated immediately after the compilation and execution finish. These constants are newly defined in `config.h`:
+
+  ```
+  // ------------------------------------------------
+  // Maximum Number of VMCode Sequence
+  // ------------------------------------------------
+  // MAX_VMCODE_SEQUENCE defines the maximum number of VM codes
+  // for each rule. This value limits the code size stored in the RuleTable.
+  // Default is 1024.
+  #define MAX_VMCODE_SEQUENCE 1024
+  
+  // MAX_EXEC_VMCODE_SEQUENCE defines the maximum number of VM codes
+  // for the top-level execution.
+  // This buffer for this is dynamically allocated
+  // at the start of the top-level execution
+  // and de-allocated immediately after the compilation and execution finish.
+  // Default is 1000000.
+  #define MAX_EXEC_VMCODE_SEQUENCE 1000000
+  ```
+
+  Now, we can safely parse long lists at the top level!
+
+  ```
+  >>> a~[1,2,3,4,5,6,7,8,9,0,1,2,3,4,5,6,7,8,9,0,1,2,3,4,5,6,7,8,9,0,1,2,3,4,5,6,7,8,9,0,1,2,3,4,5,6,7,8,9,0,1,2,3,4,5,6,7,8,9,0,1,2,3,4,5,6,7,8,9,0,1,2,3,4,5,6,7,8,9,0,1,2,3,4,5,6,7,8,9,0,1,2,3,4,5,6,7,8,9,0];
+  (0 interactions, 0.00 sec)
+  ```
+
+  
+
 ### v0.13.1 (released on 15 March 2026)
 
 #### Polished
