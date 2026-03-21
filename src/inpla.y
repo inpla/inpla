@@ -7,22 +7,22 @@
 #include <errno.h>
 #include <sched.h>
 
+#include "unlikely.h"
 #include "timer.h" //#include <time.h>
 #include "linenoise/linenoise.h"
   
 #include "ast.h"
 #include "id_table.h"
 #include "name_table.h"
-#include "name_table.h"
 #include "mytype.h"
 #include "inpla.h"
-
+  
 #include "config.h"  
 
 
 // ----------------------------------------------
   
-#define VERSION "0.13.2"
+#define VERSION "0.13.2-1"
 #define BUILT_DATE  "16 March 2026"
 
 // ------------------------------------------------------------------
@@ -2029,7 +2029,7 @@ void VM_EQStack_Push(VirtualMachine * restrict vm, VALUE l, VALUE r) {
 
   vm->nextPtr_eqStack++;
 
-  if (vm->nextPtr_eqStack >= vm->eqStack_size) {
+  if (unlikely(vm->nextPtr_eqStack >= vm->eqStack_size)) {
     vm->eqStack_size += vm->eqStack_size;
     vm->eqStack = realloc(vm->eqStack, sizeof(EQ)*vm->eqStack_size);
 
@@ -2056,13 +2056,14 @@ void VM_EQStack_Push(VirtualMachine * restrict vm, VALUE l, VALUE r) {
 }
 
 int VM_EQStack_Pop(VirtualMachine * restrict vm, VALUE *l, VALUE *r) {
-  if (vm->nextPtr_eqStack >= 0) {
-    *l = vm->eqStack[vm->nextPtr_eqStack].l;
-    *r = vm->eqStack[vm->nextPtr_eqStack].r;
-    vm->nextPtr_eqStack--;
-    return 1;
-  }
-  return 0;
+  if (unlikely(vm->nextPtr_eqStack < 0)) {
+    return 0;
+  }  
+  
+  *l = vm->eqStack[vm->nextPtr_eqStack].l;
+  *r = vm->eqStack[vm->nextPtr_eqStack].r;
+  vm->nextPtr_eqStack--;
+  return 1;
 }
 
 
@@ -3797,7 +3798,7 @@ int CmEnv_Optimise_check_occurence_in_block(int localvar,
       }
 
     case OP_LOAD:
-    case OP_LOADI:
+      //case OP_LOADI:
       // OP src1 dest
       if (imcode->operand1 == localvar) {
 	return 1;
@@ -3889,7 +3890,7 @@ int CmEnv_Optimise_check_occurence_in_block(int localvar,
       break;
       
     case OP_EQI_R0:
-      // OP src1
+      // OP src1 $n
       if (imcode->operand1 == localvar) {
 	return 1;
       }
@@ -7785,10 +7786,18 @@ void *exec_code(int mode, VirtualMachine * restrict vm, void * restrict *code) {
   // To create the table.
   // mode=0: Create table (only for initialise)
   // mode=1: Execute codes (the normal operation)
+
+  /*
   if (mode == 0) {
     return table;
   }
+  */
+  
+  if (unlikely((mode == 0))) {
+    return table;
+  }
 
+  
   int i, pc=0;
   VALUE a1;
   VALUE *reg = vm->reg;

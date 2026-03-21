@@ -1,5 +1,37 @@
 # Change log
 
+### v0.13.2-1 (released on 21 March 2026)
+
+#### Bug fix
+
+- **Fixed a register reallocation bug during intermediate code optimisation**
+  During the register reallocation pass, the optimiser correctly reuses a source register (`src`) in a `LOAD src, dest` instruction if it is no longer used later in the block. However, a bug caused the optimiser to incorrectly apply this same logic to `LOADI $i, dest` instructions, mistakenly interpreting the immediate value (`$i`) as a register ID. This version fixes this optimisation bug. As a result, parsing and compiling long lists with distinct elements (e.g., `1..100`) can now finally be completed without crashing! 
+
+  ```c
+  int CmEnv_Optimise_check_occurence_in_block(int localvar,
+  					    int target_imcode_addr) {
+  ...
+  
+    case OP_LOAD:
+    case OP_LOADI:
+      // OP src1 dest
+      if (imcode->operand1 == localvar) {
+        return 1;
+      }
+      break;
+  ==>    
+    case OP_LOAD:
+      //case OP_LOADI:
+      // OP src1 dest
+      if (imcode->operand1 == localvar) {
+        return 1;
+      }
+      break;
+      
+  ```
+
+
+
 ### v0.13.2 (released on 16 March 2026)
 
 #### Polished
