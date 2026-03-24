@@ -1,12 +1,131 @@
 # Change log
 
+### v0.13.3 (released on 24 March 2026)
+#### Bug fix
+
+- **Fixed a bug in the arity check function for rule agents**: Previously, rule definitions allowed rule agents to exceed the maximum number of ports defined by `MAX_PORT`. This caused Inpla to output a confusing error message, such as the following (where `MAX_PORT` is 5):
+
+  ```
+  >>> A(a,b,c,d,e,f) >< Z => a~Z, b~Z, c~Z, d~Z, e~Z, f~Z;
+  1:ERROR: `f' is referred not twice in the right-hand side of the rule:
+    A >< Z
+  ```
+
+  Now, it has been fixed by checking the arity correctly:
+
+  ```
+  Inpla 0.13.2-1 : Interaction nets as a programming language [built: 16 March 2026]
+  >>> A(a,b,c,d,e,f) >< Z => a~Z, b~Z, c~Z, d~Z, e~Z, f~Z;
+  1:ERROR: The rule agent `A' has too many arguments. It should be MAX_PORT(=5) or less.
+  ```
+
+#### Polished
+- **The compilation method for nested agents has been changed**: Following the bottom-up compilation approach introduced for lists in v0.13.2, the compilation order for general nested agents (e.g., `S(S(Z))`) has also been inverted to prevent register exhaustion. Previously, nested agents were compiled top-down:
+
+  ```
+  compile(S(S(Z)))
+  
+  --> MKAGENT ID_S reg13
+      compile(S(Z), reg14)
+      LOADP reg14, 0, reg13
+  
+  --> MKAGENT ID_S reg13
+        MKAGENT ID_S reg14
+        compile(Z, reg15)
+        LOADP reg15, 0, reg14
+      LOADP reg14, 0, reg13
+  
+  --> MKAGENT ID_S reg13
+        MKAGENT ID_S reg14
+          MKAGENT ID_Z reg15
+        LOADP reg15, 0, reg14
+      LOADP reg14, 0, reg13
+  
+  ==  MKAGENT ID_S reg13
+      MKAGENT ID_S reg14
+      MKAGENT ID_Z reg15
+      LOADP reg15, 0, reg14  // reg15 can be freed
+      LOADP reg14, 0, reg13  // reg14 can be freed
+                             // thus reg13 must be kept
+  ```
+  
+  In this old approach, the register for the outermost agent (`reg13`) had to be kept alive until all inner agents were compiled. To solve this, the compilation order has been changed to compile the inner agents first (bottom-up):
+
+  ```
+  compile(S(S(Z)))
+  
+  --> compile(S(Z), reg13)
+      MKAGENT ID_S reg14
+      LOADP reg13, 0, reg14
+  
+  -->   compile(Z, reg15)
+        MKAGENT ID_S reg13
+        LOADP reg15, 0, reg13
+      MKAGENT ID_S reg14
+      LOADP reg13, 0, reg14
+  
+  -->     MKAGENT ID_Z reg15
+        MKAGENT ID_S reg13
+        LOADP reg15, 0, reg13
+      MKAGENT ID_S reg14
+      LOADP reg13, 0, reg14
+  
+  ==  MKAGENT ID_Z reg15
+      MKAGENT ID_S reg13
+      LOADP reg15, 0, reg13   // reg15 can be freed
+      MKAGENT ID_S reg14
+      LOADP reg13, 0, reg14   // reg13 can be freed
+  
+  Optimised:
+  ==  MKAGENT ID_Z reg15
+  
+      MKAGENT ID_S reg13
+      LOADP reg15, 0, reg13   // reg15 is freed
+  
+      MKAGENT ID_S reg15      // reg15 is re-used!
+      LOADP reg13, 0, reg15   // reg13 is freed and can be re-used quickly!
+  ```
+  
+  Because inner agents are evaluated before their parent agents are created, their registers can be freed and immediately reused by the optimiser. This drastically reduces register consumption for deeply nested agents.
+  
+- **Safely exit on memory exhaustion (Infinite loop detection)**: Previously, if an interaction rule fell into an infinite loop, the VM would continuously expand the agent and name hoops until the operating system forcibly terminated the process (e.g., Segmentation Fault). To prevent this crash, a maximum size check has been introduced during hoop expansion. The VM now monitors the requested size and safely terminates itself with a descriptive error message before the OS terminates it.
+
+- **Configurable AST and VMCode limits**: To support parsing larger programs, the maximum size of the AST buffer (`MAX_AST_HEAP`) has been increased from 10,000 to 100,000. Additionally, this definition, along with `MAX_IMCODE_SEQUENCE`, has been moved to `config.h` to allow users to easily customise these limits. (In future updates, these fixed-size buffers are planned to be replaced with dynamically expanding linked lists or `realloc`.)
+
+  ```
+  src/config.h
+  ...
+  // ------------------------------------------------
+  // AST Heap
+  // ------------------------------------------------
+  // MAX_AST_HEAP defines the heap size of AST.
+  // Increase this value if the parser runs out of heap space.
+  // Default: 100000
+  #define MAX_AST_HEAP 100000
+  
+  ...
+  
+  // ------------------------------------------------
+  // IMCode Sequence
+  // ------------------------------------------------
+  // MAX_IMCODE_SEQUENCE defines the maximum line number of intermediate codes.
+  // This buffer is statically allocated.
+  // Increase this value if the compiler runs out of heap space.
+  // Default: 1024.
+  //#define MAX_IMCODE_SEQUENCE 1024
+  #define MAX_IMCODE_SEQUENCE 1024
+  
+  ...
+  ```
+
+  
+
 ### v0.13.2-1 (released on 21 March 2026)
 
 #### Bug fix
 
-- **Fixed a register reallocation bug during intermediate code optimisation**
-  During the register reallocation pass, the optimiser correctly reuses a source register (`src`) in a `LOAD src, dest` instruction if it is no longer used later in the block. However, a bug caused the optimiser to incorrectly apply this same logic to `LOADI $i, dest` instructions, mistakenly interpreting the immediate value (`$i`) as a register ID. This version fixes this optimisation bug. As a result, parsing and compiling long lists with distinct elements (e.g., `1..100`) can now finally be completed without crashing! 
-
+- **Fixed a register reallocation bug during intermediate code optimisation:** During the register reallocation pass, the optimiser correctly reuses a source register (`src`) in a `LOAD src, dest` instruction if it is no longer used later in the block. However, a bug caused the optimiser to incorrectly apply this same logic to `LOADI $i, dest` instructions, mistakenly interpreting the immediate value (`$i`) as a register ID. This version fixes this optimisation bug. As a result, parsing and compiling long lists with distinct elements (e.g., `1..100`) can now finally be completed without crashing! 
+  
   ```c
   int CmEnv_Optimise_check_occurence_in_block(int localvar,
   					    int target_imcode_addr) {

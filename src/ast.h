@@ -1,7 +1,8 @@
 // http://www.hpcs.cs.tsukuba.ac.jp/~msato/lecture-note/comp-lecture/tiny-c/AST.h
 
-#ifndef _AST_
-#define _AST_
+#ifndef AST_H_
+#define AST_H_
+#include "config.h"
 
 typedef enum {
   AST_SYM=0, AST_NAME, AST_INTVAR, AST_AGENT,

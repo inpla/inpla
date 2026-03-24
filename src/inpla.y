@@ -22,8 +22,8 @@
 
 // ----------------------------------------------
   
-#define VERSION "0.13.2-1"
-#define BUILT_DATE  "16 March 2026"
+#define VERSION "0.13.3"
+#define BUILT_DATE  "24 March 2026"
 
 // ------------------------------------------------------------------
 
@@ -851,16 +851,27 @@ VALUE myalloc_Agent(Heap *hp) {
       // -->|......|-->|oooooo|-->|......|--
 
 #ifdef VERBOSE_HOOP_EXPANSION
-      puts("(Agent hoop is expanded)");
+      puts("(Agent hoop is BEING expanded)");
+      fflush(stdout)
 #endif
       
       HoopList *new_hoop_list;
       new_hoop_list = HoopList_new_forAgent();
 
+
+      
+#ifdef VERBOSE_HOOP_EXPANSION
+      puts("(Agent hoop has been expanded!)");
+      fflush(stdout)
+#endif
+
+      
       HoopList *last_alloc = hoop_list->next;
       hoop_list->next = new_hoop_list;
       new_hoop_list->next = last_alloc;
 
+
+      
       /* 
       // Another way: insert new_hoop into the next of the top.
       // But, it does not work so well.
@@ -929,16 +940,24 @@ VALUE myalloc_Name(Heap *hp) {
       // -->|......|-->|oooooo|-->|xxxxxx|--
       
 #ifdef VERBOSE_HOOP_EXPANSION
-      puts("(Name hoop is expanded)");
+      puts("(Name hoop is BEING expanded)");
+      fflush(stdout);
 #endif
       
       HoopList *new_hoop_list;
       new_hoop_list = HoopList_new_forName();
 
+#ifdef VERBOSE_HOOP_EXPANSION
+      puts("(Name hoop has been expanded!)");
+      fflush(stdout);
+#endif
+
+
+      
       HoopList *last_alloc = hoop_list->next;
       hoop_list->next = new_hoop_list;
       new_hoop_list->next = last_alloc;
-    
+      
       hoop_list = new_hoop_list;
       idx=0;    
     }
@@ -997,13 +1016,23 @@ typedef struct Heap_tag {
 } Heap;  
 
 
+#define MAX_HOOP_SIZE 50000000
 
 HoopList *HoopList_new_forName(unsigned int size) {
   HoopList *hp_list;
 
+  if (size > MAX_HOOP_SIZE) {
+    fprintf(stderr, "\n[Inpla VM Fatal Error] Memory limit exceeded!\n");
+    fprintf(stderr, "Requested size for Name Hoop (%u) exceeds the maximum limit (%u).\n", size, MAX_HOOP_SIZE);
+    fprintf(stderr, "Possible infinite loop detected in Interaction Rules!\n");
+    exit(-1); // Exit safely with an error code    
+  }
+  
+  
   hp_list = (HoopList *)malloc(sizeof(HoopList));
   if (hp_list == NULL) {
     printf("[HoopList]Malloc error\n");
+    fflush(stdout);
     exit(-1);
   }
 
@@ -1012,12 +1041,16 @@ HoopList *HoopList_new_forName(unsigned int size) {
   hp_list->hoop = (VALUE *)malloc(size * sizeof(Name));
   if (hp_list->hoop == (VALUE *)NULL) {
       printf("[HoopList->Hoop (name)]Malloc error\n");
+      fflush(stdout);
       exit(-1);
-  }  
+  }
+
+  
   for (unsigned int i=0; i<size; i++) {
     RESET_HOOPFLAG_READYFORUSE_NAME(((Name *)(hp_list->hoop))[i].basic.id);
   }
   hp_list->size = size;
+
   
   // hp->next = NULL;   // this should be executed only for the first creation.
   return hp_list;
@@ -1036,6 +1069,14 @@ HoopList *HoopList_new_forAgent(unsigned int size) {
   start_timer(&t);
 #endif
 
+  if (size > MAX_HOOP_SIZE) {
+    fprintf(stderr, "\n[Inpla VM Fatal Error] Memory limit exceeded!\n");
+    fprintf(stderr, "Requested size for Agent Hoop (%u) exceeds the maximum limit (%u).\n", size, MAX_HOOP_SIZE);
+    fprintf(stderr, "Possible infinite loop detected in Interaction Rules!\n");
+    exit(-1); // Exit safely with an error code    
+  }
+
+  
   
   hp_list = (HoopList *)malloc(sizeof(HoopList));
   if (hp_list == NULL) {
@@ -1173,7 +1214,8 @@ VALUE myalloc_Agent(Heap *hp) {
 
       //      printf("(Agent hoop is expanded [%d])\n", hoop_list->size);
 #ifdef VERBOSE_HOOP_EXPANSION
-      puts("(Agent hoop is expanded)");
+      puts("(Agent hoop is BEING expanded...)");
+      fflush(stdout);
 #endif
 
       //puts("!");
@@ -1214,7 +1256,14 @@ VALUE myalloc_Agent(Heap *hp) {
       */
 
       hoop_list = new_hoop_list;    
-      idx = 0;  
+      idx = 0;
+
+#ifdef VERBOSE_HOOP_EXPANSION
+      puts("(Agent hoop has been expanded!)");
+      fflush(stdout);
+#endif
+
+      
     }
   }
   
@@ -1274,7 +1323,8 @@ VALUE myalloc_Name(Heap *hp) {
       // -->|......|-->|oooooo|-->|xxxxxx|--
       
 #ifdef VERBOSE_HOOP_EXPANSION
-      puts("(Name hoop is expanded)");
+      puts("(Name hoop is BEING expanded...)");
+      fflush(stdout);
 #endif
       
       HoopList *new_hoop_list;
@@ -1288,7 +1338,14 @@ VALUE myalloc_Name(Heap *hp) {
       new_hoop_list->next = last_alloc;
     
       hoop_list = new_hoop_list;
-      idx=0;    
+      idx=0;
+
+#ifdef VERBOSE_HOOP_EXPANSION
+      puts("(Name hoop has been BEING expanded)");
+      fflush(stdout);
+#endif
+
+      
     }
 
   }
@@ -2029,13 +2086,22 @@ void VM_EQStack_Push(VirtualMachine * restrict vm, VALUE l, VALUE r) {
 
   vm->nextPtr_eqStack++;
 
-  if (unlikely(vm->nextPtr_eqStack >= vm->eqStack_size)) {
-    vm->eqStack_size += vm->eqStack_size;
-    vm->eqStack = realloc(vm->eqStack, sizeof(EQ)*vm->eqStack_size);
+  if (vm->nextPtr_eqStack >= vm->eqStack_size) {
 
 #ifdef VERBOSE_EQSTACK_EXPANSION    
     puts("(EQStack is expanded)");
 #endif
+    
+    vm->eqStack_size += vm->eqStack_size;
+    void *new_stack = realloc(vm->eqStack, sizeof(EQ)*vm->eqStack_size);
+    //vm->eqStack = realloc(vm->eqStack, sizeof(EQ)*vm->eqStack_size);
+
+    if (new_stack == NULL) {
+      fprintf(stderr, "\n[VM FATAL ERROR] Out of memory for eqStack!\n");
+      exit(-1);
+    }
+    vm->eqStack = new_stack;
+    
     
   }
   vm->eqStack[vm->nextPtr_eqStack].l = l;
@@ -2056,14 +2122,14 @@ void VM_EQStack_Push(VirtualMachine * restrict vm, VALUE l, VALUE r) {
 }
 
 int VM_EQStack_Pop(VirtualMachine * restrict vm, VALUE *l, VALUE *r) {
-  if (unlikely(vm->nextPtr_eqStack < 0)) {
-    return 0;
-  }  
+  if (vm->nextPtr_eqStack >= 0) {
+    *l = vm->eqStack[vm->nextPtr_eqStack].l;
+    *r = vm->eqStack[vm->nextPtr_eqStack].r;
+    vm->nextPtr_eqStack--;
+    return 1;
+  }
   
-  *l = vm->eqStack[vm->nextPtr_eqStack].l;
-  *r = vm->eqStack[vm->nextPtr_eqStack].r;
-  vm->nextPtr_eqStack--;
-  return 1;
+    return 0;  
 }
 
 
@@ -2520,7 +2586,7 @@ void CodeAddr_init(void) {
 }
 
 //http://www.hpcs.cs.tsukuba.ac.jp/~msato/lecture-note/comp-lecture/note10.html
-#define MAX_IMCODE_SEQUENCE 1024
+//#define MAX_IMCODE_SEQUENCE 1024
 struct IMCode_tag {
   int opcode;
   long operand1, operand2, operand3, operand4, operand5, operand6, operand7;
@@ -2532,7 +2598,12 @@ void IMCode_init(void) {
   IMCode_n = 0;
 }
 
-#define IMCODE_OVERFLOW_CHECK if(IMCode_n>MAX_IMCODE_SEQUENCE) {puts("IMCODE overflow");exit(1);}
+#define IMCODE_OVERFLOW_CHECK \
+  if (IMCode_n >= MAX_IMCODE_SEQUENCE) { \
+    fprintf(stderr, "ERROR[IMCode]: Sequence overflow. Increase MAX_IMCODE_SEQUENCE in config.h.\n"); \
+    exit(1); \
+  }
+
 
 void IMCode_genCode0(int opcode) {
   IMCode[IMCode_n++].opcode = opcode;
@@ -5943,6 +6014,7 @@ int Compile_term_on_ast(Ast *ptr, int target) {
       ptr=ptr->right;
     
       if (target == -1) {
+	/*
 	result = CmEnv_newvar();
       
 	IMCode_genCode2(OP_MKAGENT, id, result);
@@ -5953,6 +6025,31 @@ int Compile_term_on_ast(Ast *ptr, int target) {
 	
 	  IMCode_genCode3(OP_LOADP, alloc, i, result);
 	}
+	*/
+	
+	Ast *children[MAX_PORT];
+	int child_regs[MAX_PORT]; // Register table for children
+
+	// Store each child pointer to children[]
+	for (i = 0; i < arity; i++) {
+	  children[i] = ptr->left;
+          ptr = ast_getTail(ptr);
+	}	  
+
+	// Compile children from tail to head
+	for (i = arity-1; i >= 0; i--) {
+          child_regs[i] = Compile_term_on_ast(children[i], -1);
+        }
+
+	// Connect childen to this agent
+	result = CmEnv_newvar();      
+	IMCode_genCode2(OP_MKAGENT, id, result);
+
+	for (i=0; i<arity; i++) {
+	  IMCode_genCode3(OP_LOADP, child_regs[i], i, result);
+	}
+	
+	
       } else {
       
 	result = target;
@@ -5972,7 +6069,7 @@ int Compile_term_on_ast(Ast *ptr, int target) {
 
 	
 	} else {
-	
+	  // VM_OFFSET_ANNOTATE_R
 	  if (CmEnv.idR != id) {
 	    IMCode_genCode1(OP_CHID_R, id);
 	  }
@@ -6615,6 +6712,54 @@ int Compile_body_on_ast(Ast *body) {
   
 
 
+int check_ast_arity(Ast *ast) {
+  int i;
+  Ast *ptr;
+  char *sym;
+  
+  if (ast == NULL) {
+    return 1;
+  }
+
+  if (ast->id == AST_AGENT) {
+    ptr = ast->right;
+    sym = ast->left->sym;
+    
+    for (i=0; i<MAX_PORT; i++) {
+      if (ptr == NULL) {
+	return 1;
+      }
+      if (!check_ast_arity(ptr->left)) {
+	return 0;
+      }
+      ptr = ast_getTail(ptr);
+    }
+
+    if (ptr != NULL)  {
+      printf("%d:Error: `%s' has too many arguments. It should be MAX_PORT(=%d) or less.\n", yylineno, sym, MAX_PORT);
+      return 0;
+    }
+
+  } else if (ast->id == AST_TUPLE) {
+    // We support upto 5-tuples.
+    if ((ast->intval <= MAX_PORT) && (ast->intval <= 5)) {
+      return 1;
+    } else {
+      if (MAX_PORT <= 5) {
+	printf("%d:Error: A tuple has too many arguments. It should be MAX_PORT(=%d) or less.\n", yylineno, MAX_PORT);
+      } else {
+	printf("%d:Error: A tuple has too many arguments. 6 more tubles are not supported.\n", yylineno);
+      }
+      return 0;
+    }
+  }
+
+  return 1;
+}  
+
+
+
+
 
 int Compile_rule_mainbody_on_ast(Ast *mainbody) {
   // return 1: success
@@ -6634,8 +6779,28 @@ int Compile_rule_mainbody_on_ast(Ast *mainbody) {
   if ((mainbody == NULL) || (mainbody->id == AST_BODY)) {
     // Compilation without guards
     
-    Ast *body = mainbody;
+    Ast *body;
+
+    // Check if the arity <= MAX_PORT
+    if (mainbody != NULL) {
+      body = mainbody->right;
+
+      while (body != NULL) {
+      
+	if (!(check_ast_arity(body->left->left))
+	    || !(check_ast_arity(body->left->right))) {
+	
+	  // invalid case
+	  if (yyin != stdin) exit(-1);
+	  return 0;
+	}
+      
+	body = ast_getTail(body);
+      }
+    }
+
     
+    body = mainbody;    
     if (!Compile_body_on_ast(body)) return 0;
 
     if (!CmEnv_check_linearity_in_rule()) {
@@ -6991,15 +7156,23 @@ void RuleTable_get_code_for_Int(VALUE heap_syml, void ***code) {
 // -------------------------------------------------------------
 
 int get_arity_on_ast(Ast *ast) {
-  int i;
+  int i=0;
   Ast *ptr;
 
   ptr = ast->right;
+  while (ptr != NULL) {
+    ptr = ast_getTail(ptr);
+    ++i;
+  }
+  return i;
+  
+  /*
   for (i=0; i<MAX_PORT; i++) {
     if (ptr == NULL) break;
     ptr = ast_getTail(ptr);
   }
   return i;
+  */
 }
   
 
@@ -7128,6 +7301,10 @@ int get_ruleagentID(Ast *ruleAgent) {
 }
   
 
+
+
+
+
 int make_rule_oneway(Ast *ast) {
   //    (ASTRULE
   //      (AST_CNCT agentL agentR)
@@ -7242,7 +7419,7 @@ int make_rule_oneway(Ast *ast) {
     arity = get_arity_on_ast(ruleAgent_L);
   }
   if (arity > MAX_PORT) {
-    printf("%d:ERROR: Too many arguments of `%s'. It should be MAX_PORT(=%d) or less.\n",
+    printf("%d:ERROR: The rule agent `%s' has too many arguments. It should be MAX_PORT(=%d) or less.\n",
 	   yylineno,
 	   ruleAgent_L->left->sym, MAX_PORT);
     return 0;
@@ -7256,7 +7433,7 @@ int make_rule_oneway(Ast *ast) {
     arity = get_arity_on_ast(ruleAgent_R);
   }
   if (arity > MAX_PORT) {
-    printf("%d:ERROR: Too many arguments of `%s'. It should be MAX_PORT(=%d) or less.\n",
+    printf("%d:ERROR: The rule agent `%s' has too many arguments. It should be MAX_PORT(=%d) or less.\n",
 	   yylineno,
 	   ruleAgent_R->left->sym, MAX_PORT);
     return 0;
@@ -7478,23 +7655,25 @@ int make_rule(Ast *ast) {
   */
   
   
+  // Remove tuple1
   ast->left->left = ast_remove_tuple1(ruleAgent_L);
   ast->left->right = ast_remove_tuple1(ruleAgent_R);
-
-
   
   Ast *rule_mainbody = ast->right;
   Ast_remove_tuple1_in_mainbody(rule_mainbody);
 
-  
+
+  // For annotations (*L), (*R)
   set_annotation_LR(VM_OFFSET_ANNOTATE_L, VM_OFFSET_ANNOTATE_R);  
 
+
+  // Compile and record the rule L><R
   if (!make_rule_oneway(ast)) {
     return 0;
   }
 
   
-  // another way
+  // another way: R><L
   int preserve_CmEnv_put_compiled_codes = CmEnv.put_compiled_codes;
   CmEnv.put_compiled_codes = 0;            // without outputting codes
     
@@ -9909,51 +10088,6 @@ void select_kind_of_push(Ast *ast, int p1, int p2) {
     
 }
 
-
-int check_ast_arity(Ast *ast) {
-  int i;
-  Ast *ptr;
-  char *sym;
-  
-  if (ast == NULL) {
-    return 1;
-  }
-
-  if (ast->id == AST_AGENT) {
-    ptr = ast->right;
-    sym = ast->left->sym;
-    
-    for (i=0; i<MAX_PORT; i++) {
-      if (ptr == NULL) {
-	return 1;
-      }
-      if (!check_ast_arity(ptr->left)) {
-	return 0;
-      }
-      ptr = ast_getTail(ptr);
-    }
-
-    if (ptr != NULL)  {
-      printf("Error!: `%s' has too many arguments. It should be MAX_PORT(=%d) or less.\n", sym, MAX_PORT);
-      return 0;
-    }
-
-  } else if (ast->id == AST_TUPLE) {
-    // We support upto 5-tuples.
-    if ((ast->intval <= MAX_PORT) && (ast->intval <= 5)) {
-      return 1;
-    } else {
-      if (MAX_PORT <= 5) {
-	printf("Error: A tuple has too many arguments. It should be MAX_PORT(=%d) or less.\n", MAX_PORT);
-      } else {
-	printf("Error: A tuple has too many arguments. It should be 5 or less.\n");
-      }
-      return 0;
-    }
-  }
-
-  return 1;
-}  
 
 
 

@@ -1,5 +1,5 @@
-#ifndef _ID_TABLE_
-#define _ID_TABLE_
+#ifndef ID_TABLE_H_
+#define ID_TABLE_H_
 #include "ast.h"
 #include "mytype.h"
 

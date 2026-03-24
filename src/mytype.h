@@ -1,5 +1,5 @@
-#ifndef _TYPE_
-#define _TYPE_
+#ifndef MYTYPE_H_
+#define MYTYPE_H_
 
 #include "config.h"
 

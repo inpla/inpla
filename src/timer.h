@@ -1,7 +1,7 @@
 //https://github.com/zuqqhi2/numerical_simulation/blob/master/multithread/laytrace/timer.h
 
-#ifndef _H_TIMER
-#define _H_TIMER
+#ifndef TIMER_H_
+#define TIMER_H_
 
 #include <stdio.h>
 #include <sys/time.h>

@@ -1,4 +1,6 @@
 // Configurations  ---------------------------------------------------
+#ifndef CONFIG_H_
+#define CONFIG_H_
 
 // ------------------------------------------------
 // Number of Agent Ports 
@@ -10,11 +12,21 @@
 
 
 // ------------------------------------------------
-// Maximum Number of VMCode Sequence
+// AST Heap
+// ------------------------------------------------
+// MAX_AST_HEAP defines the heap size of AST.
+// Increase this value if the parser runs out of heap space.
+// Default: 100000
+#define MAX_AST_HEAP 100000
+
+
+
+// ------------------------------------------------
+// VMCode Sequence
 // ------------------------------------------------
 // MAX_VMCODE_SEQUENCE defines the maximum number of VM codes
 // for each rule. This value limits the code size stored in the RuleTable.
-// Default is 1024.
+// Default: 1024.
 #define MAX_VMCODE_SEQUENCE 1024
 
 // MAX_EXEC_VMCODE_SEQUENCE defines the maximum number of VM codes
@@ -22,10 +34,19 @@
 // This buffer for this is dynamically allocated
 // at the start of the top-level execution
 // and de-allocated immediately after the compilation and execution finish.
-// Default is 1000000.
+// Default: 1000000.
 #define MAX_EXEC_VMCODE_SEQUENCE 1000000
 
 
+// ------------------------------------------------
+// IMCode Sequence
+// ------------------------------------------------
+// MAX_IMCODE_SEQUENCE defines the maximum line number of intermediate codes.
+// This buffer is statically allocated.
+// Increase this value if the compiler runs out of heap space.
+// Default: 1024.
+//#define MAX_IMCODE_SEQUENCE 1024
+#define MAX_IMCODE_SEQUENCE 1024
 
 
 // ------------------------------------------------
@@ -140,4 +161,8 @@
 
 
 #define COUNT_INTERACTION  // Count the amount of interactions.
+
+
+
+#endif
 

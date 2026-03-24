@@ -100,7 +100,7 @@ void recordVal(SymbolTable *table, char *name, long val) {
 
 static Ast *AstHeap;
 static int NextPtr_AstHeap;
-#define MAX_AST_HEAP 10000
+//#define MAX_AST_HEAP 10000
 
 void ast_heapInit(void) {
   
@@ -126,7 +126,7 @@ static Ast *ast_myalloc(void) {
     ptr=&AstHeap[NextPtr_AstHeap];
     NextPtr_AstHeap++;
   } else {
-    printf("[Error] All memory for AST was run out.\n");
+    printf("Error: All memory for AST was run out.\n");
     exit(-1);
   }
 
