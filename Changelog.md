@@ -14,7 +14,6 @@
   Now, it has been fixed by checking the arity correctly:
 
   ```
-  Inpla 0.13.2-1 : Interaction nets as a programming language [built: 16 March 2026]
   >>> A(a,b,c,d,e,f) >< Z => a~Z, b~Z, c~Z, d~Z, e~Z, f~Z;
   1:ERROR: The rule agent `A' has too many arguments. It should be MAX_PORT(=5) or less.
   ```
