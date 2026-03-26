@@ -49,22 +49,33 @@
 #define MAX_IMCODE_SEQUENCE 1024
 
 
+
 // ------------------------------------------------
-// Heaps 
+// Enable Inpla Built-in Agent Operations
 // ------------------------------------------------
-// There are three methods for agents and names heaps:
+// Comment out the below definition to run in Pure Interaction Nets mode.
+#define INPLA_USE_BUILTINS
+
+
+
+
+// ------------------------------------------------
+// Heap Allocation Strategies
+// ------------------------------------------------
+// Select the memory management strategy for agent and name heaps:
+//
 //   - Fixed-size ring buffers
-//       The size is specified by an execution option -c
+//       Heap size is strictly bounded.
+//       The size is specified by the execution option -m
 //
 //   - Expandable ring buffers
-//       Automatically new buffers are inserted when all are run up.
+//       New buffer chunks are automatically allocated and linked when full.
 //
-//   - Ring buffers whose Initial size and newly inserted size
-//     are flexibly changed. (DEFAULT)
-//       The initial size and the expansion magnification are
-//       specified by execution options -Xms, -Xmt, respectively.
+//   - Flexibly expandable ring buffer (DEFAULT)
+//       Initial size and the expansion ratio are configurable
+//       via the '-Xms' (initial) and '-Xmt'(multiplier) runtime options.
 //
-// Choose one among the following three definitions with uncomment.
+// Please uncomment exactly ONE of the three definitions below.
 
 
 //#define FIXED_HEAP
@@ -72,26 +83,35 @@
 #define FLEX_EXPANDABLE_HEAP
 
 
-//
-// For the expandable ring buffer, the unit size HOOP_SIZE can be changed.
-// We note that HOOP_SIZE must be two to power.
-//
 #ifdef EXPANDABLE_HEAP
+// The unit size HOOP_SIZE can be changed.
+// We note that HOOP_SIZE must be two to power.
+
 //#define HOOP_SIZE (1 << 12)    // good for small heaps such as fib
 #define HOOP_SIZE (1 << 18)      // good for large heaps such as msort-80000
 #endif
 
 
+#ifdef FLEX_EXPANDABLE_HEAP
+// The maximum limitation for heap expansion.
+// This helps prevent segmentation faluts caused by out-of-memory.
+// Adjust this value according to your environment.
+#define MAX_HOOP_SIZE 50000000
+#endif
+
 
 
 
 // ------------------------------------------------
-// RuleTable
+// Rule Table Implementation
 // ------------------------------------------------
-// There are two implementation for the rule table:
-//   - Hashed linear table (default)
+// There are two implementation available for the rule table:
+//
+//   - Hashed linear table (DEFAULT)
 //   - Simple array table
-// To use the hashed one, comment out the following RULETABLE_SIMPLE definition.
+//
+// To use the default hashed table,
+// leave the following RULETABLE_SIMPLE definition commented out.
 
 //#define RULETABLE_SIMPLE
 
@@ -101,20 +121,19 @@
 
   
 // ------------------------------------------------
-// Optimisation
+// Optimisations
 // ------------------------------------------------
-// Comment out definitions if not needed.
+// Comment out the definitions if not needed.
 
 
 //  
-// Optimisation of the intermediate codes
-//
+// Optimisation of the intermediate code
 //  
-//   - Assign registers as little as possible with expecting cache works.
-//   - Copy propagation and Dead code elimination for LOAD are performed.
-//   - Reg0 is used as a special one that stores results of comparison.
-//   - Some combinations are rewritten.
-//     For instance, `SUBI src $1 dest' becomes `DEC src dest'.
+//   - Minimises register assignment to leverage CPU cache efficiency.
+//   - Performs copy propagation and dead code elimination for LOAD instructions.
+//   - Dedicated Reg0 as a special register to store comparison results.
+//   - Rewrites specific instruction combinations (Peephole optimisation).
+//     For example, `SUBI src $1 dest' becomes `DEC src dest'.
 //
 #define OPTIMISE_IMCODE    
   
@@ -137,6 +156,10 @@
 
 #endif
 // -------------------------------------------------
+
+
+
+
 
 
 // ------------------------------------------------

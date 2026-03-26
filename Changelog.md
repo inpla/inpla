@@ -1,4 +1,33 @@
 # Change log
+### v0.13.4 (released on 26 March 2026)
+#### New Features
+
+- **Pure Interaction Nets Mode:** Introduced the `INPLA_USE_BUILTINS` macro in `config.h`. By commenting out this macro, the VM can now run in a strict Pure Interaction Nets mode without any built-in operations.
+
+  ```
+  // ------------------------------------------------
+  // Enable Inpla Built-in Agent Operations
+  // ------------------------------------------------
+  // Comment out the below definition to run in Pure Interaction Nets mode.
+  #define INPLA_USE_BUILTINS
+  ```
+  
+#### Polished
+- **Collected Compilation Switches (`config.h`):** Constants and compilation switches introduced during the v0.13.x development cycle have been collected into the configuration file, `config.h`. For example, the allocatable heap limit is now defined in the configuration file as follows:
+
+  ```
+  #ifdef FLEX_EXPANDABLE_HEAP
+  // The maximum limitation for heap expansion.
+  // This helps prevent segmentation faluts caused by out-of-memory.
+  // Adjust this value according to your environment.
+  #define MAX_HOOP_SIZE 50000000
+  #endif
+  ```
+
+-  **Extracted Built-in Agent Operations:** Extracted the built-in operations from the core evaluation loop (`eval_equation`) into external `.inc.c` files. This significantly improves the readability and maintainability.  
+
+  
+
 
 ### v0.13.3 (released on 24 March 2026)
 #### Bug fix
