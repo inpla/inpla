@@ -74,6 +74,8 @@ Inpla is a multi-threaded parallel interpreter of interaction nets. Once you wri
     ```
      To get the single-thread version again, use `make clean; make`.
 
+> Debug builds are available with `DEBUG=thread` (ThreadSanitizer) and `DEBUG=address` (AddressSanitizer + UBSan):
+
 ## How to Execute
 
 ### Interactive mode (single-thread version)
