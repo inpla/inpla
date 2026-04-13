@@ -15,20 +15,19 @@ DEPS	= $(SRC_DIR)/config.h
 
 .PHONY: all
 
-all: $(OBJ_DIR) $(TARGET) 
+all: $(OBJ_DIR) $(TARGET)
 
 $(TARGET): $(OBJS) $(LIBS) $(DEPS)
-	$(CC) $(CFLAGS) $(INCLUDE) $(MYOPTION) -o $@ $(OBJS) $(LDFLAGS) 
+	$(CC) $(CFLAGS) $(INCLUDE) $(MYOPTION) -o $@ $(OBJS) $(LDFLAGS)
 
 $(OBJ_DIR)/linenoise.o: $(SRC_DIR)/linenoise/linenoise.c
 	@if [ ! -f $(SRC_DIR)/linenoise/linenoise.c.orig ]; then \
 		patch --backup --version-control=simple --suffix=.orig $(SRC_DIR)/linenoise/linenoise.c $(SRC_DIR)/linenoise/linenoise-multiline.patch; \
 	fi
-	$(CC) $(CFLAGS) $(INCLUDE) -o $@ -c $< 
+	$(CC) $(CFLAGS) $(INCLUDE) -o $@ -c $<
 
-
-$(OBJ_DIR)/%.o: $(SRC_DIR)/%.c 
-	$(CC) $(CFLAGS) $(INCLUDE) -o $@ -c $< 
+$(OBJ_DIR)/%.o: $(SRC_DIR)/%.c
+	$(CC) $(CFLAGS) $(INCLUDE) -o $@ -c $<
 
 $(OBJ_DIR)/inpla.tab.c : $(SRC_DIR)/inpla.y $(OBJ_DIR)/lex.yy.c
 	bison -o $@ $<
@@ -41,13 +40,12 @@ $(OBJ_DIR):
 		echo ";; mkdir $(OBJ_DIR)"; mkdir $(OBJ_DIR); \
 	fi
 
+thread: $(OBJ_DIR) $(OBJS) $(LIBS)
+	$(CC) $(CFLAGS) $(INCLUDE) $(MYOPTION) -DTHREAD -o $(TARGET) $(OBJS) $(LDFLAGS) -lpthread
+
 clean:
 	rm -f $(TARGET)* $(OBJ_DIR)/* *stackdump* *core*
 	@if [ -f $(SRC_DIR)/linenoise/linenoise.c.orig ]; then \
 		echo "mv -f $(SRC_DIR)/linenoise/linenoise.c.orig $(SRC_DIR)/linenoise/linenoise.c"; \
 		mv -f $(SRC_DIR)/linenoise/linenoise.c.orig $(SRC_DIR)/linenoise/linenoise.c; \
 	fi
-
-
-thread: $(OBJS) $(LIBS)
-	$(CC) $(CFLAGS) $(INCLUDE) $(MYOPTION) -DTHREAD -o $(TARGET) $(OBJS) $(LDFLAGS) -lpthread
