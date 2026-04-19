@@ -1,34 +1,30 @@
+#ifndef _CAS_SPINLOCK_
+#define _CAS_SPINLOCK_
+
 //#define CAS_LOCK_USLEEP 4
 #define CAS_LOCK_USLEEP 200
 
-
-
-#define USE_UNLIKELY
-#ifdef USE_UNLIKELY
+#include <pthread.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include "unlikely.h"
-static inline void lock(volatile int *aexclusion) {
-  if (likely(__sync_lock_test_and_set(aexclusion, 1) == 0)) {
-      return; 
-  }
 
-  while (__sync_lock_test_and_set(aexclusion, 1)) {
-    while (*aexclusion) {
-      usleep(CAS_LOCK_USLEEP);
-    }
-  }
+static inline void lock(pthread_spinlock_t *__lock) {
+ int ret = pthread_spin_lock(__lock);
+
+ if(unlikely(ret)) {
+   printf("Error: pthread_spin_lock() == %d\n", ret);
+   abort();
+ }
 }
 
-#else
+static inline void unlock(pthread_spinlock_t *__lock) {
+ int ret = pthread_spin_unlock(__lock);
 
-static inline void lock(volatile int *aexclusion) {
-  while (__sync_lock_test_and_set(aexclusion, 1))
-    while (*aexclusion)
-      usleep(CAS_LOCK_USLEEP);
+ if(unlikely(ret)) {
+   printf("Error: pthread_spin_unlock() == %d\n", ret);
+   abort();
+ }
 }
 
 #endif
-
-
-static inline void unlock(volatile int *aexclusion) {
-  __sync_lock_release(aexclusion); 
-}
