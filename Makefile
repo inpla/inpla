@@ -48,6 +48,11 @@ clean:
 		mv -f $(SRC_DIR)/linenoise/linenoise.c.orig $(SRC_DIR)/linenoise/linenoise.c; \
 	fi
 
+fmt:
+	clang-format -i $(SRC_DIR)/*.c $(SRC_DIR)/*.h
+
+fmt-check:
+	clang-format --dry-run --Werror $(SRC_DIR)/*.c $(SRC_DIR)/*.h
 
 thread: $(OBJS) $(LIBS)
 	$(CC) $(CFLAGS) $(INCLUDE) $(MYOPTION) -DTHREAD -o $(TARGET) $(OBJS) $(LDFLAGS) -lpthread
