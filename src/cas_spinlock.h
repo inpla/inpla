@@ -1,14 +1,12 @@
-//#define CAS_LOCK_USLEEP 4
+// #define CAS_LOCK_USLEEP 4
 #define CAS_LOCK_USLEEP 200
-
-
 
 #define USE_UNLIKELY
 #ifdef USE_UNLIKELY
 #include "unlikely.h"
 static inline void lock(volatile int *aexclusion) {
   if (likely(__sync_lock_test_and_set(aexclusion, 1) == 0)) {
-      return; 
+    return;
   }
 
   while (__sync_lock_test_and_set(aexclusion, 1)) {
@@ -28,7 +26,6 @@ static inline void lock(volatile int *aexclusion) {
 
 #endif
 
-
 static inline void unlock(volatile int *aexclusion) {
-  __sync_lock_release(aexclusion); 
+  __sync_lock_release(aexclusion);
 }

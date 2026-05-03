@@ -1,8 +1,7 @@
+#include "id_table.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "id_table.h"
-
 
 static IdTableT IdTable[IDTABLE_SIZE];
 
@@ -11,18 +10,18 @@ static int NextAgentId, NextGnameId;
 void IdTable_init() {
 
   int i;
-  NextAgentId = START_ID_OF_USER_AGENT -1;
-  NextGnameId = START_ID_OF_GNAME -1;
+  NextAgentId = START_ID_OF_USER_AGENT - 1;
+  NextGnameId = START_ID_OF_GNAME - 1;
   // 0 : ID_INT(used in expressions)
   // 1 .. START_ID_OF_USER_AGENT-1 : built-in agents
   // START_ID_OF_USER_AGENT .. NUM_AGENTS-1: user defined agents
   // NUM_AGENTS(=ID_NAME) .. : names
 
-  for (i=0; i<=END_ID_OF_AGENT; i++) {
+  for (i = 0; i <= END_ID_OF_AGENT; i++) {
     IdTable[i].name = NULL;
-    IdTable[i].aux.arity = -1;   // means ERROR
+    IdTable[i].aux.arity = -1; // means ERROR
   }
-  for (i=START_ID_OF_GNAME; i<IDTABLE_SIZE; i++) {
+  for (i = START_ID_OF_GNAME; i < IDTABLE_SIZE; i++) {
     IdTable[i].name = NULL;
     IdTable[i].aux.heap = (VALUE)NULL;
   }
@@ -59,7 +58,6 @@ void IdTable_init() {
   IdTable[ID_ERASER].aux.arity = 0;
   IdTable[ID_DUP].aux.arity = 2;
 
-  
   IdTable[ID_INT].name = "Int";
   IdTable[ID_TUPLE0].name = "Tuple0";
   IdTable[ID_TUPLE1].name = "Tuple1";
@@ -71,7 +69,7 @@ void IdTable_init() {
   IdTable[ID_CONS].name = "Cons";
   IdTable[ID_INTAGENT].name = "Int";
   IdTable[ID_WILDCARD].name = "Wildcard";
-  
+
   IdTable[ID_APPEND].name = "Append";
   IdTable[ID_ZIP].name = "Zip";
   IdTable[ID_ZIPC].name = "ZipC";
@@ -92,9 +90,7 @@ void IdTable_init() {
 
   IdTable[ID_ERASER].name = "Eraser";
   IdTable[ID_DUP].name = "Dup";
-
 }
-
 
 int IdTable_getid_builtin_funcAgent(Ast *agent) {
   // returns -1 if the agent is not built-in.
@@ -105,23 +101,23 @@ int IdTable_getid_builtin_funcAgent(Ast *agent) {
   if ((agent->id != AST_AGENT) && (agent->id != AST_PERCENT)) {
     return -1;
   }
-  
+
   if (strcmp((char *)agent->left->sym, "Add") == 0) {
-    id = ID_ADD;      
+    id = ID_ADD;
   } else if (strcmp((char *)agent->left->sym, "Sub") == 0) {
-    id = ID_SUB;      
+    id = ID_SUB;
   } else if (strcmp((char *)agent->left->sym, "Mul") == 0) {
-    id = ID_MUL;      
+    id = ID_MUL;
   } else if (strcmp((char *)agent->left->sym, "Div") == 0) {
-    id = ID_DIV;      
+    id = ID_DIV;
   } else if (strcmp((char *)agent->left->sym, "Mod") == 0) {
-    id = ID_MOD;      
+    id = ID_MOD;
   } else if (strcmp((char *)agent->left->sym, "Append") == 0) {
-    id = ID_APPEND;      
+    id = ID_APPEND;
   } else if (strcmp((char *)agent->left->sym, "Zip") == 0) {
-    id = ID_ZIP;      
+    id = ID_ZIP;
   } else if (strcmp((char *)agent->left->sym, "Map") == 0) {
-    id = ID_MAP;      
+    id = ID_MAP;
   } else if (strcmp((char *)agent->left->sym, "Int") == 0) {
     id = ID_INTAGENT;
   } else if (strcmp((char *)agent->left->sym, "Merger") == 0) {
@@ -135,76 +131,60 @@ int IdTable_getid_builtin_funcAgent(Ast *agent) {
   return id;
 }
 
-
-
-void IdTable_set_name(int id, char *symname)
-{
+void IdTable_set_name(int id, char *symname) {
   if (id > IDTABLE_SIZE) {
     printf("Error: The given id %d was beyond of the size of IdTable (%d)\n",
-	   id, IDTABLE_SIZE);
+           id, IDTABLE_SIZE);
     exit(-1);
   }
   IdTable[id].name = symname;
 }
 
-char *IdTable_get_name(int id)
-{
-  return IdTable[id].name;
-}
+char *IdTable_get_name(int id) { return IdTable[id].name; }
 
-
-void IdTable_set_arity(int id, int arity)
-{
+void IdTable_set_arity(int id, int arity) {
   if ((IdTable[id].aux.arity == -1) || (IdTable[id].aux.arity == arity)) {
     IdTable[id].aux.arity = arity;
   } else {
-    printf("Warning: The agent `%s' has been previously defined of arity %d, but is now used of arity %d.\n",  
-	   IdTable[id].name, IdTable[id].aux.arity, arity);
+    printf("Warning: The agent `%s' has been previously defined of arity %d, "
+           "but is now used of arity %d.\n",
+           IdTable[id].name, IdTable[id].aux.arity, arity);
     IdTable[id].aux.arity = arity;
-  } 
+  }
 }
 
-int IdTable_get_arity(int id)
-{
-  return IdTable[id].aux.arity;
-}
+int IdTable_get_arity(int id) { return IdTable[id].aux.arity; }
 
-
-void IdTable_set_heap(int id, VALUE heap)
-{
+void IdTable_set_heap(int id, VALUE heap) {
   if (id > IDTABLE_SIZE) {
     printf("Error: The given id %d was beyond of the size of IdTable (%d)\n",
-	   id, IDTABLE_SIZE);
+           id, IDTABLE_SIZE);
     exit(-1);
   }
   IdTable[id].aux.heap = heap;
 }
 
-VALUE IdTable_get_heap(int id)
-{
-  return IdTable[id].aux.heap;
-}
-
-
+VALUE IdTable_get_heap(int id) { return IdTable[id].aux.heap; }
 
 int IdTable_new_agentid() {
   NextAgentId++;
   if (NextAgentId > END_ID_OF_USER_AGENT) {
     printf("ERROR: The number of agents exceeded the limitation size (%d).\n",
-	 END_ID_OF_USER_AGENT);
+           END_ID_OF_USER_AGENT);
     exit(-1);
   }
-  return(NextAgentId);
+  return (NextAgentId);
 }
 
 int IdTable_new_gnameid() {
   NextGnameId++;
   if (NextGnameId < IDTABLE_SIZE) {
-    return(NextGnameId);
+    return (NextGnameId);
   } else {
-    
-    printf("ERROR: The total number of names exceeded the size of IDTABLE (%d)\n",
-	 IDTABLE_SIZE);
+
+    printf(
+        "ERROR: The total number of names exceeded the size of IDTABLE (%d)\n",
+        IDTABLE_SIZE);
     exit(-1);
   }
 }
