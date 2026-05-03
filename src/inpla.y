@@ -2396,23 +2396,16 @@ void puts_memory_stat(void) {
 static pthread_cond_t EQStack_not_empty = PTHREAD_COND_INITIALIZER;
 static pthread_mutex_t Sleep_lock = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t AllSleep_lock = PTHREAD_MUTEX_INITIALIZER;
-#endif
-
-
 
 // GlobalEQStack for execution with threads
-#ifdef THREAD
 typedef struct {
   EQ *stack;
   int nextPtr;
   int size;
-  volatile int lock;  // for lightweight spin lock
+  pthread_spinlock_t lock;
 } EQStack;
 static EQStack GlobalEQS;
-#endif
 
-
-#ifdef THREAD
 void GlobalEQStack_Init(int size) {
  GlobalEQS.nextPtr = -1;
  GlobalEQS.stack = malloc(sizeof(EQ)*size);
@@ -2421,13 +2414,25 @@ void GlobalEQStack_Init(int size) {
     printf("Malloc error\n");
     exit(-1);
   }
+
   // for cas_lock
- GlobalEQS.lock = 0;
+ int ret = pthread_spin_init(&GlobalEQS.lock, PTHREAD_PROCESS_PRIVATE);
+ if (ret) {
+    printf("Spin lock init err:%d\n", ret);
+
+    free(GlobalEQS.stack);
+    exit(-1);
+ }
 }
-#endif
 
+void GlobalEQStack_Deinit() {
+ if (!GlobalEQS.stack)
+  return;
 
-#ifdef THREAD
+ free(GlobalEQS.stack);
+ pthread_spin_destroy(&GlobalEQS.lock);
+}
+
 void GlobalEQStack_Push(VALUE l, VALUE r) {
 
   lock(&GlobalEQS.lock);
@@ -2452,7 +2457,6 @@ void GlobalEQStack_Push(VALUE l, VALUE r) {
     pthread_cond_signal(&EQStack_not_empty);
     pthread_mutex_unlock(&Sleep_lock);
   }
-
 }
 #endif
 

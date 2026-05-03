@@ -1,0 +1,6 @@
+# build artifacts:
+inpla
+**/build
+
+# linenoise-multiline.patch artifacts:
+src/linenoise/linenoise.c.orig
